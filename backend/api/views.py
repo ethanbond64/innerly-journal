@@ -1,3 +1,4 @@
+import uuid
 from flask import Blueprint, request
 
 from sqlalchemy import func, or_
@@ -7,14 +8,26 @@ from models import User, Entry, Tag
 
 views = Blueprint('views', __name__)
 
+share_transient = str(uuid.uuid4())
+
 @views.route('/version')
 def index():
     return {'version': '1.0.0'}, 200
 
-@views.route('/<share>/signup', methods=['POST'])
-def signup(share):
+@views.route('/share')
+@login_required(admin=True)
+def share():
+    new_share = str(uuid.uuid4())
+    global share_transient
+    share_transient = new_share
+    return {'share': new_share}, 200
 
-    # TODO validate share
+@views.route('signup', methods=['POST'])
+def signup():
+
+    share = request.args.get('share', None)
+    if share is None or share != share_transient:
+        return {'message': 'Unauthorized'}, 401
 
     body = request.get_json()
     if body is None:
@@ -136,37 +149,44 @@ def update_entry(current_user, id):
 @login_required
 def fetch_entries(current_user):
 
-    limit = request.args.get('limit', 30)
-    offset = request.args.get('offset', 0)
-    search = request.args.get('search', '')
-
-    return None
-
-@views.route('/fetch/tags', methods=['GET'])
-@login_required
-def fetch_entries(current_user):
-
     limit = request.args.get('limit', 10)
     offset = request.args.get('offset', 0)
     search = request.args.get('search', None)
     tag = request.args.get('tag', None)
 
-    q = Entry.query.filter(Entry.user_id == current_user.id)
+    query = Entry.query.filter(Entry.user_id == current_user.id)
 
     if search:
         # Search titles and tags
-        q = q.filter(or_(
+        query = query.filter(or_(
             func.jsonb_extract_path_text(Entry.entry_data, 'title').like(f'%{search}%')),
             Entry.tags.any_(func.array_contains(Entry.tags, search))
         )
 
     if tag:
         # Exact tag search
-        q = q.filter(Entry.tags.any_(func.array_contains(Entry.tags, tag)))
+        query = query.filter(Entry.tags.any_(func.array_contains(Entry.tags, tag)))
 
-    entries = q.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
+    entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json() for entry in entries]}, 200
+
+@views.route('/fetch/tags', methods=['GET'])
+@login_required
+def fetch_entries(current_user):
+
+    limit = request.args.get('limit', 30)
+    offset = request.args.get('offset', 0)
+    name = request.args.get('search', None)
+
+    query = Tag.query.filter(Tag.user_id == current_user.id)
+
+    if name:
+        query = query.filter(Tag.name.like(f'%{name}%'))
+
+    tags = query.order_by(Tag.created_on).limit(limit).offset(offset).all()
+
+    return {'data': [tag.json() for tag in tags]}, 200
 
 # POST to put passcode in the body for locked entries.
 @views.route('/fetch/entries/<int:id>', methods=['POST'])

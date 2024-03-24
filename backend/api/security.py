@@ -16,7 +16,7 @@ def json_abort(status_code, data=None):
     response.status_code = status_code
     abort(response)
 
-def login_required(function):
+def login_required(function, admin=False):
     @wraps(function)
     @jwt_required(locations=['headers'])
     def decorator(*args, **kwargs):
@@ -27,7 +27,13 @@ def login_required(function):
             return
         
         user_id = identity.replace(IDENTITY_PADDING, '')
-        user = User.query.filter(User.id == user_id).first()
+        
+        query = User.query.filter(User.id == user_id)
+        
+        if admin:
+            query = query.filter(User.admin == True)
+
+        user = query.first()
 
         if user is None:
             json_abort(HTTPStatus.UNAUTHORIZED, UNAUTHORIZED)

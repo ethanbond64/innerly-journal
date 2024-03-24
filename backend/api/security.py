@@ -1,6 +1,7 @@
 import datetime
-from functools import wraps
+from functools import lru_cache, wraps
 from http import HTTPStatus
+import time
 
 from flask import abort, jsonify
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
@@ -25,12 +26,8 @@ def login_required(function):
         if identity is None or not identity.endswith(IDENTITY_PADDING):
             json_abort(HTTPStatus.UNAUTHORIZED, UNAUTHORIZED)
             return
-        
-        user_id = identity.replace(IDENTITY_PADDING, '')
-        
-        query = User.query.filter(User.id == user_id)
 
-        user = query.first()
+        user = get_user(identity, ttl_hash=get_ttl_hash())
 
         if user is None:
             json_abort(HTTPStatus.UNAUTHORIZED, UNAUTHORIZED)
@@ -52,3 +49,14 @@ def authenticated(user: User, password):
 
 def get_token(user: User):
         return create_access_token(identity=str(user.id) + IDENTITY_PADDING, expires_delta=datetime.timedelta(hours=12))
+
+@lru_cache(maxsize=10)
+def get_user(identity, ttl_hash=None):
+    user_id = identity.replace(IDENTITY_PADDING, '')
+    return User.query.filter(User.id == user_id).first()
+
+def get_ttl_hash(seconds=3600):
+    return round(time.time() / seconds)
+
+def invalidate_user_cache():
+    get_user.cache_clear()

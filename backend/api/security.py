@@ -8,8 +8,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from models import User
 
-IDENTITY_PADDING = "-innerly-auth"
-UNAUTHORIZED = {"message": "Requires authentication"}
+IDENTITY_PADDING = '-innerly-auth'
+UNAUTHORIZED = {'message': 'Requires authentication'}
 
 def json_abort(status_code, data=None):
     response = jsonify(data)
@@ -18,7 +18,7 @@ def json_abort(status_code, data=None):
 
 def login_required(function):
     @wraps(function)
-    @jwt_required(locations=["headers"])
+    @jwt_required(locations=['headers'])
     def decorator(*args, **kwargs):
         identity = get_jwt_identity()
 
@@ -26,7 +26,7 @@ def login_required(function):
             json_abort(HTTPStatus.UNAUTHORIZED, UNAUTHORIZED)
             return
         
-        user_id = identity.replace(IDENTITY_PADDING, "")
+        user_id = identity.replace(IDENTITY_PADDING, '')
         user = User.query.filter(User.id == user_id).first()
 
         if user is None:

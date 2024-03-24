@@ -1,6 +1,6 @@
 import datetime
 from extensions import db
-from sqlalchemy import ARRAY, PrimaryKeyConstraint, String
+from sqlalchemy import ARRAY, String
 from sqlalchemy.dialects.postgresql import JSON
 
 def get_datetime():

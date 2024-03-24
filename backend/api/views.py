@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, url_for
-from extensions import db
 
 views = Blueprint("views", __name__)
 

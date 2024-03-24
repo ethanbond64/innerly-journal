@@ -1,6 +1,3 @@
-##########################################
-# External Modules
-##########################################
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
@@ -17,22 +14,10 @@ load_dotenv()
 
 
 def create_app():
-    ##########################################
-    # Environment Variables
-    ##########################################
     client_origin_url = safe_get_env_var("CLIENT_ORIGIN_URL")
-
-
-    ##########################################
-    # Flask App Instance
-    ##########################################
 
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object("api.settings")
-
-    ##########################################
-    # Flask extensions
-    ##########################################
 
     db.init_app(app)
     # with app.app_context():
@@ -40,11 +25,6 @@ def create_app():
     #     db.create_all()
 
     JWTManager(app)
-
-    ##########################################
-    # CORS
-    ##########################################
-
     CORS(
         app,
         resources={r"/*": {"origins": client_origin_url}},
@@ -52,10 +32,6 @@ def create_app():
         methods=["GET", "POST"],
         max_age=86400,
     )
-
-    ##########################################
-    # Blueprint Registration
-    ##########################################
 
     app.register_blueprint(views, url_prefix='/api')
 

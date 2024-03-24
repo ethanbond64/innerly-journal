@@ -2,12 +2,12 @@ import datetime
 from extensions import db
 from sqlalchemy import ARRAY, String
 from sqlalchemy.dialects.postgresql import JSON
+from werkzeug.security import check_password_hash
 
 def get_datetime():
     return datetime.datetime.now()
 
 class BaseModel(object):
-    # Keep track when records are created and updated.
     created_on = db.Column(db.DateTime(), default=get_datetime)
     updated_on = db.Column(db.DateTime(), default=get_datetime, onupdate=get_datetime)
 
@@ -33,11 +33,15 @@ class User(db.Model, BaseModel):
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(128), unique=True, index=True, nullable=False, server_default="")
-    password = db.Column(db.String(128), nullable=False, server_default="")
+    password_hash = db.Column(db.String(128), nullable=False, server_default="")
     admin = db.Column(db.Boolean, default=False)
     settings = db.Column(JSON, nullable=False, default="{}")
     usage = db.Column(JSON, nullable=False, default="{}")
 
+    def json(self):
+        j = super().json()
+        del j["password_hash"]
+        return j
 
 class Entry(db.Model, BaseModel):
     __tablename__ = "entries"
@@ -48,3 +52,11 @@ class Entry(db.Model, BaseModel):
     entry_type = db.Column(db.String(255), nullable=False, default="text")
     entry_data = db.Column(JSON, nullable=False, default="{}")
     tags = db.Column(ARRAY(String), nullable=False, default=[])
+
+class Tag(db.Model, BaseModel):
+    __tablename__ = "tags"
+    __table_args__ = (db.UniqueConstraint('name', 'user_id', name='_name_user_id_uc'))
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)

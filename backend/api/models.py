@@ -48,8 +48,8 @@ class Entry(db.Model, BaseModel):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    functional_datetime = db.Column(db.DateTime(), default=get_datetime)
-    entry_type = db.Column(db.String(255), nullable=False, default='text')
+    functional_datetime = db.Column(db.DateTime(), default=get_datetime, index=True)
+    entry_type = db.Column(db.String(64), nullable=False, default='text')
     entry_data = db.Column(JSON, nullable=False, default='{}')
     tags = db.Column(ARRAY(String), nullable=False, default=[])
 

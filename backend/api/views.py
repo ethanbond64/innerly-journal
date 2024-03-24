@@ -1,22 +1,29 @@
 import uuid
 from flask import Blueprint, request
 
-from sqlalchemy import func, or_
+from sqlalchemy import String, cast, func, or_
 
-from security import authenticated, encrypt_password, get_token, login_required
-from models import User, Entry, Tag
+from api.security import authenticated, encrypt_password, get_token, login_required
+from api.models import User, Entry, Tag, get_datetime
 
 views = Blueprint('views', __name__)
 
-share_transient = str(uuid.uuid4())
+SHARE_INIIAL = "todo"
+TAG_LIMIT = 32
 
-@views.route('/version')
+share_transient = SHARE_INIIAL
+
+@views.route('/version', methods=['GET'])
 def index():
     return {'version': '1.0.0'}, 200
 
-@views.route('/share')
-@login_required(admin=True)
-def share():
+@views.route('/share', methods=['GET'])
+@login_required
+def share(current_user):
+
+    if not current_user.admin:
+        return {'message': 'Unauthorized'}, 401
+
     new_share = str(uuid.uuid4())
     global share_transient
     share_transient = new_share
@@ -42,7 +49,10 @@ def signup():
     if user is not None:
         return {'message': 'User: ' + email + ' already exists.'}, 409
     
-    new_user = User(email=email, password_hash=encrypt_password(password))
+    # Check to see if first user, if so, make admin
+    user_exists = User.query.first()
+
+    new_user = User(email=email, password_hash=encrypt_password(password), admin=(user_exists == None))
     new_user.save()
 
     token = get_token(new_user)
@@ -121,7 +131,24 @@ def update_user(current_user, id):
 @views.route('/insert/entries', methods=['POST'])
 @login_required
 def insert_entry(current_user):
-    return None
+
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+    
+    entry_type = body.get('entry_type')
+    if entry_type is None:
+        return {'message': 'Bad request'}, 400
+    
+    # TODO validate and handle all types
+    entry_data = body.get('entry_data', {})
+    tags = body.get('tags', ['first', 'Second'])
+    functional_datetime = body.get('functional_datetime', get_datetime())
+
+    new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
+    new_entry.save()
+
+    return {'data': new_entry.json()}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])
 @login_required
@@ -159,13 +186,13 @@ def fetch_entries(current_user):
     if search:
         # Search titles and tags
         query = query.filter(or_(
-            func.jsonb_extract_path_text(Entry.entry_data, 'title').like(f'%{search}%')),
-            Entry.tags.any_(func.array_contains(Entry.tags, search))
-        )
+            cast(Entry.entry_data.op('->>')('title'), String).ilike(f'%{search}%'),
+            Entry.tags.any(search) # TODO this is exact match case sensitive
+        ))
 
     if tag:
         # Exact tag search
-        query = query.filter(Entry.tags.any_(func.array_contains(Entry.tags, tag)))
+        query = query.filter(func.array_contains(Entry.tags, tag))
 
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
@@ -173,7 +200,7 @@ def fetch_entries(current_user):
 
 @views.route('/fetch/tags', methods=['GET'])
 @login_required
-def fetch_entries(current_user):
+def fetch_tags(current_user):
 
     limit = request.args.get('limit', 30)
     offset = request.args.get('offset', 0)
@@ -182,7 +209,7 @@ def fetch_entries(current_user):
     query = Tag.query.filter(Tag.user_id == current_user.id)
 
     if name:
-        query = query.filter(Tag.name.like(f'%{name}%'))
+        query = query.filter(Tag.name.ilike(f'%{name}%'))
 
     tags = query.order_by(Tag.created_on).limit(limit).offset(offset).all()
 
@@ -192,4 +219,10 @@ def fetch_entries(current_user):
 @views.route('/fetch/entries/<int:id>', methods=['POST'])
 @login_required
 def fetch_entry(current_user, id):
-    return None
+
+    entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
+
+    if entry is None:
+        return {'message': 'Entry not found'}, 404
+
+    return {'data': entry.json()}, 200

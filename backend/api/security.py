@@ -6,7 +6,7 @@ from flask import abort, jsonify
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from models import User
+from api.models import User
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
@@ -16,7 +16,7 @@ def json_abort(status_code, data=None):
     response.status_code = status_code
     abort(response)
 
-def login_required(function, admin=False):
+def login_required(function):
     @wraps(function)
     @jwt_required(locations=['headers'])
     def decorator(*args, **kwargs):
@@ -29,9 +29,6 @@ def login_required(function, admin=False):
         user_id = identity.replace(IDENTITY_PADDING, '')
         
         query = User.query.filter(User.id == user_id)
-        
-        if admin:
-            query = query.filter(User.admin == True)
 
         user = query.first()
 
@@ -54,4 +51,4 @@ def authenticated(user: User, password):
     return False
 
 def get_token(user: User):
-        return create_access_token(identity=user.id + IDENTITY_PADDING, expires_delta=datetime.timedelta(hours=12))
+        return create_access_token(identity=str(user.id) + IDENTITY_PADDING, expires_delta=datetime.timedelta(hours=12))

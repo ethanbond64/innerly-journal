@@ -1,5 +1,5 @@
 import datetime
-from extensions import db
+from api.extensions import db
 from sqlalchemy import ARRAY, String
 from sqlalchemy.dialects.postgresql import JSON
 from werkzeug.security import check_password_hash
@@ -33,7 +33,7 @@ class User(db.Model, BaseModel):
     
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(128), unique=True, index=True, nullable=False, server_default='')
-    password_hash = db.Column(db.String(128), nullable=False, server_default='')
+    password_hash = db.Column(db.String(512), nullable=False, server_default='')
     admin = db.Column(db.Boolean, default=False)
     settings = db.Column(JSON, nullable=False, default='{}')
     usage = db.Column(JSON, nullable=False, default='{}')
@@ -61,7 +61,7 @@ class Entry(db.Model, BaseModel):
 
 class Tag(db.Model, BaseModel):
     __tablename__ = 'tags'
-    __table_args__ = (db.UniqueConstraint('name', 'user_id', name='_name_user_id_uc'))
+    __table_args__ = (db.UniqueConstraint('name', 'user_id', name='_name_user_id_uc'),)
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)

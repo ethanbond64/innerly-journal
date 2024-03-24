@@ -3,7 +3,7 @@ from flask import Blueprint, request
 
 from sqlalchemy import String, cast, func, or_
 
-from api.security import authenticated, encrypt_password, get_token, invalidate_user_cache, login_required
+from api.security import authenticated, encrypt_password, get_token, login_required
 from api.models import User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 
@@ -55,8 +55,6 @@ def signup():
 
     new_user = User(email=email, password_hash=encrypt_password(password), admin=(user_exists == None))
     new_user.save()
-    
-    invalidate_user_cache()
 
     token = get_token(new_user)
 
@@ -101,8 +99,6 @@ def reset_password(current_user):
     current_user.password_hash = encrypt_password(new_password)
     current_user.save()
 
-    invalidate_user_cache()
-
     return {'success': True}, 200
 
 @views.route('/update/users/<int:id>', methods=['POST'])
@@ -130,8 +126,6 @@ def update_user(current_user, id):
         # TODO passcode
         user.settings = update_settings
         user.save()
-
-        invalidate_user_cache()
 
     return {'data': user.json()}, 200
 

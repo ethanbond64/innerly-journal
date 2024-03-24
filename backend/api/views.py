@@ -5,6 +5,7 @@ from sqlalchemy import String, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, invalidate_user_cache, login_required
 from api.models import User, Entry, Tag, get_datetime
+from api.processors.text_processor import process_text_entry
 
 views = Blueprint('views', __name__)
 
@@ -147,8 +148,16 @@ def insert_entry(current_user):
         return {'message': 'Bad request'}, 400
     
     # TODO validate and handle all types
-    entry_data = body.get('entry_data', {})
-    tags = body.get('tags', ['first', 'Second'])
+    entry_data = body.get('entry_data')
+    if entry_data is None:
+        return {'message': 'Bad request'}, 400
+
+    tags = None
+
+    if entry_type == 'text':
+        entry_data, tags = process_text_entry(entry_data)
+
+
     functional_datetime = body.get('functional_datetime', get_datetime())
 
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)

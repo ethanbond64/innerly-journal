@@ -4,7 +4,7 @@ class BaseEntryData:
         self.title = title
 
     def json(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        return self.__dict__
 
 class TextEntryData(BaseEntryData):
     def __init__(self, title: str, text: str):

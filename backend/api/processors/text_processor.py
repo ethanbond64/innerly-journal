@@ -1,30 +1,28 @@
 from api.processors.entry_models import TextEntryData
-from keywords import positive, negative, negations
+from api.processors.keywords import positive, negative, negations
 
 
 POSITIVE = 'positive'
 NEGATIVE = 'negative'
 NEUTRAL = 'neutral'
 
-
-
 # Take in the body input from the request, validate and return entry data and tags
 def process_text_entry(body: dict) -> tuple:
 
     title = body.get('title')
     text = body.get('text')
-
-    if text is None:
-        return {'message': 'Empty text field'}, 400
     
     return build_entry_data(title, text).json(), []
 
 def build_entry_data(title: str, text: str) -> dict:
     
     entry_data = TextEntryData(title, text)
-    entry_data.sentiment = getSentiment(text)
+    entry_data.sentiment = NEUTRAL
 
-    return entry_data.json()
+    if text is not None and len(text) > 0:
+        entry_data.sentiment = getSentiment(text)
+
+    return entry_data
 
 def getSentiment(text: str) -> str:
     

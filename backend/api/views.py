@@ -1,11 +1,13 @@
+import os
 import uuid
-from flask import Blueprint, request
+from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, login_required
 from api.models import User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
+from api.processors.file_processor import get_user_directory, process_file_entry
 
 views = Blueprint('views', __name__)
 
@@ -73,7 +75,7 @@ def login():
         return {'message': 'Bad request'}, 400
     
     user = User.query.filter(User.email == email).first()
-    if user is None or not user.authenticated(password):
+    if user is None or not authenticated(user, password):
         return {'message': 'Unauthorized'}, 401
     
     token = get_token(user)
@@ -133,24 +135,41 @@ def update_user(current_user, id):
 @login_required
 def insert_entry(current_user):
 
-    body = request.get_json()
+    body = None
+    file = None
+    
+    print(request.content_type)
+
+    if request.content_type.startswith('application/json'):
+        body = request.get_json()
+    
+    elif request.content_type.startswith('multipart/form-data'):
+        body = request.form.to_dict()
+        file = request.files.get('file')
+    
     if body is None:
         return {'message': 'Bad request'}, 400
     
     entry_type = body.get('entry_type')
+    
     if entry_type is None:
         return {'message': 'Bad request'}, 400
     
-    # TODO validate and handle all types
     entry_data = body.get('entry_data')
-    if entry_data is None:
-        return {'message': 'Bad request'}, 400
-
     tags = None
 
+    # TODO add link entry type
     if entry_type == 'text':
+        if entry_data is None:
+            return {'message': 'Bad request'}, 400
+
         entry_data, tags = process_text_entry(entry_data)
 
+    elif entry_type == 'file':
+        if file is None:
+            return {'message': 'Bad request'}, 400
+        
+        entry_data, tags = process_file_entry(current_user, file)
 
     functional_datetime = body.get('functional_datetime', get_datetime())
 
@@ -231,7 +250,18 @@ def fetch_entry(current_user, id):
 
     entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
 
+    # TODO passcode stuff
+
     if entry is None:
         return {'message': 'Entry not found'}, 404
 
     return {'data': entry.json()}, 200
+
+
+@views.route('/static/<filename>', methods=['GET'])
+@login_required
+def get_file(current_user, filename):
+
+    path = get_user_directory(current_user.id)
+
+    return send_from_directory(path, filename)

@@ -21,6 +21,7 @@ services:
       - '.env'
     volumes:
       - './backend:/backend'
+      - '~/.innerly:/root/.innerly'
     ports:
       - '8000:8000'
 

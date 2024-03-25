@@ -16,13 +16,12 @@ def process_text_entry(body: dict) -> tuple:
 
 def build_entry_data(title: str, text: str) -> dict:
     
-    entry_data = TextEntryData(title, text)
-    entry_data.sentiment = NEUTRAL
+    sentiment = NEUTRAL
 
     if text is not None and len(text) > 0:
-        entry_data.sentiment = getSentiment(text)
+        sentiment = getSentiment(text)
 
-    return entry_data
+    return TextEntryData(title, text, sentiment)
 
 def getSentiment(text: str) -> str:
     

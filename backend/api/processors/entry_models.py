@@ -1,7 +1,7 @@
-
 class BaseEntryData:
     def json(self):
         return self.__dict__
+
 
 class TextEntryData(BaseEntryData):
     def __init__(self, title: str, text: str, sentiment: str):
@@ -15,3 +15,12 @@ class FileEntryData(BaseEntryData):
         self.title = title
         self.path = path
         self.file_type = file_type
+
+
+class LinkEntryData(BaseEntryData):
+    def __init__(self, title: str, path: str, original_path: str, link: str, site: str):
+        self.title = title
+        self.path = path
+        self.original_path = original_path
+        self.link = link
+        self.site = site

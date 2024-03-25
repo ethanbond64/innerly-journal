@@ -3,6 +3,7 @@ from imghdr import what as get_format
 import os
 from uuid import uuid4
 from werkzeug.utils import secure_filename
+from werkzeug.datastructures import FileStorage
 
 from api.security import json_abort
 from api.processors.entry_models import FileEntryData
@@ -21,19 +22,19 @@ USER_DIRECTORY_PREFIX = 'user-'
 
 def process_file_entry(user: User, file) -> tuple:
 
-    user_directory = get_user_directory(user.id)
 
-    path, original_filename, file_type = save_file(user_directory, file)
+    path, original_filename, file_type = save_file(user.id, file)
 
     return FileEntryData(original_filename, path, file_type).json(), []
 
 # Validates the file, saves it to the file system and returns the path, file type, and original filename
-def save_file(directory, file) -> tuple:
+def save_file(user_id, file: FileStorage) -> tuple:
 
     original_filename, extension = parse_file(file)
-    
+        
+    directory = get_user_directory(user_id)
     new_filename = str(uuid4()) + '.' + extension
-    
+
     if not os.path.exists(directory):
         os.makedirs(directory)
 

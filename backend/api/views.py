@@ -8,6 +8,7 @@ from api.security import authenticated, encrypt_password, get_token, login_requi
 from api.models import User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import get_user_directory, process_file_entry
+from api.processors.link_processor import process_link_entry
 
 views = Blueprint('views', __name__)
 
@@ -137,16 +138,17 @@ def insert_entry(current_user):
 
     body = None
     file = None
-    
-    print(request.content_type)
 
     if request.content_type.startswith('application/json'):
         body = request.get_json()
-    
+
     elif request.content_type.startswith('multipart/form-data'):
         body = request.form.to_dict()
         file = request.files.get('file')
-    
+
+    else:
+        return {'message': 'Bad request'}, 400
+
     if body is None:
         return {'message': 'Bad request'}, 400
     
@@ -156,25 +158,40 @@ def insert_entry(current_user):
         return {'message': 'Bad request'}, 400
     
     entry_data = body.get('entry_data')
-    tags = None
+    tags = []
 
-    # TODO add link entry type
     if entry_type == 'text':
+        
         if entry_data is None:
             return {'message': 'Bad request'}, 400
-
+        
         entry_data, tags = process_text_entry(entry_data)
 
     elif entry_type == 'file':
+        
         if file is None:
             return {'message': 'Bad request'}, 400
         
         entry_data, tags = process_file_entry(current_user, file)
 
+    elif entry_type == 'link':
+        
+        if entry_data is None:
+            return {'message': 'Bad request'}, 400
+        
+        link = entry_data.get('link')
+        
+        if link is None:
+            return {'message': 'Bad request'}, 400
+        
+        entry_data, tags = process_link_entry(current_user, link)
+
     functional_datetime = body.get('functional_datetime', get_datetime())
 
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
     new_entry.save()
+
+    # TODO upsert tags
 
     return {'data': new_entry.json()}, 201
 

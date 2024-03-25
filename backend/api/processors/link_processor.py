@@ -1,10 +1,13 @@
+from io import BytesIO
 from opengraph_py3 import OpenGraph
 import re
 import requests
+from werkzeug.datastructures import FileStorage
 
 from api.models import User
 from api.security import json_abort
 from api.processors.entry_models import LinkEntryData
+from api.processors.file_processor import save_file
 
 yt1 = "youtube.com/watch?v="
 yt2 = "youtu.be/"
@@ -30,8 +33,14 @@ def process_link_entry(user: User, link: str) -> tuple:
 
     site, original_path, title = data
 
-    # TODO download the thumbnail image and update path
-    return LinkEntryData(title, original_path, original_path, link, site).json(), []
+    new_path = original_path
+
+    file = download_file(original_path)
+
+    if file is not None:
+        new_path = save_file(user.id, file)
+
+    return LinkEntryData(title, new_path, original_path, link, site).json(), []
 
 
 def get_sitename(link):
@@ -138,5 +147,4 @@ def download_file(url):
 
         return file_storage
     except Exception as e:
-        print("Error:", e)
         return None

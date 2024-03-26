@@ -1,21 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import axios from 'axios';
 
 export const LoginPage = () => {
+
+    const [loggedIn, setLoggedIn] = useState(false);
 
     const onSubmit = (e) => {
         e.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
          axios.post('http://localhost:8000/api/login', { email, password }).then((response) => {
-            // if success, get token from the json body and store it in local storage
             if (response.data.token && response.data.user) {
-                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('innerly-token', response.data.token);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
-                window.location.href = '/';
+                setLoggedIn(true);
             }
+            // TODO throw error if login fails
          });
     }
+
+    useEffect(() => {
+        if (loggedIn) {
+            return <Navigate to="/" />;
+        }
+    }, [loggedIn]);
 
     return (
         <>
@@ -26,7 +35,7 @@ export const LoginPage = () => {
                 <div className="md-margin-top"></div>
                 <div className="row">
                     <div className="col-md-4 col-md-offset-4 well">
-                        <legend>Log in to continue</legend>
+                        <legend>Log in to existing account</legend>
                         <div className="form-group sm-margin-bottom" style={{}}> 
                             <label for="identity"><strong>Email</strong>
                             </label>

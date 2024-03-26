@@ -1,7 +1,7 @@
 import React from "react";
 
 export const PageLoader = () => {
-  const loadingImg = "https://cdn.auth0.com/blog/hello-auth0/loader.svg";
+  const loadingImg = "/images/loader.svg";
 
   return (
     <div className="w-10 h-10">

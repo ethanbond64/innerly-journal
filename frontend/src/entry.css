@@ -1,0 +1,204 @@
+
+@media screen and (max-width: 767px) {
+    #session-details {
+        /* width: 100%; */
+        padding-top: 15px !important;
+    }
+
+    #progressbar {
+        margin-top: 40px !important;
+    }
+}
+
+body {
+    padding-top: 0px !important;
+}
+
+.prog-subdrop
+{
+    position: absolute;
+top: 0;
+right: -150px;
+width: 150px;
+list-style: none;
+padding: 0;
+margin: 0;
+display: none;
+border-radius: 5px;
+}
+
+.subdot {
+    float: right;
+font-size: 30px;
+padding: 0px;
+margin: -10px;
+margin-right: 5px;
+color: #97dc21;
+display: none;
+}
+
+#prog-dropdown
+{
+    position: absolute;
+top: 35px;
+left: 0;
+width: 150px;
+list-style: none;
+padding: 0;
+margin: 0;
+display: none;
+border-radius: 5px;
+
+}
+
+#prog-dropdown > li
+{
+    border-radius: 5px;
+position: relative;
+}
+
+#prog-dropdown li:hover > ul
+{
+    display: inline;
+}
+.droption {
+    border-bottom: solid 1px black;
+color: #000;
+padding-top: 7px;
+padding-bottom: 7px;
+font-size: small;
+font-weight: 400;
+/* min-width: 200px; */
+padding: 10px;
+/* margin-top: 35px; */
+/* display: none; */
+/* position: absolute; */
+cursor: pointer;
+background-color: #f1f1f1;
+min-width: 100px;
+overflow: auto;
+}
+
+.droption:hover {
+    background-color: #d2d2d2;
+
+}
+
+
+
+
+/* #progressDropdown {
+    border-radius: 4px;
+color: black;
+font-size: medium;
+min-width: 200px;
+padding: 10px;
+margin-top: 35px;
+display: none;
+position: absolute;
+background-color: #f1f1f1;
+min-width: 100px;
+overflow: auto;
+z-index: 11;
+}
+
+
+
+.dropdown {
+    position: relative;
+display: inline-block;
+}
+
+
+.show {display: block;} */
+
+
+/* #settingsMenu {
+    width: 320px;
+height: 280px;
+margin-top: 20px;
+margin-right: 20px;
+background-color: rgb(244, 244, 244,0.8);
+transition: all 0.4;
+border-radius: 5px;
+text-align: center;
+font-weight: 200 !important;
+position: absolute;
+z-index: 10;
+top: 10px;
+right: 10px;
+float: right !important;
+} */
+
+#progressbar {
+    width: 100%;
+margin-top: 17px;
+background-color: var(--dm-text);
+/* (height of inner div) / 2 + padding */
+padding: 0px;
+bottom: 0;
+}
+
+#progressbar>div {
+    background-color: var(--well-green);
+background-color: rgb(124, 252, 69);
+background-color: rgb(69, 197, 252);
+background-color: #97dc21;
+width: 0%;
+/* Adjust with JavaScript */
+height: 1px;
+}
+
+html,
+body {
+    height: 90% !important;
+}
+input:focus, textarea:focus, select:focus{
+    outline: none !important;
+}
+
+#writeto {
+    width: 97%;
+height: 100%;
+/* color: black; */
+color: var(--dm-text) !important;
+resize: none;
+background-color: transparent;
+padding: 12px;
+outline: none !important;
+border: none;
+box-shadow: none;
+font-size: 18px !important;
+}
+
+.writeto-display {
+    width: 97%;
+background-color: transparent;
+overflow: hidden;
+color: var(--dm-text);
+/* padding: 12px; */
+padding-top: 12px;
+padding-bottom: 2px;
+font-size: 20px !important;
+/* border: 3px solid #001F27; */
+margin: auto;
+/* Firefox 1-3.6 */
+border-bottom: 1px solid var(--dm-text) !important;
+}
+
+form {
+    height: 97% !important;
+}
+
+#writing {
+    height: 97% !important;
+}
+
+
+label {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
+}

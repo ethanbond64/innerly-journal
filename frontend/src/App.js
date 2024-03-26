@@ -19,6 +19,7 @@ import { LoginPage } from "./login-page";
 import { SignUpPage } from "./sign-up-page";
 import { HomePage } from "./home-page";
 import { AuthenticationGuard } from "./AuthenticationGuard";
+import { WritePage } from "./write-page";
 
 export const App = () => {
   const { isLoading } = false; // TODO custom auth... verify token if exists?
@@ -36,6 +37,7 @@ export const App = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/" element={<AuthenticationGuard component={HomePage} />} />
+      <Route path="/write" element={<AuthenticationGuard component={WritePage} />} />
 
       {/* <Route
         path="/"

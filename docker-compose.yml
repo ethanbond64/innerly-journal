@@ -25,6 +25,18 @@ services:
     ports:
       - '8000:8000'
 
+  frontend:
+    build: './frontend'
+    command: npm run start
+    stdin_open: true
+    env_file:
+      - '.env'
+    ports:
+      - '3000:3000'
+    volumes:
+      - './frontend/:/frontend'
+      - '/frontend/node_modules'
+
 volumes:
   postgres: null
   redis: null

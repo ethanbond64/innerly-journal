@@ -1,48 +1,56 @@
 import React from 'react';
+import axios from 'axios';
 
 export const LoginPage = () => {
+
+    const onSubmit = (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+         axios.post('http://localhost:8000/api/login', { email, password }).then((response) => {
+            // if success, get token from the json body and store it in local storage
+            if (response.data.token && response.data.user) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
+                window.location.href = '/';
+            }
+         });
+    }
+
     return (
         <>
             <a href="/">
-                <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
+                <img src="/images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
-            <main class="container">
-                <div class="md-margin-top"></div>
-                <div class="row">
-                    <div class="col-md-4 col-md-offset-4 well">
-                        <form action="/login" method="post" id="" class="" role="form">
-                            <legend>Log in to continue</legend>
-                            <div class="form-group sm-margin-bottom" style={{}}> 
-                                <label for="identity"><strong>Email</strong>
-                                </label>
-                                <input autofocus="autofocus" class="form-control" id="email" maxlength="254" minlength="3" name="email" required="" type="text" value="" />
+            <main className="container">
+                <div className="md-margin-top"></div>
+                <div className="row">
+                    <div className="col-md-4 col-md-offset-4 well">
+                        <legend>Log in to continue</legend>
+                        <div className="form-group sm-margin-bottom" style={{}}> 
+                            <label for="identity"><strong>Email</strong>
+                            </label>
+                            <input autofocus="autofocus" className="form-control" id="email" maxlength="254" minlength="3" name="email" required="" type="text" placeholder="" />
+                        </div>
+                        <div className="form-group sm-margin-bottom">
+                            <label for="password"><strong>Password</strong>
+                            </label>
+                            <input className="form-control bg-white" id="password" maxlength="128" minlength="8" name="password" required="" type="password" placeholder="" />
+                        </div>
+                        <div className="row">
+                            <div className="col-md-12">
+                                <button onClick={onSubmit} type="submit" className="btn btn-info btn-block">
+                                    Log in
+                                </button>
                             </div>
-                            <div class="form-group sm-margin-bottom">
-                                <label for="password"><strong>Password</strong>
-                                </label>
-                                <input class="form-control bg-white" id="password" maxlength="128" minlength="8" name="password" required="" type="password" value="" />
-                            </div>
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <button type="submit" class="btn btn-info btn-block">
-                                        Log in
-                                    </button>
-                                </div>
-                            </div>
-
-                        </form>
-                        {/* <div class="text-center md-margin-top">
-                            <a href="/account/begin_password_reset" class="text-muted">
-                                Forgot your password?
-                            </a>
-                        </div> */}
+                        </div>
                     </div>
                 </div>
             </main>
-            <footer class="footer text-center">
-                <div class="container">
-                    <ul class="list-inline">
-                        <li class="text-muted">Innerly © 2024</li>
+            <footer className="footer text-center">
+                <div className="container">
+                    <ul className="list-inline">
+                        <li className="text-muted">Innerly © 2024</li>
                     </ul>
                 </div>
             </footer>

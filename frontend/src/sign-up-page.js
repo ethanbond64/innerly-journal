@@ -1,17 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+import axios from 'axios';
 
 export const SignUpPage = () => {
 
-    const [searchParams, _setSearchParams] = useSearchParams();
-    const [valid, setValid] = useState(true);
+    const [error, setError] = useState(null);
+    // eslint-disable-next-line
+    const [searchParams, _] = useSearchParams();
+    const [loggedIn, setLoggedIn] = useState(false);
 
     useEffect(() => {
         const share = searchParams.get('share');
         if (!share) {
-            setValid(false);
+            setError("Invalid login link. Contact admin. A valid sign-up link with look like /signup?share=abc.");
         }
     }, [searchParams]);
+
+    const onSubmit = (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const share = searchParams.get('share');
+         axios.post('http://localhost:8000/api/signup', { email, password, share }).then((response) => {
+            if (response.data.token && response.data.user) {
+                localStorage.setItem('innerly-token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
+                setLoggedIn(true);
+            } else {
+                setError("Unable to sign up.");
+            }
+         }).catch((error) => {
+            if (error.response && error.response.data && error.response.data.message) {
+                setError(error.response.data.message);
+            } else {
+                setError("Unable to sign up.");
+            }
+         });
+    };
+
+    useEffect(() => {
+        if (loggedIn) {
+            return <Navigate to="/" />;
+        }
+    }, [loggedIn]);
 
     return (
         <>
@@ -19,10 +51,10 @@ export const SignUpPage = () => {
                 <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <main class="container">
-                {valid ? null : 
+                {error == null ? null : 
                 <div id="flash-messages" class="row sm-margin-top">
                     <div class="alert alert-error alert-dismissible md-margin-top" role="alert">
-                        Invalid login link. Contact admin. A valid sign-up link with look like /signup?share=xxx.
+                        {error}
                     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                         <span aria-hidden="true">×</span>
                     </button>
@@ -51,7 +83,7 @@ export const SignUpPage = () => {
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <button type="submit" class="btn btn-info btn-block">
+                                <button type="submit" class="btn btn-info btn-block" onSubmit={onSubmit}>
                                     Register
                                 </button>
                             </div>

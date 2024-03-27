@@ -33,12 +33,8 @@ def share(current_user):
     share_transient = new_share
     return {'share': new_share}, 200
 
-@views.route('signup', methods=['POST'])
+@views.route('/signup', methods=['POST'])
 def signup():
-
-    share = request.args.get('share', None)
-    if share is None or share != share_transient:
-        return {'message': 'Unauthorized'}, 401
 
     body = request.get_json()
     if body is None:
@@ -46,8 +42,13 @@ def signup():
     
     email = body.get('email')
     password = body.get('password')
+    share = body.get('share', None)
+
+    if share is None or share != share_transient:
+        return {'message': 'Unauthorized'}, 401
+
     if email is None or password is None:
-        return {'message': 'Bad request'}, 400
+        return {'message': 'Email or password missing'}, 400
     
     user = User.query.filter(User.email == email).first()
     if user is not None:

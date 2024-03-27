@@ -1,11 +1,11 @@
 import React from "react";
-import entryStyle from "./entry.css";
+// import entryStyle from "./entry.css";
 
 export const WritePage = () => {
     return (
         <>
         <script type="text/javascript">
-
+{/* 
         // globals
         var progOption;
         var startTimestamp;
@@ -65,11 +65,11 @@ export const WritePage = () => {
             }
         }
 
-        }, 500);
+        }, 500); */}
 
 
 </script>
-        <main className="container" style={{ height: '99% !important' }}>
+        <main className="container" style={{ height: '99vh !important' }}>
             <div className="row text-center h-100" style={{ height: '97% !important' }}>
                 <div className="col-md-2 hidden-sm hidden-xs text-left htrigger">
                     <a href="/">
@@ -90,9 +90,6 @@ export const WritePage = () => {
                                 <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>
                             </button>
                         </div>
-                        <div id="progressbar">
-                            <div style={{ height: '1px', width: '0%' }}></div>
-                        </div>
                     </div>
                     <div className="form-group" style={{ height: '100% !important' }}>
                         <label htmlFor="writeto">
@@ -104,7 +101,7 @@ export const WritePage = () => {
                 </div>
                 <div className="col-lg-2 hidden-md hidden-sm hidden-xs"></div>
             </div>
-            <style src={entryStyle}></style>
+            {/* <style src={entryStyle}></style> */}
         </main>
         </>
     );

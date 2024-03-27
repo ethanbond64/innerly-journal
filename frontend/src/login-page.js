@@ -5,6 +5,7 @@ import axios from 'axios';
 export const LoginPage = () => {
 
     const [loggedIn, setLoggedIn] = useState(false);
+    const [error, setError] = useState(null);
 
     const onSubmit = (e) => {
         e.preventDefault();
@@ -15,8 +16,15 @@ export const LoginPage = () => {
                 localStorage.setItem('innerly-token', response.data.token);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
                 setLoggedIn(true);
+            } else {
+                setError("Unable to login.");
             }
-            // TODO throw error if login fails
+         }).catch((error) => {
+            if (error.response && error.response.data && error.response.data.message) {
+                setError(error.response.data.message);
+            } else {
+                setError("Unable to login.");
+            }
          });
     }
 
@@ -32,6 +40,16 @@ export const LoginPage = () => {
                 <img src="/images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <main className="container">
+                {error == null ? null : 
+                    <div id="flash-messages" class="row sm-margin-top">
+                        <div class="alert alert-error alert-dismissible md-margin-top" role="alert">
+                            {error}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                        </div>  
+                    </div>
+                }
                 <div className="md-margin-top"></div>
                 <div className="row">
                     <div className="col-md-4 col-md-offset-4 well">

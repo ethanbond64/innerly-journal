@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import axios from "axios"
+import axios, { all } from "axios"
 
 export const useFetch = (search, offset, limit) => {
 
     const [list, setList] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [lastRow, setLastRow] = useState(null);
     const [allLoaded, setAllLoaded] = useState(false);
 
 
     const appender = (row) => {
         setList((prev) => {
+            console.log("appending: ", row);
             return [...prev, row];
         });
     };
@@ -24,17 +25,14 @@ export const useFetch = (search, offset, limit) => {
             }
 
             setLoading(true);
-            console.log("refreshing..");
+            console.log("refreshing..", lastRow);
             
             const results = await executeQuery(search, offset, limit);
             console.log(results);
     
+            let allLoadedLocal = false;
             if (results.length < limit) {
-    
-                setAllLoaded(true);
-                return;
-                // TODO
-                // return null
+                allLoadedLocal = true;
             }
 
             let stagedRow = lastRow;
@@ -56,7 +54,6 @@ export const useFetch = (search, offset, limit) => {
                 if (equalsDate(functionalDate, stagedRow.date)) {
                     stagedRow.entries.push(entry);
                     console.log("stagedRow: ", stagedRow);
-                    setLastRow(stagedRow);
                 } else {
                     
                     // Append the staged row
@@ -74,15 +71,21 @@ export const useFetch = (search, offset, limit) => {
                     }
     
                     // Stage the new day row
-                    setLastRow({
+                    stagedRow = {
                         date: functionalDate,
                         endDate: null,
                         collapse: false,
                         entries: [entry]
-                    });
+                    };
                 }
             });
 
+            if (allLoadedLocal) {
+                appender(stagedRow);
+            } else {
+                setLastRow(stagedRow);
+            }
+            setAllLoaded(allLoadedLocal);
             setLoading(false);
         };
 

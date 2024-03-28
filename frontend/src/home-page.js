@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import Moment from 'react-moment';
 import { useFetch } from "./tile-provider";
 import { Collapse } from "./collapse";
+import { Row } from "./row";
 
 const limit = 5;
 
@@ -40,7 +41,7 @@ export const HomePage = () => {
             <span className="c_title">Test</span>
             {list.map((row) => row.collapse ? 
                 <Collapse row={row} /> :
-                <div style={{height: '100px'}}>Row goes here {<Moment date={row.date} format="MMM D" />} Count: {row.entries.length} Collapsed: {row.collapse ? "Yes" : "No"}</div>
+                <Row row={row} />
             )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>

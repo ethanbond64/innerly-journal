@@ -20,7 +20,7 @@ function useFetch(query, querycount) {
         setList([]);
         setAllLoaded(false);
         console.log("reseting query params");
-    }, [query]);
+    }, [searh]);
 
 
     function handleAllLoaded() {

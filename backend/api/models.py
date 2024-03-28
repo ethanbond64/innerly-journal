@@ -1,11 +1,16 @@
-import datetime
+from datetime import datetime, timezone
 from api.extensions import db
 from sqlalchemy import ARRAY, String
 from sqlalchemy.dialects.postgresql import JSON
-from werkzeug.security import check_password_hash
 
 def get_datetime():
-    return datetime.datetime.now()
+    return datetime.now(timezone.utc)
+
+def getattr_typed(object, key):
+    value = getattr(object, key)
+    if isinstance(value, datetime):
+        value = value.isoformat() + 'Z'
+    return value
 
 class BaseModel(object):
     created_on = db.Column(db.DateTime(), default=get_datetime)
@@ -25,7 +30,7 @@ class BaseModel(object):
         return db.session.commit()
 
     def json(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        return {c.name: getattr_typed(self, c.name) for c in self.__table__.columns}
 
 
 class User(db.Model, BaseModel):

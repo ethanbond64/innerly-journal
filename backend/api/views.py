@@ -95,7 +95,7 @@ def reset_password(current_user):
     current_password = body.get('current_password')
     new_password = body.get('new_password')
     if current_password is None or new_password is None:
-        return {'message': 'Bad request'}, 400
+        return {'message': 'Bad request missing old or new password.'}, 400
     
     if not authenticated(current_user, current_password):
         return {'message': 'Unauthorized'}, 401
@@ -148,7 +148,7 @@ def insert_entry(current_user):
         file = request.files.get('file')
 
     else:
-        return {'message': 'Bad request'}, 400
+        return {'message': 'Bad request. Invalid content type.'}, 400
 
     if body is None:
         return {'message': 'Bad request'}, 400
@@ -156,7 +156,7 @@ def insert_entry(current_user):
     entry_type = body.get('entry_type')
     
     if entry_type is None:
-        return {'message': 'Bad request'}, 400
+        return {'message': 'Invalid entry type'}, 400
     
     entry_data = body.get('entry_data')
     tags = []
@@ -164,26 +164,26 @@ def insert_entry(current_user):
     if entry_type == 'text':
         
         if entry_data is None:
-            return {'message': 'Bad request'}, 400
+            return {'message': 'Entry data missing'}, 400
         
         entry_data, tags = process_text_entry(entry_data)
 
     elif entry_type == 'file':
         
         if file is None:
-            return {'message': 'Bad request'}, 400
+            return {'message': 'No file attached'}, 400
         
         entry_data, tags = process_file_entry(current_user, file)
 
     elif entry_type == 'link':
         
         if entry_data is None:
-            return {'message': 'Bad request'}, 400
+            return {'message': 'Entry data missing'}, 400
         
         link = entry_data.get('link')
         
         if link is None:
-            return {'message': 'Bad request'}, 400
+            return {'message': 'Bad request. Missing link.'}, 400
         
         entry_data, tags = process_link_entry(current_user, link)
 
@@ -205,7 +205,7 @@ def update_entry(current_user, id):
         return {'message': 'Entry not found'}, 400
     
     if entry.entry_type != 'text':
-        return {'message': 'Entry type not supported for update.s'}, 400
+        return {'message': 'Entry type not supported for update.'}, 400
 
     body = request.get_json()
     if body is None:

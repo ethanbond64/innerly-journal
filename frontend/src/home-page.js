@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import Moment from 'react-moment';
 import { useFetch } from "./tile-provider";
+import { Collapse } from "./collapse";
 
 const limit = 5;
 
@@ -35,9 +37,11 @@ export const HomePage = () => {
       <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
         <div className={`container`}>
           <div id="scroller" className="mb-3">
-            {list.map((row) => (
-              <div style={{height: '100px'}}>Row goes here {row.date.toISOString()} Count: {row.entries.length} Collapsed: {row.collapse ? "Yes" : "No"}</div>
-            ))}
+            <span className="c_title">Test</span>
+            {list.map((row) => row.collapse ? 
+                <Collapse row={row} /> :
+                <div style={{height: '100px'}}>Row goes here {<Moment date={row.date} format="MMM D" />} Count: {row.entries.length} Collapsed: {row.collapse ? "Yes" : "No"}</div>
+            )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>
           </div>

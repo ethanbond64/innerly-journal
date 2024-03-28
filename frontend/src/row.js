@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Moment from 'react-moment';
 import { TextCard } from './cards/text-card';
 import { BlankCard } from './cards/blank-card';
+import { ImageCard } from './cards/image-card';
 
 export const Row = ({ row }) =>  {
 
@@ -15,12 +16,12 @@ export const Row = ({ row }) =>  {
         setIndex(index + 1);
     }
 
-    let cards = row.entries.map((entry) => {
+    const cards = row.entries.map((entry) => {
          switch (entry.entry_type) {
             case "text":
-                return <TextCard {...entry} />;
-            // case "media":
-            //     return <Mediacard {...entry} />;
+                return <TextCard entry={entry} />;
+            case "file":
+                return <ImageCard entry={entry} />;
             // case "link":
             //     return <Mediacard {...entry} />;
             default:  
@@ -44,20 +45,6 @@ export const Row = ({ row }) =>  {
                     <div className="row" id="day_carousel">
                         <span className="prevBtn" onClick={onClickPrevious} >&#10094;</span>
                         {cards.map((card) => card)}
-                        {/* {
-                            isToday ? <Blankcard today={true} rowidx={0} startidx={this.state.startIdx} nsiblings={filterEnts.length + isToday} isodate={this.props.isodate} /> : <div style={{ display: 'none' }}></div>
-                        }
-                        {
-                            filterEnts.map((entdata, i) => (
-                                entdata.media ? <Mediacard {...entdata} rowidx={i + isToday} startidx={this.state.startIdx} nsiblings={filterEnts.length + isToday} /> : <Textcard {...entdata} rowidx={i} startidx={this.state.startIdx} nsiblings={filterEnts.length + isToday} />
-                            ))
-                        }
-                        {
-                            (filterEnts.length > (2 - isToday)) ? <Blankcard rowidx={filterEnts.length + isToday} startidx={this.state.startIdx} nsiblings={filterEnts.length + isToday} isodate={this.props.isodate} />
-                                : Array.from(Array(3 - (filterEnts.length + isToday)).keys()).map((el, i) => (
-                                    <Blankcard rowidx={filterEnts.length + i + isToday} startidx={this.state.startIdx} nsiblings={filterEnts.length + isToday} isodate={this.props.isodate} />
-                                ))
-                        } */}
                         <span className="nextBtn" onClick={onClickNext} >&#10095;</span>
                     </div>
                 </div>

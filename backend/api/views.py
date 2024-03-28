@@ -4,7 +4,7 @@ from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, func, or_
 
-from api.security import authenticated, encrypt_password, get_token, login_required
+from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename
 from api.models import User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import get_user_directory, process_file_entry
@@ -242,7 +242,7 @@ def fetch_entries(current_user):
 
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
-    return {'data': [entry.short_json() for entry in entries]}, 200
+    return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200
 
 @views.route('/fetch/tags', methods=['GET'])
 @login_required
@@ -277,9 +277,17 @@ def fetch_entry(current_user, id):
 
 
 @views.route('/static/<filename>', methods=['GET'])
-@login_required
-def get_file(current_user, filename):
+def get_file(filename):
 
-    path = get_user_directory(current_user.id)
+    signature = request.args.get('signature')
+    print(signature)
+    if signature is None:
+        return {'message': 'Unauthorized'}, 401
+    
+    user = get_user_from_signature(signature)
+    if user is None:
+        return {'message': 'Unauthorized'}, 401
 
-    return send_from_directory(path, filename)
+    base_path = get_user_directory(user.id)
+
+    return send_from_directory(base_path, filename)

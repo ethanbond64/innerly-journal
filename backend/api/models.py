@@ -58,8 +58,17 @@ class Entry(db.Model, BaseModel):
     entry_data = db.Column(JSON, nullable=False, default='{}')
     tags = db.Column(ARRAY(String), nullable=False, default=[])
 
-    def short_json(self):
+    def json(self, signer = None):
         j = super().json()
+        if signer != None and 'entry_data' in j and 'path' in j['entry_data']:
+            path = j['entry_data']['path']
+            signature = signer(path, self.user_id)
+            j['entry_data']['path'] = str(path) + '?signature=' + signature
+        return j
+
+
+    def short_json(self, signer = None):
+        j = self.json(signer=signer)
         if 'entry_data' in j and 'text' in j['entry_data']:
             del j['entry_data']['text']
         return j

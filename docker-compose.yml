@@ -37,6 +37,15 @@ services:
       - './frontend/:/frontend'
       - '/frontend/node_modules'
 
+  nginx:
+    build: './nginx'
+    command: nginx -g 'daemon off;'
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+      - frontend
+
 volumes:
   postgres: null
   redis: null

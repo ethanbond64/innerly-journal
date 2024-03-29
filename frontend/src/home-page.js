@@ -3,24 +3,28 @@ import { useFetch } from "./tile-provider";
 import { Collapse } from "./collapse";
 import { Row } from "./row";
 import { ImageModal } from "./image-modal";
+import Navbar from "./navbar";
 
 const limit = 5;
 
 export const HomePage = () => {
 
-    const [offset, setOffset] = useState(0);
-    const [imagePath, setImagePath] = useState(null);
-    const { loading, list } = useFetch("", offset, limit);  
-    const loader = useRef(null);
+    
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [imagePath, setImagePath] = useState(null);
 
-    console.log("list: ", list);
+  const { loading, list } = useFetch(search, offset, limit);  
+  const loader = useRef(null);
 
-    const handleObserver = useCallback((entries) => {
-    const target = entries[0];
-    if (loading) return;
-    if (target.isIntersecting) {
-        setOffset((prev) => prev + limit);
-    }
+  console.log("list: ", list);
+
+  const handleObserver = useCallback((entries) => {
+  const target = entries[0];
+  if (loading) return;
+  if (target.isIntersecting) {
+      setOffset((prev) => prev + limit);
+  }
   }, [loading]);
 
   useEffect(() => {
@@ -33,26 +37,31 @@ export const HomePage = () => {
     if (loader.current) observer.observe(loader.current);
   }, [handleObserver]);
 
+  let user = JSON.parse(localStorage.getItem('user'));
+
   return (
-    <main className={`container sm-margin-top`}>
-      {
-        imagePath ?
-        <ImageModal path={imagePath} clear={() => setImagePath(null)} /> :
-        null
-      }
-      <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
-        <div className={`container`}>
-          <div id="scroller" className="mb-3">
-            <span className="c_title">Test</span>
-            {list.map((row) => row.collapse ? 
-                <Collapse row={row} /> :
-                <Row row={row} setImagePath={setImagePath} />
-            )}
-            {loading && <p>Loading...</p>}
-            <div ref={loader}></div>
+    <>
+      <Navbar setSearch={setSearch} user={user} />
+      <main className={`container sm-margin-top`}>
+        {
+          imagePath ?
+          <ImageModal path={imagePath} clear={() => setImagePath(null)} /> :
+          null
+        }
+        <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
+          <div className={`container`}>
+            <div id="scroller" className="mb-3">
+              <span className="c_title">Test</span>
+              {list.map((row) => row.collapse ? 
+                  <Collapse row={row} /> :
+                  <Row row={row} setImagePath={setImagePath} />
+              )}
+              {loading && <p>Loading...</p>}
+              <div ref={loader}></div>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

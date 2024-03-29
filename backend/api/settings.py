@@ -4,6 +4,7 @@ DEBUG = False
 
 # Flask
 SECRET_KEY = os.getenv("SECRET_KEY")
+SERVER_NAME = os.getenv("SERVER_NAME")
 
 # Sqlalchemy
 SQLALCHEMY_DATABASE_URI = os.getenv("DB_URI")

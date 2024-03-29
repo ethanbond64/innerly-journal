@@ -11,7 +11,7 @@ const withAuthenticationRequired = (Component, options) => {
     const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('innerly-token'));
 
     useEffect(() => {
-      setIsAuthenticated(!!localStorage.getItem('innerly-token'));
+      setIsAuthenticated(!!localStorage.getItem('innerly-token') && !!localStorage.getItem('user'));
     }, []);
 
     if (!isAuthenticated) {

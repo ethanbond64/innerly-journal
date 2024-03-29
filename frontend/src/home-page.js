@@ -5,7 +5,7 @@ import { Row } from "./row";
 import { ImageModal } from "./image-modal";
 import Navbar from "./navbar";
 
-const limit = 30;
+const limit = 3;
 
 export const HomePage = () => {
     
@@ -13,17 +13,18 @@ export const HomePage = () => {
   const [offset, setOffset] = useState(0);
   const [imagePath, setImagePath] = useState(null);
 
-  const { loading, list } = useFetch(search, offset, limit);  
+  const { loading, list, allLoaded } = useFetch(search, offset, limit);  
   const loader = useRef(null);
 
   console.log("list: ", list);
 
   const handleObserver = useCallback((entries) => {
-  const target = entries[0];
-  if (loading) return;
-  if (target.isIntersecting) {
-      setOffset((prev) => prev + limit);
-  }
+    const target = entries[0];
+    if (loading || list.length === 0) return;
+    if (target.isIntersecting) {
+      console.log("intersecting ", offset);
+      setOffset(list.length);
+    }
   }, [loading]);
 
   useEffect(() => {
@@ -50,9 +51,9 @@ export const HomePage = () => {
         <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
           <div className={`container`}>
             <div id="scroller" className="mb-3">
-              {list.map((row) => row.collapse ? 
-                  <Collapse row={row} /> :
-                  <Row row={row} setImagePath={setImagePath} />
+              {list.map((row,i) => row.collapse ? 
+                  <Collapse key={`top-row-${i}`} row={row} /> :
+                  <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} />
               )}
               {loading && <p>Loading...</p>}
               <div ref={loader}></div>

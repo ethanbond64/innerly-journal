@@ -5,56 +5,45 @@ import { equalsDate, getPreviousDate, getNextDate, getTodaysDate } from "./utils
 export const useFetch = (search, offset, limit) => {
 
     const [list, setList] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [lastRow, setLastRow] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [lastRow, setLastRow] = useState({
+        date: getTodaysDate(),
+        endDate: null,
+        collapse: false,
+        entries: []
+    });
     const [allLoaded, setAllLoaded] = useState(false);
-
 
     const appender = (row) => {
         setList((prev) => {
-            console.log("appending: ", row);
+            console.log(`allLoaded ${allLoaded} appending: `, row);
+            if (prev.length >0 && equalsDate(prev[prev.length - 1].date, row.date)) {
+                return prev;
+            }
             return [...prev, row];
         });
     };
 
     useEffect(() => {
 
-        // if (loading) {
-        //     return;
-        // }
+        if (loading && list.length > 0) {
+            return;
+        }
 
         setLoading(true);
 
         const refresh = async () => {
-            
 
-            if (allLoaded) {
-                let stagedRow = get90Days(lastRow.date, appender);
-                setLastRow(stagedRow);
-                return;
-            }
-
-            console.log("refreshing..", lastRow);
-            
             const results = await executeQuery(search, offset, limit);
             console.log(results);
     
+            let stagedRow = {...lastRow};
             let allLoadedLocal = false;
             if (results.length < limit) {
                 allLoadedLocal = true;
+                setAllLoaded(allLoadedLocal);
             }
-
-            let stagedRow = lastRow;
-    
-            // If stagedRow is null, then we are at the beginning show today's row
-            if (stagedRow === null) {
-                stagedRow = {
-                    date: getTodaysDate(),
-                    endDate: null,
-                    collapse: false,
-                    entries: []
-                };
-            }
+            console.log(`reslen: ${results.length} allLoadedLocal: `, allLoadedLocal);
     
             results.forEach((entry) => {
                 const functionalDate = new Date(entry.functional_datetime);
@@ -62,7 +51,6 @@ export const useFetch = (search, offset, limit) => {
                 // Add the entry to the staged row 
                 if (equalsDate(functionalDate, stagedRow.date)) {
                     stagedRow.entries.push(entry);
-                    console.log("stagedRow: ", stagedRow);
                 } else {
                     
                     // Append the staged row
@@ -94,16 +82,20 @@ export const useFetch = (search, offset, limit) => {
             } else {
                 setLastRow(stagedRow);
             }
-            setAllLoaded(allLoadedLocal);
+
             setLoading(false);
         };
 
-        refresh();
-    }, [search, offset]);
+        if (allLoaded) {
+            let localLastRow = list[list.length - 1];
+            get90Days(localLastRow.date, appender);
+            setLoading(false);
+        } else {
+            refresh();
+        }
+    }, [search, offset, limit, allLoaded]);
 
-    console.log("list from inside: ", list);
-
-    return {loading, list};
+    return {loading, list, allLoaded};
 }
 
 const get90Days = (start, consumer) => {
@@ -118,6 +110,7 @@ const get90Days = (start, consumer) => {
             entries: []
         });
     }
+    date = new Date(date);
     date.setDate(date.getDate() - 1);
     return {
         date: date,
@@ -126,8 +119,6 @@ const get90Days = (start, consumer) => {
         entries: []
     };
 }
-
-
 
 const executeQuery = async (search, offset, limit) => {
     return await axios.get(`http://localhost:8000/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {

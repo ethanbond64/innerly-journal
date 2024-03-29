@@ -37,7 +37,7 @@ export const Collapse = ({ row }) => {
             console.log(rows);
             console.log(row)
             return (<>
-                {rows.map((r) => <Row row={r} />)}
+                {rows.map((r,i) => <Row key={`collapse-${row.date.toISOString()}-${i}`} row={r} />)}
             </>);
         } else {
             console.log("returning single row");

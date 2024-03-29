@@ -5,7 +5,7 @@ import { BlankCard } from './cards/blank-card';
 import { ImageCard } from './cards/image-card';
 import { LinkCard } from './cards/link-card';
 
-export const Row = ({ row }) =>  {
+export const Row = ({ row, setImagePath }) =>  {
 
     const [index, setIndex] = useState(0);
 
@@ -22,7 +22,7 @@ export const Row = ({ row }) =>  {
             case "text":
                 return <TextCard entry={entry} />;
             case "file":
-                return <ImageCard entry={entry} />;
+                return <ImageCard entry={entry} setPath={setImagePath} />;
             case "link":
                 return <LinkCard entry={entry} />;
             default:  

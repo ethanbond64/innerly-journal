@@ -51,7 +51,6 @@ export const HomePage = () => {
         <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
           <div className={`container`}>
             <div id="scroller" className="mb-3">
-              <span className="c_title">Test</span>
               {list.map((row) => row.collapse ? 
                   <Collapse row={row} /> :
                   <Row row={row} setImagePath={setImagePath} />

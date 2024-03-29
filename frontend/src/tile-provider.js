@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import axios, { all } from "axios"
+import axios from "axios"
+import { equalsDate, getPreviousDate, getNextDate, getTodaysDate } from "./utils";
 
 export const useFetch = (search, offset, limit) => {
 
     const [list, setList] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [lastRow, setLastRow] = useState(null);
     const [allLoaded, setAllLoaded] = useState(false);
 
@@ -18,13 +19,21 @@ export const useFetch = (search, offset, limit) => {
 
     useEffect(() => {
 
+        if (loading) {
+            return;
+        }
+
+        setLoading(true);
+
         const refresh = async () => {
+            
 
             if (allLoaded) {
-                return; // TODO next 3 Months empty
+                let stagedRow = get90Days(lastRow.date, appender);
+                setLastRow(stagedRow);
+                return;
             }
 
-            setLoading(true);
             console.log("refreshing..", lastRow);
             
             const results = await executeQuery(search, offset, limit);
@@ -97,6 +106,29 @@ export const useFetch = (search, offset, limit) => {
     return {loading, list};
 }
 
+const get90Days = (start, consumer) => {
+    let date = start;
+    for (let i = 0; i < 90; i++) {
+        date = new Date(date);
+        date.setDate(date.getDate() - 1);
+        consumer({
+            date: date,
+            endDate: null,
+            collapse: false,
+            entries: []
+        });
+    }
+    date.setDate(date.getDate() - 1);
+    return {
+        date: date,
+        endDate: null,
+        collapse: false,
+        entries: []
+    };
+}
+
+
+
 const executeQuery = async (search, offset, limit) => {
     return await axios.get(`http://localhost:8000/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
         headers: {
@@ -106,29 +138,4 @@ const executeQuery = async (search, offset, limit) => {
         console.log(response);
         return response.data.data;
     });
-}
-
-const getTodaysDate = () => {
-    const now = new Date();
-    return getDateNoTime(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-const getDateNoTime = (year, month, day) => {
-    return new Date(year, month, day, 23, 59, 0);
-}
-
-const getNextDate = (date) => {
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
-    return getDateNoTime(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate());
-};
-
-const getPreviousDate = (date) => {
-    const prevDay = new Date(date);
-    prevDay.setDate(prevDay.getDate() - 1);
-    return getDateNoTime(prevDay.getFullYear(), prevDay.getMonth(), prevDay.getDate());
-}
-
-const equalsDate = (date1, date2) => {
-    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
 }

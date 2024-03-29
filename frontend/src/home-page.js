@@ -5,7 +5,7 @@ import { Row } from "./row";
 import { ImageModal } from "./image-modal";
 import Navbar from "./navbar";
 
-const limit = 3;
+const limit = 30;
 
 export const HomePage = () => {
     
@@ -13,17 +13,16 @@ export const HomePage = () => {
   const [offset, setOffset] = useState(0);
   const [imagePath, setImagePath] = useState(null);
 
-  const { loading, list, allLoaded } = useFetch(search, offset, limit);  
+  const { loading, list } = useFetch(search, offset, limit);  
   const loader = useRef(null);
 
   console.log("list: ", list);
 
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
-    if (loading || list.length === 0) return;
+    if (loading) return;
     if (target.isIntersecting) {
-      console.log("intersecting ", offset);
-      setOffset(list.length);
+      setOffset(o => o + limit);
     }
   }, [loading]);
 

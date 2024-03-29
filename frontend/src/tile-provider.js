@@ -17,7 +17,8 @@ export const useFetch = (search, offset, limit) => {
     const appender = (row) => {
         setList((prev) => {
             console.log(`allLoaded ${allLoaded} appending: `, row);
-            if (prev.length >0 && equalsDate(prev[prev.length - 1].date, row.date)) {
+            if (prev.length > 0 && (equalsDate(prev[prev.length - 1].date, row.date) || 
+                equalsDate(prev[prev.length - 1].date, row.date))) {
                 return prev;
             }
             return [...prev, row];
@@ -35,7 +36,6 @@ export const useFetch = (search, offset, limit) => {
         const refresh = async () => {
 
             const results = await executeQuery(search, offset, limit);
-            console.log(results);
     
             let stagedRow = {...lastRow};
             let allLoadedLocal = false;
@@ -43,12 +43,10 @@ export const useFetch = (search, offset, limit) => {
                 allLoadedLocal = true;
                 setAllLoaded(allLoadedLocal);
             }
-            console.log(`reslen: ${results.length} allLoadedLocal: `, allLoadedLocal);
     
             results.forEach((entry) => {
                 const functionalDate = new Date(entry.functional_datetime);
                 
-                // Add the entry to the staged row 
                 if (equalsDate(functionalDate, stagedRow.date)) {
                     stagedRow.entries.push(entry);
                 } else {
@@ -93,9 +91,11 @@ export const useFetch = (search, offset, limit) => {
         } else {
             refresh();
         }
-    }, [search, offset, limit, allLoaded]);
+    }, 
+    // eslint-disable-next-line
+    [search, offset, limit, allLoaded]);
 
-    return {loading, list, allLoaded};
+    return {loading, list};
 }
 
 const get90Days = (start, consumer) => {

@@ -31,6 +31,7 @@ export const Row = ({ row, setImagePath }) =>  {
         };
     };
 
+    // TODO place in exact location
     const replace = (entry, i) => {
         console.log("replace called", i, entry)
         setEntries((prev) => {

@@ -16,7 +16,7 @@ export const ImageCard = ({ entry, setPath }) => {
     }
     
     return (
-        <div className={`col-xs-4 itemactive`} onClick={onClick}>
+        <div className={`col-xs-4 itemactive`} style={{ cursor: 'pointer'}} onClick={onClick}>
             <div style={{
                 backgroundImage: `url(${url})`, padding: '0px', backgroundPosition: 'center', backgroundSize: 'cover'
             }} className={`well swell entryLoaded`} id="unit" >

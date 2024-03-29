@@ -111,7 +111,7 @@ def do_opengraph(link):
             r"(?:/?|[/?]\S+)$",
             re.IGNORECASE,
         )
-        # print('ATTEMPING RE')
+
         if re.match(regex, link) is not None:
             try:
                 # Youtube not working as of dec 4th
@@ -126,7 +126,6 @@ def do_opengraph(link):
             except:
                 return None
         else:
-            # print('CAUGHT')
             return None
     else:
         return None

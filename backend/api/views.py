@@ -280,7 +280,7 @@ def fetch_entry(current_user, id):
 def get_file(filename):
 
     signature = request.args.get('signature')
-    print(signature)
+
     if signature is None:
         return {'message': 'Unauthorized'}, 401
     

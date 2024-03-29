@@ -70,7 +70,6 @@ def get_user_from_signature(signature):
     user = None
     bytes_signature = base64.urlsafe_b64decode(signature).decode()
     decrypted_data = cipher_suite.decrypt(bytes_signature).decode()
-    # print(decrypted_data)
     if IDENTITY_PADDING in decrypted_data and decrypted_data.endswith(IDENTITY_PADDING):
         user_identity = decrypted_data.split('$')[-1]
         timestamp = decrypted_data.split('$')[-2]

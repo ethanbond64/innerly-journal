@@ -123,7 +123,6 @@ class Blankcard extends React.Component {
             .catch(error => {
                 console.log(error);
             });
-
     }
 
     render() {

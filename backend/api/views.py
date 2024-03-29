@@ -194,7 +194,7 @@ def insert_entry(current_user):
 
     # TODO upsert tags
 
-    return {'data': new_entry.json()}, 201
+    return {'data': new_entry.json(signer=sign_filename)}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])
 @login_required

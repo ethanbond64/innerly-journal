@@ -1,6 +1,7 @@
+import axios from "axios";
 import React from "react";
 
-export const BlankCard = () => {
+export const BlankCard = ({ datetime, replace }) => {
 
     let today = false;
     let imageInput = null;
@@ -10,8 +11,30 @@ export const BlankCard = () => {
     }
 
     let onChangeLink = (e) => {
-        console.log('Link changed');
-    }
+        console.log('Link changed', e.target.value);
+
+        axios.post('http://localhost:8000/api/insert/entries', {
+            entry_type: 'link',
+            entry_data: {
+                link: e.target.value
+            },
+            functional_datetime: datetime // TODO dont include if Today
+        }, { 
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('innerly-token')
+            }
+        }).then((response) => {
+            console.log(response);
+            console.log(replace);
+            if (response.status === 201) {
+                replace(response.data.data);
+            }
+        }).catch((error) => {
+            console.log(error);
+            // TODO logout on 401
+        });
+    };
 
     let onClickImage = () => {
         console.log('Image button clicked');

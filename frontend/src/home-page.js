@@ -5,10 +5,9 @@ import { Row } from "./row";
 import { ImageModal } from "./image-modal";
 import Navbar from "./navbar";
 
-const limit = 5;
+const limit = 30;
 
 export const HomePage = () => {
-
     
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);

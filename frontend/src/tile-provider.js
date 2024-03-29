@@ -19,9 +19,9 @@ export const useFetch = (search, offset, limit) => {
 
     useEffect(() => {
 
-        if (loading) {
-            return;
-        }
+        // if (loading) {
+        //     return;
+        // }
 
         setLoading(true);
 

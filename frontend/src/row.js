@@ -3,6 +3,7 @@ import Moment from 'react-moment';
 import { TextCard } from './cards/text-card';
 import { BlankCard } from './cards/blank-card';
 import { ImageCard } from './cards/image-card';
+import { LinkCard } from './cards/link-card';
 
 export const Row = ({ row }) =>  {
 
@@ -22,8 +23,8 @@ export const Row = ({ row }) =>  {
                 return <TextCard entry={entry} />;
             case "file":
                 return <ImageCard entry={entry} />;
-            // case "link":
-            //     return <Mediacard {...entry} />;
+            case "link":
+                return <LinkCard entry={entry} />;
             default:  
                 return <div>TODO</div>;
         }  

@@ -54,10 +54,7 @@ def authenticated(user: User, password):
 def get_token(user: User):
         return create_access_token(identity=get_user_identity(user.id), expires_delta=datetime.timedelta(hours=12))
 
-def get_user_identity(user):
-    return get_user_identity_simple(user.id)
-
-def get_user_identity_simple(user_id):
+def get_user_identity(user_id):
     return str(user_id) + IDENTITY_PADDING
 
 def get_user(identity):
@@ -65,7 +62,7 @@ def get_user(identity):
     return User.query.filter(User.id == user_id).first()
 
 def sign_filename(filename, user_id):
-    payload = str(filename) + "$" + get_user_identity_simple(user_id)
+    payload = str(filename) + "$" + datetime.datetime.now().isoformat() + "$"+ get_user_identity(user_id)
     signature_bytes = cipher_suite.encrypt(payload.encode())
     return base64.urlsafe_b64encode(signature_bytes).decode()
 
@@ -76,5 +73,7 @@ def get_user_from_signature(signature):
     # print(decrypted_data)
     if IDENTITY_PADDING in decrypted_data and decrypted_data.endswith(IDENTITY_PADDING):
         user_identity = decrypted_data.split('$')[-1]
-        user = get_user(user_identity)
+        timestamp = decrypted_data.split('$')[-2]
+        if datetime.datetime.now() - datetime.datetime.fromisoformat(timestamp) < datetime.timedelta(hours=12):
+            user = get_user(user_identity)
     return user

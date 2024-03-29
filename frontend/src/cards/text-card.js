@@ -12,7 +12,7 @@ export const TextCard = ({ entry }) => {
     }
 
     return (
-        <div className={`col-xs-3 col-xs-4 itemactive`}>
+        <div className={`col-xs-4 itemactive`}>
         <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer' }} onClick={onClick}>
             <h3 id="unitTitle">{entry && entry.entry_data ? entry.entry_data.title : "Untitled"}</h3>
             <p id="unitSnip" className="hidden-xs"

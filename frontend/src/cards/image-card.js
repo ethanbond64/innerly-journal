@@ -2,10 +2,10 @@ import React from "react";
 
 
 export const ImageCard = ({ entry }) => {
-    const baseUrl = "https://localhost:8000/api/";
+    const baseUrl = "http://localhost:8000/api/";
     const url = baseUrl + entry.entry_data.path;
     return (
-        <div className={`col-xs-3 col-xs-4 itemactive`}>
+        <div className={`col-xs-4 itemactive`}>
             <div style={{
                 backgroundImage: `url(${url})`, padding: '0px', backgroundPosition: 'center', backgroundSize: 'cover'
             }} className={`well swell entryLoaded`} id="unit" >

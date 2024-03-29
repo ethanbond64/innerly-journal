@@ -38,9 +38,10 @@ def process_link_entry(user: User, link: str) -> tuple:
     file = download_file(original_path)
 
     if file is not None:
-        new_path = save_file(user.id, file)
+        path, _original_filename_, file_type = save_file(user.id, file)
+        new_path = path
 
-    return LinkEntryData(title, new_path, original_path, link, site).json(), []
+    return LinkEntryData(title, new_path, original_path, file_type, link, site).json(), []
 
 
 def get_sitename(link):

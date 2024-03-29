@@ -65,8 +65,8 @@ const Navbar = ({ setSearch, user }) => {
                             placeholder="Press enter to search" style={{ color: 'var(--dm-text)' }} />
                         <span className="input-group-addon" style={{ backgroundColor: 'var(--well-grey)', borderLeft: '1px solid rgb(181, 181, 181)' }}>
                             <button type="submit" id="cardSearchButton"
-                                style={{ backgroundColor: 'Transparent', backgroundRepeat: 'no-repeat', outline: 'none', border: 'none', color: 'var(--dm-text)' }}><i
-                                    className={`fa fa-fw fa-search`} type="submit" onClick={submit}></i></button>
+                                style={{ backgroundColor: 'Transparent', backgroundRepeat: 'no-repeat', outline: 'none', border: 'none', color: 'var(--dm-text)' }}>
+                                    <i style={{fontFamily: 'FontAwesome !important'}} className={`fa fa-fw fa-search`} type="submit" onClick={submit}></i></button>
                         </span>
                     </div>
                 </div>

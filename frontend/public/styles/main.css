@@ -115,3 +115,102 @@ dd {
   margin-left: 6px;
   color: rgb(0, 0, 0);
 }
+
+/* Write specific */
+
+@media screen and (max-width: 767px) {
+  #session-details {
+      /* width: 100%; */
+      padding-top: 15px !important;
+  }
+} 
+
+#writeto {
+  width: 97%;
+height: 100%;
+/* color: black; */
+color: var(--dm-text) !important;
+resize: none;
+background-color: transparent;
+padding: 12px;
+outline: none !important;
+border: none;
+box-shadow: none;
+font-size: 18px !important;
+}
+
+.writeto-display {
+  width: 97%;
+background-color: transparent;
+overflow: hidden;
+color: var(--dm-text);
+/* padding: 12px; */
+padding-top: 12px;
+padding-bottom: 2px;
+font-size: 20px !important;
+/* border: 3px solid #001F27; */
+margin: auto;
+/* Firefox 1-3.6 */
+border-bottom: 1px solid var(--dm-text) !important;
+}
+
+/* View specific */
+
+.badge {
+  font-size: medium;
+  margin: 8px;
+  border-radius: 5px;
+}
+
+.toggleFormOn {
+  display: none;
+}
+
+#emotion-circle {
+  margin-top: 30px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 120px;
+  height: 120px;
+  background-color: #66CAE2;
+  text-align: center;
+  border-radius: 50%;
+  -webkit-border-radius: 50%;
+  -moz-border-radius: 50%;
+}
+
+.emotion-center {
+  position: relative;
+  top: 35px;
+  /* 25% of parent */
+  font-size: 25px;
+  /* 50% of parent */
+  line-height: 25px;
+  /* 50% of parent */
+  color: #263859;
+  font-weight: bold;
+}
+
+#emotion-label {
+  position: relative;
+  top: 15px;
+  /* 25% of parent */
+  font-size: 18px;
+  /* 50% of parent */
+  line-height: 25px;
+  /* 50% of parent */
+  color: #263859;
+  font-weight: bold;
+}
+
+#viewTitle {
+  border-color: transparent;
+  box-shadow: none;
+  border-bottom: rgba(0, 0, 0, 0.988);
+  margin-bottom: 15px;
+  width: 100%;
+  font-size: 25px;
+  color: var(--dm-text);
+  min-height: 40px !important;
+  display: none;
+}

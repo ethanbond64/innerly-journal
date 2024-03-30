@@ -1,14 +1,15 @@
-import React from "react";  
-
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export const TextCard = ({ entry }) => {
 
     let sensitive = false;
     let snippet = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed ac purus sit amet";
     let topics = ["Topic 1", "Topic 2"];
+    const navigate = useNavigate();
 
     const onClick = () => {
-        console.log("Clicked on text card");
+        navigate(`/view/${entry.id}`);
     }
 
     return (

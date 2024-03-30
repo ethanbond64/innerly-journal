@@ -1,5 +1,4 @@
 import React from "react";
-import "./entry.css";
 import { homeRoute } from "./constants";
 import { insertTextEntry } from "./requests";
 import { useNavigate } from "react-router-dom";

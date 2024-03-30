@@ -57,21 +57,11 @@ export const useFetch = (search, offset, limit) => {
                     
                     // Append the gap row
                     if (!equalsDate(startDate, functionalDate)) {
-                        appender({
-                            date: startDate,
-                            endDate: getNextDate(functionalDate),
-                            collapse: true,
-                            entries: []
-                        });
+                        appender(newRow(startDate, getNextDate(functionalDate), true));
                     }
     
                     // Stage the new day row
-                    stagedRow = {
-                        date: functionalDate,
-                        endDate: null,
-                        collapse: false,
-                        entries: [entry]
-                    };
+                    stagedRow = newRow(functionalDate, null, false, [entry]);
                 }
             });
 
@@ -103,19 +93,18 @@ const get90Days = (start, consumer) => {
     for (let i = 0; i < 90; i++) {
         date = new Date(date);
         date.setDate(date.getDate() - 1);
-        consumer({
-            date: date,
-            endDate: null,
-            collapse: false,
-            entries: []
-        });
+        consumer(newRow(date));
     }
     date = new Date(date);
     date.setDate(date.getDate() - 1);
+    return newRow(date);
+};
+
+const newRow = (date, endDate = null, collapse = false, entries = []) => {
     return {
         date: date,
-        endDate: null,
-        collapse: false,
-        entries: []
+        endDate: endDate,
+        collapse: collapse,
+        entries: entries
     };
 };

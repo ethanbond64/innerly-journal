@@ -31,7 +31,7 @@ export const Row = ({ row, setImagePath }) =>  {
         };
     };
 
-    // TODO place in exact location
+    // TODO place in exact position
     const replace = (entry, i) => {
         console.log("replace called", i, entry)
         setEntries((prev) => {
@@ -39,6 +39,7 @@ export const Row = ({ row, setImagePath }) =>  {
         });
     };
 
+    // TODO only show 3
     const cards = entries.map((entry, i) => createCard(entry, (e) => replace(e, i)));
 
     let i = cards.length;

@@ -4,6 +4,7 @@ import { Collapse } from "./collapse";
 import { Row } from "./row";
 import { ImageModal } from "./image-modal";
 import Navbar from "./navbar";
+import { getUserData } from "./utils";
 
 const limit = 30;
 
@@ -36,7 +37,7 @@ export const HomePage = () => {
     if (loader.current) observer.observe(loader.current);
   }, [handleObserver]);
 
-  let user = JSON.parse(localStorage.getItem('user'));
+  let user = getUserData();
 
   return (
     <>

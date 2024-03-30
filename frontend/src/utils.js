@@ -1,3 +1,26 @@
+import { innerlyToken, innerlyUser } from './constants';
+
+export const getToken = () => {
+    return localStorage.getItem(innerlyToken);
+}
+
+export const setToken = (token) => {
+    localStorage.setItem(innerlyToken, token);
+}
+
+export const getUserData = () => {
+    let userData = localStorage.getItem(innerlyUser);
+    return userData ? JSON.parse(userData) : null;
+}
+
+export const setUserData = (userData) => {
+    localStorage.setItem(innerlyUser, JSON.stringify(userData));
+}
+
+export const clearLocalStorage = () => {
+    localStorage.removeItem(innerlyUser);
+    localStorage.removeItem(innerlyToken);
+}
 
 export const getTodaysDate = () => {
     const now = new Date();

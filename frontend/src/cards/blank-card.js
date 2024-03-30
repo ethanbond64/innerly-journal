@@ -1,27 +1,29 @@
-import axios from "axios";
 import React, { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { insertLinkEntry, insertFileEntry } from "../requests";
 
 export const BlankCard = ({ datetime, replace }) => {
 
     let today = false;
     const imageRef = useRef(null);
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
 
     let onClickWrite = () => {
         console.log('Write button clicked');
-        window.location.href = '/write'; // TODO Use router and history
+        navigate('/write'); // TODO make routes constant
     }
+
+    const wrappedReplace = (data) => {
+        setLoading(false);
+        replace(data);
+    };
 
     let onChangeLink = (e) => {
         setLoading(true);
         // TODO null datetime if Today
-        let wrappedReplace = (data) => {
-            setLoading(false);
-            replace(data);
-        };  
         insertLinkEntry(e.target.value, wrappedReplace, datetime.toISOString(), (e) => {
-            // TODO post eror somwhere
+            // TODO post eror somewhere
             setLoading(false);
         }); 
     };
@@ -45,7 +47,7 @@ export const BlankCard = ({ datetime, replace }) => {
         <div className={`col-xs-4 blank_unit itemactive`}>
             <div className={`well swell ${today ? 'todayblank' : ''}`} id="unit">
                 { loading ? 
-                <img src="/images/innerly-loader.gif" /> : 
+                <img src="/images/innerly-loader.gif" alt="loading gif" /> : 
                 <>
                     <p className="swellLabel" >+</p>
                     <button className={`btn btn-lg btn-info pretty-btn writeButton`} onClick={onClickWrite}><span className={`hidden-sm hidden-xs`}>Write an Entry</span><span className={`hidden-xl hidden-lg hidden-md`}>Write</span></button>

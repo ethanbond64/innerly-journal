@@ -1,7 +1,7 @@
 import React from "react";
 
 export const PageLoader = () => {
-  const loadingImg = "/images/loader.svg";
+  const loadingImg = "/images/innerly-loader.gif";
 
   return (
     <div className="w-10 h-10">

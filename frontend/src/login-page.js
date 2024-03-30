@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { setToken, setUserData } from './utils';
+import { homeRoute } from './constants';
 
 export const LoginPage = () => {
 
@@ -13,8 +15,8 @@ export const LoginPage = () => {
         const password = document.getElementById('password').value;
          axios.post('http://localhost:8000/api/login', { email, password }).then((response) => {
             if (response.data.token && response.data.user) {
-                localStorage.setItem('innerly-token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                setToken(response.data.token);
+                setUserData(response.data.user);
                 setLoggedIn(true);
             } else {
                 setError("Unable to login.");
@@ -30,13 +32,13 @@ export const LoginPage = () => {
 
     useEffect(() => {
         if (loggedIn) {
-            return <Navigate to="/" />;
+            return <Navigate to={homeRoute} />;
         }
     }, [loggedIn]);
 
     return (
         <>
-            <a href="/">
+            <a href={homeRoute}>
                 <img src="/images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <main className="container">

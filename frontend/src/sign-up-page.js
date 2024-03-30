@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { getToken, getUserData, setToken, setUserData } from './utils';
+import { homeRoute, loginRoute } from './constants';
 
 export const SignUpPage = () => {
 
-    const [error, setError] = useState(null);
     // eslint-disable-next-line
     const [searchParams, _] = useSearchParams();
+    const [error, setError] = useState(null);
     const [loggedIn, setLoggedIn] = useState(false);
 
     useEffect(() => {
@@ -24,8 +26,8 @@ export const SignUpPage = () => {
         const share = searchParams.get('share');
          axios.post('http://localhost:8000/api/signup', { email, password, share }).then((response) => {
             if (response.data.token && response.data.user) {
-                localStorage.setItem('innerly-token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                setToken(response.data.token);
+                setUserData(response.data.user);
                 setLoggedIn(true);
             } else {
                 setError("Unable to sign up.");
@@ -41,13 +43,13 @@ export const SignUpPage = () => {
 
     useEffect(() => {
         if (loggedIn) {
-            return <Navigate to="/" />;
+            return <Navigate to={homeRoute} />;
         }
     }, [loggedIn]);
 
     return (
         <>
-            <a href="/">
+            <a href={homeRoute}>
                 <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <main class="container">
@@ -89,7 +91,7 @@ export const SignUpPage = () => {
                             </div>
                             <div class="col-md-6">
                                 <div class="visible-xs visible-sm sm-margin-top"></div>
-                                <a href="/login" class="btn btn-default btn-block">
+                                <a href={loginRoute} class="btn btn-default btn-block">
                                     Looking to log in?
                                 </a>
                             </div>

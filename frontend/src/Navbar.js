@@ -1,7 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { clearLocalStorage } from "./utils";
+import { homeRoute } from "./constants";
 
 const Navbar = ({ setSearch, user }) => {
 
+    const navigate = useNavigate();
     const [searchLocal, setSearchLocal] = useState('')
 
     const searchChange = (e) => {
@@ -19,9 +23,8 @@ const Navbar = ({ setSearch, user }) => {
     }
 
     const logOut = () => {
-        localStorage.removeItem('user');
-        localStorage.removeItem('innerly-token');
-        window.location.href = '/login'; // TODO dynamic
+        clearLocalStorage();
+        navigate('/login');
     };
 
     let initial = user.email.charAt(0).toUpperCase();
@@ -29,11 +32,11 @@ const Navbar = ({ setSearch, user }) => {
     return (
         <nav className={`navbar navbar-default navbar-fixed-top`} style={{zIndex:1000}}>
             <div className={``} style={{float:'left'}}>
-                <a href={"/"} className={`hidden-sm hidden-xs`} >
+                <a href={homeRoute} className={`hidden-sm hidden-xs`} >
                     <img src="/images/innerly_wordmark_200616_02.png" style={{ marginTop: '0px', marginLeft: '30px' }}
                             className={`img-responsive sm-margin-top`} width="150" height="73" title="Innerly" alt="Innerly" />
                 </a>
-                <a href={"/"} className={`hidden-xl hidden-lg hidden-md`} >
+                <a href={homeRoute} className={`hidden-xl hidden-lg hidden-md`} >
                         <img src="/images/apple-touch-icon128.png"
                             className={`img-responsive sm-margin-top`} width="40" height="40" title="Innerly" alt="Innerly"
                             style={{ marginTop: '20px', marginLeft: '15px', borderRadius: '5px' }} />
@@ -52,7 +55,7 @@ const Navbar = ({ setSearch, user }) => {
                         <li role="separator" className="divider"></li>
                     </> : null}
                     <li>
-                        <a href={"TODO"}><i className={`fa fa-cog`} aria-hidden="true"></i>&nbsp;Settings</a>
+                        <a href={"/TODO"}><i className={`fa fa-cog`} aria-hidden="true"></i>&nbsp;Settings</a>
                     </li>
                     <li role="separator" className={`divider`}></li>
                     <li><span onClick={logOut}><b>Log out</b></span></li>

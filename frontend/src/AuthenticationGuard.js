@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import { getToken, getUserData } from './utils';
 
 export const AuthenticationGuard = ({ component }) => {
     const Component = withAuthenticationRequired(component);
@@ -8,10 +9,10 @@ export const AuthenticationGuard = ({ component }) => {
 
 const withAuthenticationRequired = (Component, options) => {
   return props => {
-    const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('innerly-token'));
+    const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
 
     useEffect(() => {
-      setIsAuthenticated(!!localStorage.getItem('innerly-token') && !!localStorage.getItem('user'));
+      setIsAuthenticated(!!getToken() && !!getUserData());
     }, []);
 
     if (!isAuthenticated) {

@@ -1,13 +1,12 @@
 import axios from "axios"
-
-const innerlyUser = 'innerly-user';
-const innerlyToken = 'innerly-token';
+import { clearLocalStorage, getToken } from "./utils";
+import { loginRoute } from "./constants";
 
 const getAuthorizationHeader = () => {
-    let token = localStorage.getItem(innerlyToken);
+    let token = getToken();
 
     if (!token || token.length === 0) {
-        window.location.href = '/login'; // TODO use react-router-dom
+        window.location.href = loginRoute;
     }
 
     return `Bearer ${token}`;
@@ -21,9 +20,8 @@ const getHeaders = (contentType = "application/json") => {
 };
 
 const handleUnauthorized = () => {
-    localStorage.removeItem(innerlyUser);
-    localStorage.removeItem(innerlyToken);
-    window.location.href = '/login'; // TODO use react-router-dom
+    clearLocalStorage();
+    window.location.href = loginRoute;
 };
 
 export const fetchEntries = async (search, offset, limit, onError = (e) => {}) => {

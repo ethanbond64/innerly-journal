@@ -7,9 +7,6 @@ export const ImageCard = ({ entry, setPath }) => {
     const url = baseUrl + entry.entry_data.path;
 
     const onClick = () => {
-        console.log("clicked");
-        console.log(url);
-        console.log(setPath);
         if (setPath) {
             setPath(url);
         }

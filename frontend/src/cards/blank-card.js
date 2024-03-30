@@ -37,7 +37,7 @@ export const BlankCard = ({ datetime, replace }) => {
     let onChangeImage = (e) => {
         setLoading(true);
         // TODO null datetime if Today
-        insertFileEntry(e.target.files[0], replace, datetime.toISOString(), (e) => {
+        insertFileEntry(e.target.files[0], wrappedReplace, datetime.toISOString(), (e) => {
             // TODO post eror somwhere
             setLoading(false);
         });

@@ -1,8 +1,19 @@
 import React from "react";
 import "./entry.css";
 import { homeRoute } from "./constants";
+import { insertTextEntry } from "./requests";
+import { useNavigate } from "react-router-dom";
 
 export const WritePage = () => {
+
+    const navigate = useNavigate();
+
+    const onClick = () => {
+        console.log('submit');
+        insertTextEntry(document.getElementById('writeto').value, (data) => console.log(data));
+        navigate(homeRoute);
+    };
+
     return (
         <main style={{ height: `90vh`, padding: '0', marginBottom: '0' }} className="container" >
                 <div className="row text-center" style={{ height: '90%' }}>
@@ -19,7 +30,7 @@ export const WritePage = () => {
                                     <span>Back</span>
                                 </a>
                                 <span className="disappear hidden-xs" style={{ padding: '12px', }}>Write about any thoughts, experiences, or ideas</span>
-                                <button id="submitbtn" type="submit" className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
+                                <button id="submitbtn" type="submit" onClick={onClick} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
                                     <span className="nremove hidden-xs" >Save</span>
                                     <span className="hidden-xl hidden-lg hidden-md hidden-sm">Save</span>
                                     <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>

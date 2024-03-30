@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
-import { getToken, getUserData, setToken, setUserData } from './utils';
+import { setToken, setUserData } from './utils';
 import { homeRoute, loginRoute } from './constants';
 
 export const SignUpPage = () => {

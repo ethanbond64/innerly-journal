@@ -39,10 +39,31 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
     });
 };
 
-// export const insertTextEntry = async (text, functional_datetime, onError) = (e) => {}) => {
+export const insertTextEntry = async (text, callback, functional_datetime = null, onError = (e) => {}) => {
+    axios.post('http://localhost:8000/api/insert/entries', {
+        entry_type: 'text',
+        entry_data: {
+            text: text
+        },
+        functional_datetime: functional_datetime
+    }, {
+        headers: getHeaders()
+    }).then((response) => {
+        if (response.status === 201) {
+            callback(response.data.data);
+        }
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
 
 export const insertLinkEntry = async (link, callback, functional_datetime = null, onError = (e) => {}) => {
-    return await axios.post('http://localhost:8000/api/insert/entries', {
+    axios.post('http://localhost:8000/api/insert/entries', {
         entry_type: 'link',
         entry_data: {
             link: link
@@ -73,10 +94,10 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
         formData.append('functional_datetime', functional_datetime);
     }
 
-    return await axios.post('http://localhost:8000/api/insert/entries', formData, {
+    axios.post('http://localhost:8000/api/insert/entries', formData, {
         headers: {
             'Content-Type': 'form-data',
-            'Authorization': getAuthorizationHeader()
+            'Authorization': getAuthorizationHeader("multipart/form-data")
         }
     }).then((response) => {
         if (response.status === 201) {

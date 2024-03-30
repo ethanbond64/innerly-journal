@@ -7,16 +7,7 @@ import { LinkCard } from './cards/link-card';
 
 export const Row = ({ row, setImagePath }) =>  {
 
-    const [index, setIndex] = useState(0);
     const [entries, setEntries] = useState(row.entries);
-
-    const onClickPrevious = () => {
-        setIndex(index - 1);
-    }
-
-    const onClickNext = () => {
-        setIndex(index + 1);
-    }
 
     const createCard = (entry, replace) => {
         switch (entry.entry_type) {
@@ -31,40 +22,44 @@ export const Row = ({ row, setImagePath }) =>  {
         };
     };
 
-    // TODO place in exact position
-    const replace = (entry, i) => {
-        console.log("replace called", i, entry)
+    const replace = (entry, offset) => {
         setEntries((prev) => {
-            return [...prev, entry];
+            let newEntries = [...prev];
+            for (let i = 0; i < offset; i++) {
+                newEntries.push({ entry_type: 'blank' });
+            }
+            newEntries.push(entry);
+            return newEntries;
         });
     };
 
-    // TODO only show 3
     const cards = entries.map((entry, i) => createCard(entry, (e) => replace(e, i)));
 
-    let i = cards.length;
-    while (cards.length < 3) {
-        const idx = i;
-        cards.push(<BlankCard datetime={row.date} replace={e => replace(e, idx)}/>);
-        i++;
+    let hasBlankEntry = entries.some(entry => entry.entry_type == 'blank');
+    let blanksRequired = cards.length % 3 == 0 && !hasBlankEntry ? 3 : 3 - (cards.length % 3);
+    for (let i = 0; i < blanksRequired; i++) {
+        cards.push(<BlankCard datetime={row.date} replace={e => replace(e, i)}/>);
     }
 
-    return (
+    let cardGroups = Array.from({ length: Math.ceil(cards.length / 3) }, (_, index) => cards.slice(index * 3, index * 3 + 3));
+
+    return cardGroups.map((cards, i) => (
         <div className={`well owell`} style={{ marginBottom: "0px" }}>
             <div className={`row animated fadeIn shadow-sm`}>
                 <div className="col-sm-3">
-                    <h3 id="title" className="datelabel" >
-                        <Moment date={row.date} format="MMMM Do, YYYY" />
-                    </h3>
+                    { i > 0 ? 
+                        null :
+                        <h3 id="title" className="datelabel" >
+                            <Moment date={row.date} format="MMMM Do, YYYY" />
+                        </h3>
+                    }
                 </div>
                 <div className="col-sm-8">
                     <div className="row" id="day_carousel">
-                        <span className="prevBtn" onClick={onClickPrevious} >&#10094;</span>
                         {cards.map((card) => card)}
-                        <span className="nextBtn" onClick={onClickNext} >&#10095;</span>
                     </div>
                 </div>
             </div>
         </div>
-    );
+    ));
 }

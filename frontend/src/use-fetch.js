@@ -57,7 +57,11 @@ export const useFetch = (search, offset, limit) => {
                     
                     // Append the gap row
                     if (!equalsDate(startDate, functionalDate)) {
-                        appender(newRow(startDate, getNextDate(functionalDate), true));
+                        let nextDate = getNextDate(functionalDate);
+                        if (equalsDate(startDate, nextDate)) {
+                            nextDate = null;
+                        }
+                        appender(newRow(startDate, nextDate, true));
                     }
     
                     // Stage the new day row

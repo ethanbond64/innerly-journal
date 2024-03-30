@@ -5,7 +5,7 @@ import { equalsDate } from "./utils";
 
 export const Collapse = ({ row }) => {
 
-    console.log("rendering collapse");
+    console.log("rendering collapse", row);
 
     const [open, setOpen] = React.useState(false);
     const [rows, setRows] = React.useState([]);
@@ -48,7 +48,7 @@ export const Collapse = ({ row }) => {
                     <button className="c_button" onClick={onClick}>
                         <span id="day1">
                             <Moment date={row.date} format="MMM D" />
-                            { row.endDate ?
+                            { row.endDate !== null ?
                                 <>&nbsp;...&nbsp;<Moment date={row.endDate} format="MMM D" /></>:
                                 null
                             }

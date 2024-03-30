@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useFetch } from "./tile-provider";
+import { useFetch } from "./use-fetch";
 import { Collapse } from "./collapse";
 import { Row } from "./row";
 import { ImageModal } from "./image-modal";

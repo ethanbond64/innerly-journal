@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios"
 import { equalsDate, getPreviousDate, getNextDate, getTodaysDate } from "./utils";
+import { fetchEntries } from "./requests";
 
 export const useFetch = (search, offset, limit) => {
 
@@ -35,7 +35,7 @@ export const useFetch = (search, offset, limit) => {
 
         const refresh = async () => {
 
-            const results = await executeQuery(search, offset, limit);
+            const results = await fetchEntries(search, offset, limit);
     
             let stagedRow = {...lastRow};
             let allLoadedLocal = false;
@@ -96,7 +96,7 @@ export const useFetch = (search, offset, limit) => {
     [search, offset, limit, allLoaded]);
 
     return {loading, list};
-}
+};
 
 const get90Days = (start, consumer) => {
     let date = start;
@@ -118,15 +118,4 @@ const get90Days = (start, consumer) => {
         collapse: false,
         entries: []
     };
-}
-
-const executeQuery = async (search, offset, limit) => {
-    return await axios.get(`http://localhost:8000/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
-        headers: {
-            "Authorization": `Bearer ${localStorage.getItem('innerly-token')}`
-        }
-    }).then((response) => {
-        console.log(response);
-        return response.data.data;
-    });
-}
+};

@@ -262,7 +262,7 @@ def fetch_tags(current_user):
     return {'data': [tag.json() for tag in tags]}, 200
 
 # POST to put passcode in the body for locked entries.
-@views.route('/fetch/entries/<int:id>', methods=['POST'])
+@views.route('/fetch/entries/<int:id>', methods=['GET'])
 @login_required
 def fetch_entry(current_user, id):
 
@@ -291,3 +291,5 @@ def get_file(filename):
     base_path = get_user_directory(user.id)
 
     return send_from_directory(base_path, filename)
+
+# TODO delete entry

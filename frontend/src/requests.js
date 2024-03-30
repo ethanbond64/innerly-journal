@@ -112,3 +112,15 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
         }
     });
 }
+
+
+export const fetchEntry = async (id, callback, onError = (e) => {}) => {
+    return await axios.get(`http://localhost:8000/api/fetch/entries/${id}`, {
+        headers: getHeaders()
+    }).then((response) => {
+        callback(response.data.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
+    });
+}

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearLocalStorage } from "./utils";
-import { homeRoute } from "./constants";
+import { adminRoute, homeRoute, settingsRoute } from "./constants";
 
 export const Navbar = ({ setSearch, user }) => {
 
@@ -53,11 +53,11 @@ export const Navbar = ({ setSearch, user }) => {
                 <ul className={`dropdown-menu pull-right`} style={{ float: 'right' }}>
                     {user.admin ? 
                     <>
-                        <li><a href={"/TODO"}>Admin</a></li>
+                        <li><a href={adminRoute}>Admin</a></li>
                         <li role="separator" className="divider"></li>
                     </> : null}
                     <li>
-                        <a href={"/TODO"}><i className={`fa fa-cog`} aria-hidden="true"></i>&nbsp;Settings</a>
+                        <a href={settingsRoute}><i className={`fa fa-cog`} aria-hidden="true"></i>&nbsp;Settings</a>
                     </li>
                     <li role="separator" className={`divider`}></li>
                     <li><span onClick={logOut}><b>Log out</b></span></li>

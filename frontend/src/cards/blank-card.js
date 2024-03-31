@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { insertLinkEntry, insertFileEntry } from "../requests";
+import { writeRoute } from "../constants";
+import { equalsDate } from "../utils";
 
 export const BlankCard = ({ datetime, replace }) => {
 
@@ -9,9 +11,9 @@ export const BlankCard = ({ datetime, replace }) => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
 
-    let onClickWrite = () => {
+    const onClickWrite = () => {
         console.log('Write button clicked');
-        navigate('/write'); // TODO make routes constant
+        navigate(writeRoute);
     }
 
     const wrappedReplace = (data) => {
@@ -19,25 +21,25 @@ export const BlankCard = ({ datetime, replace }) => {
         replace(data);
     };
 
-    let onChangeLink = (e) => {
-        setLoading(true);
-        // TODO null datetime if Today
-        insertLinkEntry(e.target.value, wrappedReplace, datetime.toISOString(), (e) => {
-            // TODO post eror somewhere
-            setLoading(false);
-        }); 
+    const onChangeLink = (e) => {
+        insertEntry(insertLinkEntry, e.target.value);
     };
 
-    let onClickImage = () => {
+    const onClickImage = () => {
         if (imageRef.current) {
             imageRef.current.click();
         }
     }
 
-    let onChangeImage = (e) => {
+    const onChangeImage = (e) => {
+        insertEntry(insertFileEntry, e.target.files[0]);
+    }
+
+    const insertEntry = (insertFunction, target) => {
         setLoading(true);
-        // TODO null datetime if Today
-        insertFileEntry(e.target.files[0], wrappedReplace, datetime.toISOString(), (e) => {
+        let now = new Date();
+        let functional_datetime = equalsDate(now, datetime) ? null : datetime.toISOString();
+        insertFunction(target, wrappedReplace, functional_datetime, (e) => {
             // TODO post eror somwhere
             setLoading(false);
         });

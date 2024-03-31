@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { getToken, getUserData } from './utils';
 
@@ -9,11 +9,7 @@ export const AuthenticationGuard = ({ component }) => {
 
 const withAuthenticationRequired = (Component, options) => {
   return props => {
-    const [isAuthenticated, setIsAuthenticated] = useState(!!getToken());
-
-    useEffect(() => {
-      setIsAuthenticated(!!getToken() && !!getUserData());
-    }, []);
+    const isAuthenticated = !!getToken() && !!getUserData();
 
     if (!isAuthenticated) {
       if (options && options.onRedirecting) {

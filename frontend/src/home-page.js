@@ -16,8 +16,6 @@ export const HomePage = () => {
   const { loading, list } = useFetch(search, offset, limit);  
   const loader = useRef(null);
 
-  console.log("list: ", list);
-
   useEffect(() => {
     setOffset(0);
   }, [search]);

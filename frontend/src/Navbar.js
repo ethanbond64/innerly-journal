@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { clearLocalStorage } from "./utils";
 import { homeRoute } from "./constants";
 
-const Navbar = ({ setSearch, user }) => {
+export const Navbar = ({ setSearch, user }) => {
 
     const navigate = useNavigate();
     const [searchLocal, setSearchLocal] = useState('')
@@ -12,8 +12,10 @@ const Navbar = ({ setSearch, user }) => {
         setSearchLocal(e.target.value)
     }
 
-    const submit = (e) => {
-        setSearch(searchLocal);
+    const submit = () => {
+        if (setSearch) {
+            setSearch(searchLocal);
+        }
     }
 
     const keyDown = (e) => {
@@ -62,23 +64,22 @@ const Navbar = ({ setSearch, user }) => {
                 </ul>
             </div>
             <div className="container" style={{textAlign:'center', maxWidth:'84%'}}>
-                <div className={`well owell`} style={{ marginBottom: '3px', padding:'7px' }}>
-                    <div className={`input-group sm-margin-bottom`} style={{ margin: '7px', paddingLeft: '15px', paddingRight: '5px', maxWidth: '1154px', marginTop: '10px' }}>
-                        <input type="text" className="form-control" id="cardSearch" name="cardSearch" onChange={searchChange} onKeyDown={keyDown}
-                            placeholder="Press enter to search" style={{ color: 'var(--dm-text)' }} />
-                        <span className="input-group-addon" style={{ backgroundColor: 'var(--well-grey)', borderLeft: '1px solid rgb(181, 181, 181)' }}>
-                            <button type="submit" id="cardSearchButton"
-                                style={{ backgroundColor: 'Transparent', backgroundRepeat: 'no-repeat', outline: 'none', border: 'none', color: 'var(--dm-text)' }}>
-                                    <i style={{fontFamily: 'FontAwesome !important'}} className={`fa fa-fw fa-search`} type="submit" onClick={submit}></i></button>
-                        </span>
-                    </div>
-                </div>
+                { setSearch ?
+                    <div className={`well owell`} style={{ marginBottom: '3px', padding:'7px' }}>
+                        <div className={`input-group sm-margin-bottom`} style={{ margin: '7px', paddingLeft: '15px', paddingRight: '5px', maxWidth: '1154px', marginTop: '10px' }}>
+                            <input type="text" className="form-control" id="cardSearch" name="cardSearch" onChange={searchChange} onKeyDown={keyDown}
+                                placeholder="Press enter to search" style={{ color: 'var(--dm-text)' }} />
+                            <span className="input-group-addon" style={{ backgroundColor: 'var(--well-grey)', borderLeft: '1px solid rgb(181, 181, 181)' }}>
+                                <button type="submit" id="cardSearchButton"
+                                    style={{ backgroundColor: 'Transparent', backgroundRepeat: 'no-repeat', outline: 'none', border: 'none', color: 'var(--dm-text)' }}>
+                                        <i style={{fontFamily: 'FontAwesome !important'}} className={`fa fa-fw fa-search`} type="submit" onClick={submit}></i></button>
+                            </span>
+                        </div>
+                    </div> : null}
             </div>
         </nav>
     );
-}
-
-export default Navbar;
+};
 
 
 

@@ -3,8 +3,9 @@ import { useFetch } from "./use-fetch";
 import { Collapse } from "./collapse";
 import { Row } from "./row";
 import { ImageModal } from "./image-modal";
-import Navbar from "./navbar";
+import { Navbar } from "./navbar";
 import { getUserData } from "./utils";
+import { BasePage } from "./base-page";
 
 const limit = 30;
 
@@ -40,27 +41,24 @@ export const HomePage = () => {
   let user = getUserData();
 
   return (
-    <>
-      <Navbar setSearch={setSearch} user={user} />
-      <main className={`container sm-margin-top`}>
-        {
-          imagePath ?
-          <ImageModal path={imagePath} clear={() => setImagePath(null)} /> :
-          null
-        }
-        <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
-          <div className={`container`}>
-            <div id="scroller" className="mb-3">
-              {list.map((row,i) => row.collapse ? 
-                  <Collapse key={`top-row-${i}`} row={row} /> :
-                  <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} />
-              )}
-              {loading && <p>Loading...</p>}
-              <div ref={loader}></div>
-            </div>
+    <BasePage setSearch={setSearch}>
+      {
+        imagePath ?
+        <ImageModal path={imagePath} clear={() => setImagePath(null)} /> :
+        null
+      }
+      <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
+        <div className={`container`}>
+          <div id="scroller" className="mb-3">
+            {list.map((row,i) => row.collapse ? 
+                <Collapse key={`top-row-${i}`} row={row} /> :
+                <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} />
+            )}
+            {loading && <p>Loading...</p>}
+            <div ref={loader}></div>
           </div>
         </div>
-      </main>
-    </>
+      </div>
+    </BasePage>
   );
 }

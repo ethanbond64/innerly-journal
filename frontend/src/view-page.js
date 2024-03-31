@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import Moment from 'react-moment';
 import { homeRoute } from "./constants";
 import { fetchEntry } from "./requests";
+import { BasePage } from "./base-page";
 
 export const ViewPage = ({ entryInput = null }) => {
 
@@ -22,12 +23,18 @@ export const ViewPage = ({ entryInput = null }) => {
     }
 
     let title = entry && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null;
+    let text = entry && entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
+
+    let wordCount = text.split(" ").length;
+    let sentenceCount = text.split(/[.!?]/).length;
+
+    let tags = entry && entry.tags ? entry.tags : [];
     let memory = entry && entry.functional_datetime === entry.created_on;
     let locked = false;
 
 
     return (
-        <main className={`container sm-margin-top`}>
+        <BasePage>
             <div class="container sm-margin-top">
                 <div className="row text-left lg-margin-top" style={{ paddingBottom: "8%" }}>
                     <div className="col-sm-8">
@@ -72,10 +79,6 @@ export const ViewPage = ({ entryInput = null }) => {
                             <div style={{ textAlign: "right" }} >
                                 <span style={{ float: "left" }} ><i className={locked ? "fa fa- lock" : "fa fa-unlock"} aria-hidden="true"
                                     style={{ color: "var(--dm-text)", fontSize: "xx-large" }}></i></span>
-                                <span className="badge badge-secondary" id="editLabels"
-                                    style={{
-                                        cursor: "pointer", color: "#263859", backgroundColor: "#fcfcfc"
-                                    }}> Edit Labels</span>
                                 <div className="wrapper toggleFormOn" style={{ padding: "0px", margin: "0px", backgroundColor: "transparent", border: "none" }}>
                                     <span id="cancelButton" style={{ cursor: "pointer", color: "#263859", backgroundColor: "#fcfcfc" }}
                                         className="badge badge-secondary" >
@@ -125,50 +128,60 @@ export const ViewPage = ({ entryInput = null }) => {
                                 </div>
                             </div>
                             <div>
-                                <div id="emotion-circle" style={{ backgroundColor: getSentimentColor(sentiment) }}>
+                                <div id="emotion-circle" style={{ backgroundColor: getSentimentColor(sentiment), cursor: "pointer" }}>
                                     <h3 className="text-center emotion-center" id="originalSentiment">{sentiment}</h3>
                                     <h3 id="emotion-label">Emotion</h3>
                                 </div>
-                                <div className="text-center toggleFormOn" style={{
+                                <div className="text-center" style={{
                                     paddingTop: "10px"
                                 }} >
-                                    <span style={{ color: "var(--dm-text)", cursor: "pointer" }} type="button" data- toggle="modal"
-                                        data-target="#exampleModal" href="#">click to change</span>
+                                    <span style={{ color: "var(--dm-text)" }} >(click to change)</span>
                                 </div>
                             </div>
                             <hr style={{ marginTop: "40p", fontSize: "1px", background: "#111111", height: "1px", opacity: "0.5" }} />
                             <div id="topiclist">
                                 <h2 style={{ marginTop: "0px", marginBottom: "12px" }} >Tags</h2>
                                 <p className="text-muted">Tags for this entry</p>
-
-                                <h3 className="text-muted">No Tags Found</h3>
                                 <div>
-                                    <hr style={{
-                                        fontSize: "1px", background: "#111111", height: "1px", opacity: "0.1", marginBottom: "0px"
-                                    }} />
-                                    <h3 style={{ marginTop: "5px" }}>
-                                        <i style={{ fontSize: "large" }} className="fa fa-times-circle-o removeableto toggleFormOn"
-                                            aria-hidden="true"></i>
-                                    </h3>
+                                    {tags.length === 0 ? <h3 className="text-muted">No Tags Found</h3> : null}
+                                    {tags.map((tag, i) => (
+                                        <>  
+                                            {i > 0 ?
+                                            <hr style={{
+                                                fontSize: "1px", background: "#111111", height: "1px", opacity: "0.1", marginBottom: "0px"
+                                            }} /> :
+                                            null }
+
+                                            <h3 style={{ marginTop: "5px" }}>
+                                                {capitalize(tag)}
+                                            </h3>
+                                        </>
+                                    ))}
                                 </div>
                             </div>
                             <hr style={{ fontSize: "1px", background: "#111111", height: "1px", opacity: "0.5" }} />
                             <div>
-                                <h2 style={{ marginTop: "0px", marginBottom: "12px" }}>Size</h2>
-                                <div className="row text-center">
-                                    <div className="col-lg-6">
-                                        <h4 className="text-left">Stat</h4>
+                                <h2 style={{marginTop: '0px', marginBottom: '12px'}}>Size</h2>
+                                <div class="row text-center">
+                                    <div class="col-lg-6">
+                                        <h4 class="text-left">Word Count</h4>
                                     </div>
-                                    <div className="col-lg-6">
-                                        <h4>Stat</h4>
+                                    <div class="col-lg-6">
+                                        <h4>{wordCount}</h4>
+                                    </div>
+                                </div>
+                                <div class="row text-center">
+                                    <div class="col-lg-6">
+                                        <h4 class="text-left">Sentence Count</h4>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <h4>{sentenceCount}</h4>
                                     </div>
                                 </div>
                             </div>
                             <div style={{ marginTop: "10px", textAlign: "center" }}>
                                 <button id="lockButton" className="btn btn-lg btn-info" type="button" data-toggle="modal"
                                     data-target="#lockModal" style={{ display: "inline" }}>{locked ? "Unlock Entry" : "Lock Entry"}</button>
-                                <button id="unlockButton" className="btn btn-lg btn-info" type="button" data-toggle="modal"
-                                    data-target="#lockModal" onclick="unlockHandler()">Unlock Entry</button>
                             </div>
                         </div>
                     </div>
@@ -180,7 +193,7 @@ export const ViewPage = ({ entryInput = null }) => {
                         aria-hidden="true"></i>
                     &nbsp; <b>Delete this Entry</b></a>
             </div>
-        </main>
+        </BasePage>
     );
 };
 

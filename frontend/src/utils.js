@@ -1,3 +1,4 @@
+import React, { useEffect, useRef } from 'react';
 import { innerlyToken, innerlyUser } from './constants';
 
 export const getToken = () => {
@@ -45,4 +46,26 @@ export const getPreviousDate = (date) => {
 
 export const equalsDate = (date1, date2) => {
     return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+}
+
+const useOutsideAlerter = (ref, callback) => {
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+        if (ref.current && !ref.current.contains(event.target)) {
+            callback();
+        }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+        // Unbind the event listener on clean up
+        document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [ref]);
+}
+
+export const ClickOutsideTracker = ({ callback, children }) => {
+    const wrapperRef = useRef(null);
+    useOutsideAlerter(wrapperRef, callback);
+
+    return <div ref={wrapperRef}>{children}</div>;
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Moment from 'react-moment';
 import { TextCard } from './cards/text-card';
 import { BlankCard } from './cards/blank-card';
@@ -8,7 +8,8 @@ import { LinkCard } from './cards/link-card';
 export const Row = ({ row, setImagePath }) =>  {
 
     const [entries, setEntries] = useState(row.entries);
-
+    const [cards, setCards] = useState([]);
+    
     const createCard = (entry, replace) => {
         switch (entry.entry_type) {
             case "text":
@@ -23,6 +24,7 @@ export const Row = ({ row, setImagePath }) =>  {
     };
 
     const replace = (entry, offset) => {
+        console.log('replace', entry, offset);
         setEntries((prev) => {
             let newEntries = [...prev];
             for (let i = 0; i < offset; i++) {
@@ -33,13 +35,19 @@ export const Row = ({ row, setImagePath }) =>  {
         });
     };
 
-    const cards = entries.map((entry, i) => createCard(entry, (e) => replace(e, i)));
+    useEffect(() => {
+        let localCards = entries.map((entry, i) => createCard(entry, (e) => replace(e, i)));
+        let hasBlankEntry = entries.some(entry => entry.entry_type == 'blank');
+        // console.log('len', localCards.length, 'hasBlankEntry', hasBlankEntry);
+        if (!hasBlankEntry) {
+            let blanksRequired = 3 -  (localCards.length % 3);
+            for (let i = 0; i < blanksRequired; i++) {
+                localCards.push(<BlankCard datetime={row.date} replace={e => replace(e, i)}/>);
+            }
+        }   
 
-    let hasBlankEntry = entries.some(entry => entry.entry_type == 'blank');
-    let blanksRequired = cards.length % 3 == 0 && !hasBlankEntry ? 3 : 3 - (cards.length % 3);
-    for (let i = 0; i < blanksRequired; i++) {
-        cards.push(<BlankCard datetime={row.date} replace={e => replace(e, i)}/>);
-    }
+        setCards(localCards);
+    }, [entries])
 
     let cardGroups = Array.from({ length: Math.ceil(cards.length / 3) }, (_, index) => cards.slice(index * 3, index * 3 + 3));
 

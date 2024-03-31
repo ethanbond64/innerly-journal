@@ -4,12 +4,15 @@ import Moment from 'react-moment';
 import { homeRoute } from "./constants";
 import { fetchEntry } from "./requests";
 import { BasePage } from "./base-page";
+import { ClickOutsideTracker } from "./utils";
 
 export const ViewPage = ({ entryInput = null }) => {
 
     const { entryId } = useParams();
 
     const [entry, setEntry] = useState(entryInput);
+    const [title, setTitle] = useState(entry && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null);
+    const [editingTitle, setEditingTitle] = useState(false);
 
     useEffect(() => {
         if (entry === null) {
@@ -17,12 +20,29 @@ export const ViewPage = ({ entryInput = null }) => {
         }
     }, [entry, entryId]);
 
+    useEffect(() => {
+        if (entry && entry.entry_data && entry.entry_data.title) {
+            setTitle(entry.entry_data.title);
+        }
+    }, [entry]);
+
+
+    console.log('rendering', title, editingTitle);
+
+    const onChangeTitle = (e) => {
+        setTitle(e.target.value);
+    }
+    
+    const onSaveTitle = () => {
+        setEditingTitle(false);
+        console.log('save title', title);
+    }
+
     let sentiment = "Neutral";
     if (entry && entry.entry_data.sentiment) {
         sentiment = capitalize(entry.entry_data.sentiment);
     }
 
-    let title = entry && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null;
     let text = entry && entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
 
     let wordCount = text.split(" ").length;
@@ -32,7 +52,6 @@ export const ViewPage = ({ entryInput = null }) => {
     let memory = entry && entry.functional_datetime === entry.created_on;
     let locked = false;
 
-
     return (
         <BasePage>
             <div class="container sm-margin-top">
@@ -40,14 +59,17 @@ export const ViewPage = ({ entryInput = null }) => {
                     <div className="col-sm-8">
                         <div className="row text-left">
                             <div className="col-md-10 text-left">
-
-                                {title ?
-                                    <h1 id="titleTrigger" style={{ marginBottom: "5px" }}>{title}</h1> :
-                                    <h2 id="untitledTrigger" class="text-muted" style={{ marginBottom: "5px" }}>Untitled (click to add)</h2>
+                                {editingTitle ? 
+                                    <ClickOutsideTracker callback={onSaveTitle}>
+                                        <input className="form-control" id="viewTitle" name="viewTitle" type="text"
+                                            defaultValue={title ? title : ""} onChange={onChangeTitle} placeholder="Press enter to save" />
+                                    </ClickOutsideTracker> : 
+                                    <>{title ?
+                                        <h1 id="titleTrigger" style={{ marginBottom: "5px" }} onClick={() => setEditingTitle(true)}>{title}</h1> :
+                                        <h2 id="untitledTrigger" class="text-muted" style={{ marginBottom: "5px" }} onClick={() => setEditingTitle(true)}>Untitled (click to add)</h2>
+                                    }
+                                    </>
                                 }
-                                <input className="form-control" id="viewTitle" name="viewTitle" type="text"
-                                    defaultValue={title ? title : ""} placeholder="Press enter to save" />
-
                                 <h3 className="text-muted" style={{ marginLeft: "3px", marginTop: "0px" }}>
                                     {entry && entry.functional_datetime ? 
                                         <Moment date={entry.functional_datetime} format={`MMM Do ${memory ? "" : "ha"}`} /> : null 

@@ -6,12 +6,7 @@ export const useFetch = (search, offset, limit) => {
 
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [lastRow, setLastRow] = useState({
-        date: getTodaysDate(),
-        endDate: null,
-        collapse: false,
-        entries: []
-    });
+    const [lastRow, setLastRow] = useState(newRow(getTodaysDate()));
     const [allLoaded, setAllLoaded] = useState(false);
 
     const appender = (row) => {
@@ -24,6 +19,13 @@ export const useFetch = (search, offset, limit) => {
             return [...prev, row];
         });
     };
+
+    useEffect(() => {
+        setLoading(true);
+        setLastRow(newRow(getTodaysDate()));
+        setList([]);
+        setAllLoaded(false);
+    }, [search]);
 
     useEffect(() => {
 
@@ -87,7 +89,7 @@ export const useFetch = (search, offset, limit) => {
         }
     }, 
     // eslint-disable-next-line
-    [search, offset, limit, allLoaded]);
+    [offset, limit, allLoaded]);
 
     return {loading, list};
 };

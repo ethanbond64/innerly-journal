@@ -81,9 +81,9 @@ export const Navbar = ({ setSearch, user }) => {
                             <input type="text" className="form-control" id="cardSearch" name="cardSearch" onChange={searchChange} onKeyDown={keyDown}
                                 placeholder="Press enter to search" style={{ color: 'var(--dm-text)' }} />
                             <span className="input-group-addon" style={{ backgroundColor: 'var(--well-grey)', borderLeft: '1px solid rgb(181, 181, 181)' }}>
-                                <button type="submit" id="cardSearchButton"
+                                <button type="submit" id="cardSearchButton" onClick={submit}
                                     style={{ backgroundColor: 'Transparent', backgroundRepeat: 'no-repeat', outline: 'none', border: 'none', color: 'var(--dm-text)' }}>
-                                        <i style={{fontFamily: 'FontAwesome !important'}} className={`fa fa-fw fa-search`} type="submit" onClick={submit}></i></button>
+                                        <i style={{fontFamily: 'FontAwesome !important'}} className={`fa fa-fw fa-search`}></i></button>
                             </span>
                         </div>
                     </div> : null}

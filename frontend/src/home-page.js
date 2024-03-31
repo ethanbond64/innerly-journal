@@ -18,6 +18,10 @@ export const HomePage = () => {
 
   console.log("list: ", list);
 
+  useEffect(() => {
+    setOffset(0);
+  }, [search]);
+
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
     if (loading) return;

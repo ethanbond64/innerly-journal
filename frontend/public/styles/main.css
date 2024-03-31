@@ -221,8 +221,8 @@ dd {
 .avatar-circle {
   margin-top: -8px;
   margin-right: 50px;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   background-color: #66cae2;
   text-align: center;
   border-radius: 50%;
@@ -236,9 +236,9 @@ dd {
 
 .initials {
   position: relative;
-  top: 8px !important;
-  font-size: 18px !important;
-  line-height: 18px !important;
+  top: 10px !important;
+  font-size: 20px !important;
+  line-height: 20px !important;
   color: #fff;
   font-weight: 700
 }

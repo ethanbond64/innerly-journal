@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { setToken, setUserData } from './utils';
 import { homeRoute } from './constants';
 
 export const LoginPage = () => {
 
-    const [loggedIn, setLoggedIn] = useState(false);
+    const navigate = useNavigate();
     const [error, setError] = useState(null);
 
     const onSubmit = (e) => {
@@ -17,7 +17,7 @@ export const LoginPage = () => {
             if (response.data.token && response.data.user) {
                 setToken(response.data.token);
                 setUserData(response.data.user);
-                setLoggedIn(true);
+                navigate(homeRoute);
             } else {
                 setError("Unable to login.");
             }
@@ -28,13 +28,7 @@ export const LoginPage = () => {
                 setError("Unable to login.");
             }
          });
-    }
-
-    useEffect(() => {
-        if (loggedIn) {
-            return <Navigate to={homeRoute} />;
-        }
-    }, [loggedIn]);
+    };
 
     return (
         <>
@@ -83,14 +77,8 @@ export const LoginPage = () => {
                     </ul>
                 </div>
             </footer>
-            <script src="/scripts/vendor/bootstrap.min.js">
-            </script>
-            <script src="/scripts/vendor/moment.min.js">
-            </script>
-            <script src="/scripts/main.js">
-            </script>
         </>
     );
-}
+};
 
 

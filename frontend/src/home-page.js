@@ -3,8 +3,6 @@ import { useFetch } from "./use-fetch";
 import { Collapse } from "./collapse";
 import { Row } from "./row";
 import { ImageModal } from "./image-modal";
-import { Navbar } from "./navbar";
-import { getUserData } from "./utils";
 import { BasePage } from "./base-page";
 
 const limit = 30;
@@ -37,8 +35,6 @@ export const HomePage = () => {
     const observer = new IntersectionObserver(handleObserver, option);
     if (loader.current) observer.observe(loader.current);
   }, [handleObserver]);
-
-  let user = getUserData();
 
   return (
     <BasePage setSearch={setSearch}>

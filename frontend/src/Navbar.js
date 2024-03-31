@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearLocalStorage } from "./utils";
+import { clearLocalStorage, ClickOutsideTracker } from "./utils";
 import { adminRoute, homeRoute, settingsRoute } from "./constants";
 
 export const Navbar = ({ setSearch, user }) => {
 
     const navigate = useNavigate();
     const [searchLocal, setSearchLocal] = useState('')
+    const [menuOpen, setMenuOpen] = useState(false);
 
     const searchChange = (e) => {
         setSearchLocal(e.target.value)
@@ -24,7 +25,8 @@ export const Navbar = ({ setSearch, user }) => {
         }
     }
 
-    const logOut = () => {
+    const logOut = (e) => {
+        e.preventDefault();
         clearLocalStorage();
         navigate('/login');
     };
@@ -45,23 +47,32 @@ export const Navbar = ({ setSearch, user }) => {
                 </a>
             </div>
             <div className={``} style={{ float: 'right' }}>
-                <button type="button" className={`custom-letter-box dropdown-toggle`} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
+                <button type="button" onClick={() => setMenuOpen(true)} className={`custom-letter-box dropdown-toggle`} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
                     <div className={`avatar-circle`}>
                         <span className={`initials`}>{initial}</span>
                     </div>
                 </button>
-                <ul className={`dropdown-menu pull-right`} style={{ float: 'right' }}>
-                    {user.admin ? 
-                    <>
-                        <li><a href={adminRoute}>Admin</a></li>
-                        <li role="separator" className="divider"></li>
-                    </> : null}
-                    <li>
-                        <a href={settingsRoute}><i className={`fa fa-cog`} aria-hidden="true"></i>&nbsp;Settings</a>
-                    </li>
-                    <li role="separator" className={`divider`}></li>
-                    <li><span onClick={logOut}><b>Log out</b></span></li>
-                </ul>
+                { menuOpen ?
+                    <ClickOutsideTracker callback={() => setMenuOpen(false)}>
+                        <ul className={`dropdown-menu pull-right show`} style={{ float: 'right' }}>
+                            {
+                                user.admin ? 
+                                <>
+                                    <li>
+                                        <a href={adminRoute}>Admin</a>
+                                    </li>
+                                    <li role="separator" className="divider"></li>
+                                </> : null}
+                            <li>
+                                <a href={settingsRoute}>Settings</a>
+                            </li>
+                            <li role="separator" className={`divider`}></li>
+                            <li>
+                                <a href="/login" onClick={logOut}>Log out</a>
+                            </li>
+                        </ul>
+                    </ClickOutsideTracker> : null
+                }   
             </div>
             <div className="container" style={{textAlign:'center', maxWidth:'84%'}}>
                 { setSearch ?

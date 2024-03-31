@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { setToken, setUserData } from './utils';
 import { homeRoute, loginRoute } from './constants';
@@ -10,7 +9,7 @@ export const SignUpPage = () => {
     // eslint-disable-next-line
     const [searchParams, _] = useSearchParams();
     const [error, setError] = useState(null);
-    const [loggedIn, setLoggedIn] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const share = searchParams.get('share');
@@ -21,6 +20,7 @@ export const SignUpPage = () => {
 
     const onSubmit = (e) => {
         e.preventDefault();
+        console.log('submit');
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const share = searchParams.get('share');
@@ -28,7 +28,7 @@ export const SignUpPage = () => {
             if (response.data.token && response.data.user) {
                 setToken(response.data.token);
                 setUserData(response.data.user);
-                setLoggedIn(true);
+                navigate(homeRoute);
             } else {
                 setError("Unable to sign up.");
             }
@@ -40,12 +40,6 @@ export const SignUpPage = () => {
             }
          });
     };
-
-    useEffect(() => {
-        if (loggedIn) {
-            return <Navigate to={homeRoute} />;
-        }
-    }, [loggedIn]);
 
     return (
         <>
@@ -85,7 +79,7 @@ export const SignUpPage = () => {
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <button type="submit" class="btn btn-info btn-block" onSubmit={onSubmit}>
+                                <button type="submit" class="btn btn-info btn-block" onClick={onSubmit}>
                                     Register
                                 </button>
                             </div>

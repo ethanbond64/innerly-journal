@@ -1,14 +1,14 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { PageLoader } from "./page-loader";
-import { LoginPage } from "./login-page";
-import { SignUpPage } from "./sign-up-page";
-import { HomePage } from "./home-page";
-import { AuthenticationGuard } from "./AuthenticationGuard";
-import { WritePage } from "./write-page";
-import { homeRoute, loginRoute, settingsRoute, signupRoute, viewRoute, writeRoute } from "./constants";
-import { ViewPage } from "./view-page";
-import { SettingsPage } from "./settings-page";
+import { PageLoader } from "./page-loader.js";
+import { LoginPage } from "./login-page.js";
+import { SignUpPage } from "./sign-up-page.js";
+import { HomePage } from "./home-page.js";
+import { AuthenticationGuard } from "./AuthenticationGuard.js";
+import { WritePage } from "./write-page.js";
+import { homeRoute, loginRoute, settingsRoute, signupRoute, viewRoute, writeRoute } from "./constants.js";
+import { ViewPage } from "./view-page.js";
+import { SettingsPage } from "./settings-page.js";
 
 export const App = () => {
   const { isLoading } = false; // TODO custom auth... verify token if exists?

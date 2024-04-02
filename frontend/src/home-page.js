@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useFetch } from "./use-fetch";
-import { Collapse } from "./collapse";
-import { Row } from "./row";
-import { ImageModal } from "./image-modal";
-import { BasePage } from "./base-page";
+import { useFetch } from "./use-fetch.js";
+import { Collapse } from "./collapse.js";
+import { Row } from "./row.js";
+import { ImageModal } from "./image-modal.js";
+import { BasePage } from "./base-page.js";
 
 const limit = 30;
 

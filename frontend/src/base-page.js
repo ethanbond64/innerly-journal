@@ -1,8 +1,8 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { loginRoute } from "./constants";
-import { Navbar } from "./navbar";
-import { getUserData } from "./utils";
+import { loginRoute } from "./constants.js";
+import { Navbar } from "./navbar.js";
+import { getUserData } from "./utils.js";
 
 
 export const BasePage = ({ setSearch=null, children }) => {

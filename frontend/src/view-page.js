@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Moment from 'react-moment';
-import { homeRoute } from "./constants";
-import { fetchEntry } from "./requests";
-import { BasePage } from "./base-page";
-import { ClickOutsideTracker } from "./utils";
+import { homeRoute } from "./constants.js";
+import { fetchEntry } from "./requests.js";
+import { BasePage } from "./base-page.js";
+import { ClickOutsideTracker } from "./utils.js";
 
 export const ViewPage = ({ entryInput = null }) => {
 

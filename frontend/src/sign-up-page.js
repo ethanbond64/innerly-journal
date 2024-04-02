@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { setToken, setUserData } from './utils';
-import { homeRoute, loginRoute } from './constants';
+import { setToken, setUserData } from './utils.js';
+import { homeRoute, loginRoute } from './constants.js';
 
 export const SignUpPage = () => {
 

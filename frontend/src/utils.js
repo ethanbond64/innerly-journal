@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { innerlyToken, innerlyUser } from './constants';
+import { innerlyToken, innerlyUser } from './constants.js';
 
 export const getToken = () => {
     return localStorage.getItem(innerlyToken);

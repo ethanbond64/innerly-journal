@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Moment from 'react-moment';
-import { TextCard } from './cards/text-card';
-import { BlankCard } from './cards/blank-card';
-import { ImageCard } from './cards/image-card';
-import { LinkCard } from './cards/link-card';
+import { TextCard } from './cards/text-card.js';
+import { BlankCard } from './cards/blank-card.js';
+import { ImageCard } from './cards/image-card.js';
+import { LinkCard } from './cards/link-card.js';
 
 export const Row = ({ row, setImagePath }) =>  {
 

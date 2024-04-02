@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { getToken, getUserData } from './utils';
+import { getToken, getUserData } from './utils.js';
 
 export const AuthenticationGuard = ({ component }) => {
     const Component = withAuthenticationRequired(component);

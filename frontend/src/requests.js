@@ -1,6 +1,6 @@
 import axios from "axios"
-import { clearLocalStorage, getToken } from "./utils";
-import { loginRoute } from "./constants";
+import { clearLocalStorage, getToken } from "./utils.js";
+import { loginRoute } from "./constants.js";
 
 const getAuthorizationHeader = () => {
     let token = getToken();

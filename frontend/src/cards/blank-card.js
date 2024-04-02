@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { insertLinkEntry, insertFileEntry } from "../requests";
-import { writeRoute } from "../constants";
-import { equalsDate } from "../utils";
+import { insertLinkEntry, insertFileEntry } from "../requests.js";
+import { writeRoute } from "../constants.js";
+import { equalsDate } from "../utils.js";
 
 export const BlankCard = ({ datetime, replace }) => {
 

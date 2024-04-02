@@ -1,5 +1,5 @@
 import React from "react";
-import { BasePage } from "./base-page";
+import { BasePage } from "./base-page.js";
 
 export const SettingsPage = () => {
 

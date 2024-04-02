@@ -1,6 +1,6 @@
 import React from "react";
-import { homeRoute } from "./constants";
-import { insertTextEntry } from "./requests";
+import { homeRoute } from "./constants.js";
+import { insertTextEntry } from "./requests.js";
 import { useNavigate } from "react-router-dom";
 
 export const WritePage = () => {

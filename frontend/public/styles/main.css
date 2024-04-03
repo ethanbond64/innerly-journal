@@ -823,3 +823,22 @@ label {
 #swtichlabel:active:after {
   width: 45px;
 }
+
+.navbar {
+  padding-top: 20px;
+  padding-bottom: 10px;
+  -webkit-user-select: none; 
+  -webkit-app-region: drag;
+}
+
+input {
+  -webkit-app-region: no-drag;
+}
+
+button {
+  -webkit-app-region: no-drag;
+}
+
+a {
+  -webkit-app-region: no-drag;
+}

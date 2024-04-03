@@ -31,16 +31,15 @@ export const LoginPage = () => {
     };
 
     return (
-        <>
+        <main className="container drag">
             <a href={homeRoute}>
                 <img src="/images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
-            <main className="container">
                 {error == null ? null : 
                     <div id="flash-messages" class="row sm-margin-top">
                         <div class="alert alert-error alert-dismissible md-margin-top" role="alert">
                             {error}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <button type="button" className="close nondrag" data-dismiss="alert" aria-label="Close">
                             <span aria-hidden="true">×</span>
                         </button>
                         </div>  
@@ -48,7 +47,7 @@ export const LoginPage = () => {
                 }
                 <div className="md-margin-top"></div>
                 <div className="row">
-                    <div className="col-md-4 col-md-offset-4 well">
+                    <div className="col-md-4 col-md-offset-4 well nondrag">
                         <legend>Log in to existing account</legend>
                         <div className="form-group sm-margin-bottom" style={{}}> 
                             <label for="identity"><strong>Email</strong>
@@ -69,7 +68,6 @@ export const LoginPage = () => {
                         </div>
                     </div>
                 </div>
-            </main>
             <footer className="footer text-center">
                 <div className="container">
                     <ul className="list-inline">
@@ -77,7 +75,7 @@ export const LoginPage = () => {
                     </ul>
                 </div>
             </footer>
-        </>
+        </main>
     );
 };
 

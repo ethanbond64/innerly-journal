@@ -42,16 +42,15 @@ export const SignUpPage = () => {
     };
 
     return (
-        <>
+        <main class="container drag">
             <a href={homeRoute}>
                 <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
-            <main class="container">
                 {error == null ? null : 
                 <div id="flash-messages" class="row sm-margin-top">
                     <div class="alert alert-error alert-dismissible md-margin-top" role="alert">
                         {error}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <button type="button" className="close nondrag" data-dismiss="alert" aria-label="Close">
                         <span aria-hidden="true">×</span>
                     </button>
                     </div>  
@@ -59,7 +58,7 @@ export const SignUpPage = () => {
                 }
                 <div class="row">
                     <div class="col-md-3"></div>
-                    <div class="col-md-6 md-margin-top well">
+                    <div class="col-md-6 md-margin-top well nondrag">
                         <legend>Create an account</legend>
                         <div class="form-group sm-margin-bottom">
                             <label for="email"><strong>Email</strong>
@@ -92,7 +91,6 @@ export const SignUpPage = () => {
                         </div>
                     </div>
                 </div>
-            </main>
             <footer class="footer text-center">
                 <div class="container">
                     <ul class="list-inline">
@@ -100,6 +98,6 @@ export const SignUpPage = () => {
                     </ul>
                 </div>
             </footer>
-        </>
+        </main>
     );
 };

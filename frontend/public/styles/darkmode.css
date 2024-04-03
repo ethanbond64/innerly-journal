@@ -68,7 +68,7 @@
 
   }
 
-  .form-control {
+  .form-control-inner {
     background-color: var(--well-grey);
     border-color: transparent;
   }

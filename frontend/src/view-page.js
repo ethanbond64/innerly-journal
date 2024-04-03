@@ -61,7 +61,7 @@ export const ViewPage = ({ entryInput = null }) => {
                             <div className="col-md-10 text-left">
                                 {editingTitle ? 
                                     <ClickOutsideTracker callback={onSaveTitle}>
-                                        <input className="form-control" id="viewTitle" name="viewTitle" type="text"
+                                        <input className="form-control form-control-inner" id="viewTitle" name="viewTitle" type="text"
                                             defaultValue={title ? title : ""} onChange={onChangeTitle} placeholder="Press enter to save" />
                                     </ClickOutsideTracker> : 
                                     <>{title ?

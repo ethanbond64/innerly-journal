@@ -78,7 +78,7 @@ export const Navbar = ({ setSearch, user }) => {
                 { setSearch ?
                     <div className={`well owell`} style={{ marginBottom: '3px', padding:'7px' }}>
                         <div className={`input-group sm-margin-bottom`} style={{ margin: '7px', paddingLeft: '15px', paddingRight: '5px', maxWidth: '1154px', marginTop: '10px' }}>
-                            <input type="text" className="form-control" id="cardSearch" name="cardSearch" onChange={searchChange} onKeyDown={keyDown}
+                            <input type="text" className="form-control form-control-inner" id="cardSearch" name="cardSearch" onChange={searchChange} onKeyDown={keyDown}
                                 placeholder="Press enter to search" style={{ color: 'var(--dm-text)' }} />
                             <span className="input-group-addon" style={{ backgroundColor: 'var(--well-grey)', borderLeft: '1px solid rgb(181, 181, 181)' }}>
                                 <button type="submit" id="cardSearchButton" onClick={submit}

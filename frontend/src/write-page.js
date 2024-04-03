@@ -37,7 +37,7 @@ export const WritePage = () => {
                             </div>
                         </div>
                         <div className="form-group" style={{ height: '97%' }}>
-                            <textarea className="form-control" id="writeto" name="entry"></textarea>
+                            <textarea className="form-control form-control-inner" id="writeto" name="entry"></textarea>
                         </div>
                         <div className="writeto-display"></div>
                     </div>

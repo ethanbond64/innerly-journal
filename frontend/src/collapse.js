@@ -3,9 +3,7 @@ import Moment from 'react-moment';
 import { Row } from "./row.js";
 import { equalsDate } from "./utils.js";
 
-export const Collapse = ({ row }) => {
-
-    console.log("rendering collapse", row);
+export const Collapse = ({ row, setImagePath }) => {
 
     const [open, setOpen] = React.useState(false);
     const [rows, setRows] = React.useState([]);
@@ -40,7 +38,7 @@ export const Collapse = ({ row }) => {
     }, [open, row]);
 
     return open ?
-        rows.map((r, i) => <Row key={`collapse-row-${i}`} row={r} />) :
+        rows.map((r, i) => <Row key={`collapse-row-${i}`} row={r} setImagePath={setImagePath} />) :
         (<div className="c_well" style={{ textAlign: 'center' }}>
             <div className={`row sm-margin-bottom`}>
                 <div className="col-sm-3"></div>

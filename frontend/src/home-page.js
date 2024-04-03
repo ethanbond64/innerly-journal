@@ -49,7 +49,7 @@ export const HomePage = () => {
         <div className={`container`}>
           <div id="scroller" className="mb-3">
             {list.map((row,i) => row.collapse ? 
-                <Collapse key={`top-row-${i}`} row={row} /> :
+                <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} /> :
                 <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} />
             )}
             {loading && <p>Loading...</p>}

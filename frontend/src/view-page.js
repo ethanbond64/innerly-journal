@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Moment from 'react-moment';
 import { homeRoute } from "./constants.js";
-import { fetchEntry } from "./requests.js";
+import { deleteEntry, fetchEntry } from "./requests.js";
 import { BasePage } from "./base-page.js";
 import { ClickOutsideTracker } from "./utils.js";
 
@@ -10,15 +10,21 @@ export const ViewPage = ({ entryInput = null }) => {
 
     const { entryId } = useParams();
 
+    const navigate = useNavigate();
     const [entry, setEntry] = useState(entryInput);
     const [title, setTitle] = useState(entry && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null);
     const [editingTitle, setEditingTitle] = useState(false);
 
     useEffect(() => {
+        
+        if (!entryId) {
+            navigate(homeRoute);
+        }
+
         if (entry === null) {
             fetchEntry(entryId, setEntry);
         }
-    }, [entry, entryId]);
+    }, [entry, entryId, navigate]);
 
     useEffect(() => {
         if (entry && entry.entry_data && entry.entry_data.title) {
@@ -36,6 +42,16 @@ export const ViewPage = ({ entryInput = null }) => {
     const onSaveTitle = () => {
         setEditingTitle(false);
         console.log('save title', title);
+    }
+
+    const onClickDelete = () => {
+        if (window.confirm('Are you sure you want to delete this entry?')) {
+            deleteEntry(entryId, resp => {
+                if (resp) {
+                    navigate(homeRoute);
+                }
+            });
+        }
     }
 
     let sentiment = "Neutral";
@@ -210,10 +226,11 @@ export const ViewPage = ({ entryInput = null }) => {
                 </div>
             </div>
             <div className="row text-center">
-                <a href={homeRoute} className="btn btn-lg btn-danger"
-                    onClick="return confirm('Are you sure you want to delete this entry?');"><i className="fa fa-trash-o"
+                <button className="btn btn-lg btn-danger"
+                    onClick={onClickDelete}><i className="fa fa-trash-o"
                         aria-hidden="true"></i>
-                    &nbsp; <b>Delete this Entry</b></a>
+                    &nbsp; <b>Delete this Entry</b>
+                </button>
             </div>
         </BasePage>
     );

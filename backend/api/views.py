@@ -274,6 +274,17 @@ def fetch_entry(current_user, id):
 
     return {'data': entry.json()}, 200
 
+@views.route('/delete/entries/<int:id>', methods=['DELETE'])
+@login_required
+def delete_entry(current_user, id):
+
+    entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
+    if entry is None:
+        return {'message': 'Entry not found'}, 404
+    
+    entry.delete()
+
+    return {'success': True}, 200
 
 @views.route('/static/<filename>', methods=['GET'])
 def get_file(filename):
@@ -291,4 +302,3 @@ def get_file(filename):
 
     return send_from_directory(base_path, filename)
 
-# TODO delete entry

@@ -45,6 +45,17 @@ def save_file(user_id, file: FileStorage) -> tuple:
 
     return path, original_filename, extension
     
+def delete_file(user_id, path):
+
+    directory = get_user_directory(user_id)
+    file_path = os.path.join(directory, path)
+    
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return True
+    
+    return False
+
 def parse_file(file):
 
     filename = secure_filename(file.filename)

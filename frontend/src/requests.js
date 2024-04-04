@@ -124,3 +124,14 @@ export const fetchEntry = async (id, callback, onError = (e) => {}) => {
         onError(error);
     });
 }
+
+export const deleteEntry = async (id, callback, onError = (e) => {}) => {
+    return await axios.post(`http://localhost:8000/api/delete/entries/${id}`, {}, {
+        headers: getHeaders()
+    }).then((response) => {
+        callback(response.data.success);
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
+    });
+}

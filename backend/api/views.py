@@ -6,7 +6,7 @@ from sqlalchemy import String, cast, func, or_
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename
 from api.models import User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
-from api.processors.file_processor import get_user_directory, process_file_entry
+from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
 
 views = Blueprint('views', __name__)
@@ -274,7 +274,7 @@ def fetch_entry(current_user, id):
 
     return {'data': entry.json()}, 200
 
-@views.route('/delete/entries/<int:id>', methods=['DELETE'])
+@views.route('/delete/entries/<int:id>', methods=['POST'])
 @login_required
 def delete_entry(current_user, id):
 
@@ -282,6 +282,10 @@ def delete_entry(current_user, id):
     if entry is None:
         return {'message': 'Entry not found'}, 404
     
+    if 'path' in entry.entry_data:
+        path = entry.entry_data['path']
+        delete_file(current_user.id, path)
+
     entry.delete()
 
     return {'success': True}, 200

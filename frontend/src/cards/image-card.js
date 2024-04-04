@@ -1,4 +1,5 @@
 import React from "react";
+import { deleteEntry } from "../requests";
 
 
 export const ImageCard = ({ entry, setPath, replace }) => {
@@ -7,7 +8,6 @@ export const ImageCard = ({ entry, setPath, replace }) => {
     const url = baseUrl + entry.entry_data.path;
 
     const onClick = () => {
-        console.log('click');
         if (setPath) {
             setPath(url);
         }
@@ -16,9 +16,12 @@ export const ImageCard = ({ entry, setPath, replace }) => {
     const onClickDelete = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('delete');
         if (replace) {
-            replace({ entry_type: 'blank' });
+            deleteEntry(entry.id, (resp) => {
+                if (resp) {
+                    replace({ entry_type: 'blank' });
+                }
+            });
         }
     }
     

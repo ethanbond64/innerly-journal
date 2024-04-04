@@ -3,6 +3,8 @@ from api.extensions import db
 from sqlalchemy import ARRAY, String
 from sqlalchemy.dialects.postgresql import JSON
 
+PREIVEW_LENGTH = 64
+
 def get_datetime():
     return datetime.now(timezone.utc)
 
@@ -70,7 +72,7 @@ class Entry(db.Model, BaseModel):
     def short_json(self, signer = None):
         j = self.json(signer=signer)
         if 'entry_data' in j and 'text' in j['entry_data']:
-            del j['entry_data']['text']
+            j['entry_data']['text'] = j['entry_data']['text'][:PREIVEW_LENGTH] 
         return j
 
 class Tag(db.Model, BaseModel):
@@ -80,3 +82,4 @@ class Tag(db.Model, BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    usages = db.Column(db.Integer, default=0)

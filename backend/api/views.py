@@ -2,7 +2,6 @@ import uuid
 from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, func, or_
-from sqlalchemy.dialects.postgresql import insert
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename
 from api.models import User, Entry, Tag, get_datetime
@@ -192,13 +191,17 @@ def insert_entry(current_user):
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
     new_entry.save()
 
-    # Insert tags, leave existing
-    for tag in tags:
-        try:
-            Tag(name=tag.lower(), user_id=current_user.id).save()
-        except:
-            pass
 
+    # Upsert tags
+    tags = [tag.lower() for tag in tags]
+    existing_tags = Tag.query.filter(Tag.user_id == current_user.id, Tag.name.in_(tags)).all()
+    existing_tags = {tag.name: tag for tag in existing_tags}
+    for tag in list(tags):
+        if tag not in existing_tags:
+            Tag(user_id=current_user.id, name=tag, usages=1).save()
+        else: 
+            existing_tags[tag].usages += 1
+            existing_tags[tag].save()
     return {'data': new_entry.json(signer=sign_filename)}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])

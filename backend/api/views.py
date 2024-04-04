@@ -2,12 +2,14 @@ import uuid
 from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, func, or_
+from sqlalchemy.dialects.postgresql import insert
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename
 from api.models import User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
+from api.extensions import db
 
 views = Blueprint('views', __name__)
 
@@ -187,11 +189,15 @@ def insert_entry(current_user):
         entry_data, tags = process_link_entry(current_user, link)
 
     functional_datetime = body.get('functional_datetime', get_datetime())
-
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
     new_entry.save()
 
-    # TODO upsert tags
+    # Insert tags, leave existing
+    for tag in tags:
+        try:
+            Tag(name=tag.lower(), user_id=current_user.id).save()
+        except:
+            pass
 
     return {'data': new_entry.json(signer=sign_filename)}, 201
 

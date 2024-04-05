@@ -11,16 +11,6 @@ import { ViewPage } from "./view-page.js";
 import { SettingsPage } from "./settings-page.js";
 
 export const App = () => {
-  const { isLoading } = false; // TODO custom auth... verify token if exists?
-
-  if (isLoading) {
-    return (
-      <div className="page-layout">
-        <PageLoader />
-      </div>
-    );
-  }
-
   return (
     <Routes>
       <Route path={loginRoute} element={<LoginPage />} />

@@ -5,6 +5,8 @@ import { equalsDate } from "../utils";
 
 export const TextCard = ({ entry }) => {
 
+    const navigate = useNavigate();
+
     let sensitive = false;
     let title = entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null;
         
@@ -15,9 +17,10 @@ export const TextCard = ({ entry }) => {
         title = memory ? "Untitled Memory" : (<Moment date={functionalDate} format="h A" />)
     }
 
+    const color = getColor(entry.entry_data.sentiment);
     const preview = entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
     const tags = entry.tags;
-    const navigate = useNavigate();
+
 
     const onClick = () => {
         navigate(`/view/${entry.id}`);
@@ -25,7 +28,7 @@ export const TextCard = ({ entry }) => {
 
     return (
         <div className={`col-xs-4 itemactive`}>
-        <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer' }} onClick={onClick}>
+        <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }} onClick={onClick}>
             <h3 id="unitTitle">{title}</h3>
             <p id="unitSnip" className="hidden-xs"
                 style={sensitive ? { 'color': 'transparent', 'textShadow': '0 0 6px var(--dm-text)', 'padding': '2px' } : {}} >
@@ -37,4 +40,14 @@ export const TextCard = ({ entry }) => {
         </div>
     </div>
     );
-}
+};
+
+const getColor = (sentiment) => {
+    if (sentiment === 'positive') {
+        return 'var(--well-green)';
+    } else if (sentiment === 'negative') {
+        return 'var(--well-red)';
+    } else {
+        return 'var(--well-grey)';
+    }
+};

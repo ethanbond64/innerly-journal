@@ -9,6 +9,7 @@ from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.extensions import db
+from api.tasks import submitImportEntriesTask
 
 views = Blueprint('views', __name__)
 
@@ -173,7 +174,7 @@ def insert_entry(current_user):
         if file is None:
             return {'message': 'No file attached'}, 400
         
-        entry_data, tags = process_file_entry(current_user, file)
+        entry_data, tags = process_file_entry(current_user.id, file)
 
     elif entry_type == 'link':
         
@@ -185,7 +186,7 @@ def insert_entry(current_user):
         if link is None:
             return {'message': 'Bad request. Missing link.'}, 400
         
-        entry_data, tags = process_link_entry(current_user, link)
+        entry_data, tags = process_link_entry(current_user.id, link)
 
     functional_datetime = body.get('functional_datetime', get_datetime())
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
@@ -332,6 +333,22 @@ def get_file(filename):
 
     return send_from_directory(base_path, filename)
 
+
+@views.route('/submit/task/<task>', methods=['POST'])
+@login_required
+def submit_task(current_user, task):
+
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+    
+    links = body.get('links')
+    if links is None:
+        return {'message': 'Bad request'}, 400
+    
+    submitImportEntriesTask(links, current_user.id)
+
+    return {'success': True}, 200
 
 def upsert_tags(tags, user_id):
     tags = [tag.lower() for tag in tags]

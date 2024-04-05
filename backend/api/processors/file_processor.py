@@ -20,10 +20,9 @@ BASE_DIRECTORY = os.path.expanduser('~/.innerly/') # TODO ADD USER and get this 
 STATIC_DIRECTORY = 'static/'
 USER_DIRECTORY_PREFIX = 'user-'
 
-def process_file_entry(user: User, file) -> tuple:
+def process_file_entry(user_id, file) -> tuple:
 
-
-    path, original_filename, file_type = save_file(user.id, file)
+    path, original_filename, file_type = save_file(user_id, file)
 
     return FileEntryData(original_filename, path, file_type).json(), []
 

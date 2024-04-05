@@ -24,7 +24,7 @@ spotify_id = "spotify"
 sc_id = "soundcloud"
 wiki_id = "wikipedia"
 
-def process_link_entry(user: User, link: str) -> tuple:
+def process_link_entry(user_id, link: str) -> tuple:
 
     data = do_opengraph(link)
 
@@ -38,7 +38,7 @@ def process_link_entry(user: User, link: str) -> tuple:
     file = download_file(original_path)
 
     if file is not None:
-        path, _original_filename_, file_type = save_file(user.id, file)
+        path, _original_filename_, file_type = save_file(user_id, file)
         new_path = path
 
     return LinkEntryData(title, new_path, original_path, file_type, link, site).json(), []

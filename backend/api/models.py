@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from api.extensions import db
 from sqlalchemy import ARRAY, String
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.orm.attributes import flag_modified
 
 PREIVEW_LENGTH = 64
 
@@ -26,6 +27,9 @@ class BaseModel(object):
     def update(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+            if (type(value) == dict):
+                flag_modified(self, key)
+                
 
     def delete(self):
         db.session.delete(self)

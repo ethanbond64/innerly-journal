@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Moment from 'react-moment';
 import { homeRoute } from "./constants.js";
-import { deleteEntry, fetchEntry } from "./requests.js";
+import { deleteEntry, fetchEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.js";
 import { ClickOutsideTracker, equalsDate } from "./utils.js";
 
@@ -38,10 +38,18 @@ export const ViewPage = ({ entryInput = null }) => {
     const onChangeTitle = (e) => {
         setTitle(e.target.value);
     }
+
+    const onKeyDown = (e) => {
+        if (e.charCode === 13 || e.keyCode === 13) {
+            e.preventDefault();
+            e.stopPropagation();
+            onSaveTitle();
+        }
+    }
     
     const onSaveTitle = () => {
         setEditingTitle(false);
-        console.log('save title', title);
+        updateTextEntry(entryId, { title }, null, resp => {});
     }
 
     const onClickDelete = () => {
@@ -78,7 +86,7 @@ export const ViewPage = ({ entryInput = null }) => {
                                 {editingTitle ? 
                                     <ClickOutsideTracker callback={onSaveTitle}>
                                         <input className="form-control form-control-inner" id="viewTitle" name="viewTitle" type="text"
-                                            defaultValue={title ? title : ""} onChange={onChangeTitle} placeholder="Press enter to save" />
+                                            defaultValue={title ? title : ""} onKeyDown={onKeyDown} onChange={onChangeTitle} placeholder="Press enter to save" />
                                     </ClickOutsideTracker> : 
                                     <>{title ?
                                         <h1 id="titleTrigger" style={{ marginBottom: "5px" }} onClick={() => setEditingTitle(true)}>{title}</h1> :

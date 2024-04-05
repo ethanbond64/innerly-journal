@@ -62,6 +62,26 @@ export const insertTextEntry = async (text, functional_datetime, callback, onErr
     });
 };
 
+export const updateTextEntry = async (id, entry_data, tags, callback, onError = (e) => {}) => {
+    axios.post(`http://localhost:8000/api/update/entries/${id}`, {
+        entry_data: entry_data,
+        tags: tags
+    }, {
+        headers: getHeaders()
+    }).then((response) => {
+        if (response.status === 200) {
+            callback(response.data.data);
+        }
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
+
 export const insertLinkEntry = async (link, callback, functional_datetime = null, onError = (e) => {}) => {
     axios.post('http://localhost:8000/api/insert/entries', {
         entry_type: 'link',

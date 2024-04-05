@@ -191,17 +191,8 @@ def insert_entry(current_user):
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
     new_entry.save()
 
+    upsert_tags(tags, current_user.id)
 
-    # Upsert tags
-    tags = [tag.lower() for tag in tags]
-    existing_tags = Tag.query.filter(Tag.user_id == current_user.id, Tag.name.in_(tags)).all()
-    existing_tags = {tag.name: tag for tag in existing_tags}
-    for tag in list(tags):
-        if tag not in existing_tags:
-            Tag(user_id=current_user.id, name=tag, usages=1).save()
-        else: 
-            existing_tags[tag].usages += 1
-            existing_tags[tag].save()
     return {'data': new_entry.json(signer=sign_filename)}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])
@@ -210,7 +201,7 @@ def update_entry(current_user, id):
 
     entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
     if entry is None:
-        return {'message': 'Entry not found'}, 400
+        return {'message': 'Entry not found'}, 404
     
     if entry.entry_type != 'text':
         return {'message': 'Entry type not supported for update.'}, 400
@@ -219,10 +210,36 @@ def update_entry(current_user, id):
     if body is None:
         return {'message': 'Bad request'}, 400
     
-    # TODO validate body and set
+    # Parse valid updates and save
+    changes = False
     entry_data = body.get('entry_data')
+    if entry_data is not None:
+        
+        original_entry_data = entry.entry_data
+
+        if 'title' in entry_data:
+            original_entry_data['title'] = entry_data['title']
+            changes = True
+
+        if 'sentiment' in entry_data:
+            original_entry_data['sentiment'] = entry_data['sentiment']
+            changes = True
+
+        if 'text' in entry_data:
+            original_entry_data['text'] = entry_data['text']
+            changes = True
+
+        entry.update(entry_data=original_entry_data)
+    
     tags = body.get('tags')
-    functional_datetime = body.get('functional_datetime')
+    if tags is not None:
+        entry.update(tags=tags)
+        changes = True
+        tags = upsert_tags(tags, current_user.id)
+
+    
+    if changes:
+        entry.save()
 
     return {'data': entry.json()}, 200
 
@@ -314,4 +331,17 @@ def get_file(filename):
     base_path = get_user_directory(user.id)
 
     return send_from_directory(base_path, filename)
+
+
+def upsert_tags(tags, user_id):
+    tags = [tag.lower() for tag in tags]
+    existing_tags = Tag.query.filter(Tag.user_id == user_id, Tag.name.in_(tags)).all()
+    existing_tags = {tag.name: tag for tag in existing_tags}
+    for tag in list(tags):
+        if tag not in existing_tags:
+            Tag(user_id=user_id, name=tag, usages=1).save()
+        else: 
+            existing_tags[tag].usages += 1
+            existing_tags[tag].save()
+    return tags
 

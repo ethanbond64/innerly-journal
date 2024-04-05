@@ -1,44 +1,67 @@
 import React, { useEffect, useState } from "react";
 import { homeRoute, viewRoute } from "./constants.js";
-import { insertTextEntry } from "./requests.js";
+import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useNavigate, useParams } from "react-router-dom";
 import { getDateNoTime } from "./utils.js";
+import { PageLoader } from "./page-loader.js";
 
 
 export const WritePage = () => {
-    
+
+    const navigate = useNavigate();
     const { functionalDate } = useParams();
 
-    let functionalDatetime = null;
+    const onSubmit = (text) => {
 
-    if (functionalDate && functionalDate.length === 10 && functionalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const dateParts = functionalDate.split('-');
-        functionalDatetime = getDateNoTime(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        let functionalDatetime = null;
+
+        if (functionalDate && functionalDate.length === 10 && functionalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const dateParts = functionalDate.split('-');
+            functionalDatetime = getDateNoTime(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        }
+
+        insertTextEntry(text, functionalDatetime, (data) => {
+            navigate(viewRoute + data.id); 
+        });
     }
 
-    return <WritePageBase functionalDatetime={functionalDatetime} />;
+    return <WritePageBase onSumbit={onSubmit} />;
 };
 
 export const EditPage = () => {
-    const { entryId } = useParams();
-    return <WritePageBase entryId={entryId} />;
-};
-
-export const WritePageBase = ({ entryId = null, functionalDatetime = null }) => {
 
     const navigate = useNavigate();
-    const [showHeader, setShowHeader] = useState(true);
+    const { entryId } = useParams();
+    const [text, setText] = useState(null);
+    
+    useEffect(() => {
+        if (!entryId) {
+            navigate(homeRoute);
+        }
 
-    const onClick = () => {
+        fetchEntry(entryId, (data) => {
+            if (data.entry_type !== 'text' || !data.entry_data) {
+                navigate(homeRoute);
+            }
+            setText(data.entry_data.text ? data.entry_data.text : '');
+        });
+
+    }, [entryId, navigate]);
+
+    const onSubmit = (text) => {
         if (entryId) {
-            // TODO update entry
-        } else {
-            let funcationlDatetimeInput = functionalDatetime ? functionalDatetime.toISOString() : null;
-            insertTextEntry(document.getElementById('writeto').value, funcationlDatetimeInput, (data) => {
+            updateTextEntry(entryId, { text }, null, (data) => {
                 navigate(viewRoute + data.id); 
             });
         }
     };
+
+    return text === null ? null : <WritePageBase onSumbit={onSubmit} text={text} />;
+};
+
+export const WritePageBase = ({  onSumbit, text = '' }) => {
+
+    const [showHeader, setShowHeader] = useState(true);
 
     let timeoutId;
 
@@ -54,15 +77,17 @@ export const WritePageBase = ({ entryId = null, functionalDatetime = null }) => 
     };
 
     useEffect(() => {
-
-        // TODO fetch entry if entryId, set text area value
-
         handleMouseLeave();
-
         return () => {
             clearTimeout(timeoutId);
         };
     }, []); 
+
+    const onSubmitInner = (e) => {
+        e.preventDefault();
+        const text = document.getElementById('writeto').value;
+        onSumbit(text);
+    }
 
     return (
         <main style={{ height: `90vh`, padding: '0', marginBottom: '0' }} className="container" >
@@ -80,7 +105,7 @@ export const WritePageBase = ({ entryId = null, functionalDatetime = null }) => 
                                     <span>Back</span>
                                 </a>
                                 <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>Write about any thoughts, experiences, or ideas</span>
-                                <button id="submitbtn" type="submit" onClick={onClick} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
+                                <button id="submitbtn" type="submit" onClick={onSubmitInner} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
                                     <span className="nremove hidden-xs" >{showHeader ? 'Save ' : null}</span>
                                     <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>
                                 </button>
@@ -90,7 +115,7 @@ export const WritePageBase = ({ entryId = null, functionalDatetime = null }) => 
                             </div>
                         </div>
                         <div className="form-group" style={{ height: '97%' }}>
-                            <textarea className="form-control form-control-inner" id="writeto" name="entry" style={{ marginTop: '20px' }} ></textarea>
+                            <textarea className="form-control form-control-inner" id="writeto" name="entry" style={{ marginTop: '20px' }} defaultValue={text}></textarea>
                         </div>
                         <div className="writeto-display"></div>
                     </div>

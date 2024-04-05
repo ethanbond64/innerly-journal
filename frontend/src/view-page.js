@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Moment from 'react-moment';
-import { homeRoute } from "./constants.js";
+import { editRoute, homeRoute } from "./constants.js";
 import { deleteEntry, fetchEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.js";
 import { ClickOutsideTracker, equalsDate } from "./utils.js";
@@ -107,7 +107,7 @@ export const ViewPage = ({ entryInput = null }) => {
                                             style={{ backgroundColor: (memory ? "#d09500" : "#1cb2b5"), marginTop: "18px" }}>{memory ? "Memory" : "Live"}</span>
                                     </div>
                                     <div className="col-xs-12">
-                                        <a href="TODO EDIT URL">
+                                        <a href={editRoute + entryId}>
                                             <span className="badge badge-secondary">Edit</span>
                                         </a>
                                     </div>

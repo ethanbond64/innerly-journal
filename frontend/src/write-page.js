@@ -1,39 +1,82 @@
-import React from "react";
-import { homeRoute } from "./constants.js";
+import React, { useEffect, useState } from "react";
+import { homeRoute, viewRoute } from "./constants.js";
 import { insertTextEntry } from "./requests.js";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 
 export const WritePage = () => {
+    const { functionalDate } = useParams();
+    return <WritePageBase functionalDate={functionalDate} />;
+};
+
+export const EditPage = () => {
+    const { entryId } = useParams();
+    return <WritePageBase entryId={entryId} />;
+};
+
+export const WritePageBase = ({ entryId = null, functionalDate = null }) => {
 
     const navigate = useNavigate();
+    const [showHeader, setShowHeader] = useState(true);
 
     const onClick = () => {
-        console.log('submit');
-        insertTextEntry(document.getElementById('writeto').value, (data) => console.log(data));
-        navigate(homeRoute);
+        if (entryId) {
+            // TODO update entry
+        } else {
+            insertTextEntry(document.getElementById('writeto').value, (data) => {
+                navigate(viewRoute  + ":" + data.id); 
+            });
+        }
     };
+
+    let timeoutId;
+
+    const handleMouseEnter = () => {
+        clearTimeout(timeoutId);
+        setShowHeader(true);
+    };
+
+    const handleMouseLeave = () => {
+        timeoutId = setTimeout(() => {
+            setShowHeader(false);
+        }, 3500);
+    };
+
+    useEffect(() => {
+
+        // TODO fetch entry if entryId, set text area value
+        console.log(entryId, functionalDate);
+
+        handleMouseLeave();
+
+        return () => {
+            clearTimeout(timeoutId);
+        };
+    }, []); 
 
     return (
         <main style={{ height: `90vh`, padding: '0', marginBottom: '0' }} className="container" >
                 <div className="row text-center" style={{ height: '90%' }}>
                     <div className="col-md-2 hidden-sm hidden-xs text-left" >
-                        <a href={homeRoute}>
-                            <img src="/images/innerly_wordmark_200616_03.png" className="img-responsive md-margin-right" width="170" height="80" id="innerlyImage" title="Innerly" style={{ marginTop: '30px', }} alt="Innerly" />
+                        <a href={homeRoute} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+                            <img src="/images/innerly_wordmark_200616_03.png" style={{ opacity: showHeader ? 1 : 0, marginTop: '30px', }} className="img-responsive md-margin-right" width="170" height="80" id="innerlyImage" title="Innerly" alt="Innerly" />
                         </a>
                     </div>
                     <div className="col-lg-8 col-md-10" style={{ height: '97%' }}>
-                        <div id="session-details" className="writeto-display" style={{ textAlign: 'left', border: 'none', overflow: 'visible', paddingTop: '50px' }}>
+                        <div id="session-details" className="writeto-display" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{ textAlign: 'left', border: 'none', overflow: 'visible', paddingTop: '50px' }}>
                             <div>
                                 <a href={homeRoute} className="btn btn-warning btn-block hidden-xl hidden-lg hidden-md hidden-sm" style={{ width: 'auto', float: 'left' }}>
                                     <b><i className="fa fa-chevron-left" aria-hidden="true"></i></b>
                                     <span>Back</span>
                                 </a>
-                                <span className="disappear hidden-xs" style={{ padding: '12px', }}>Write about any thoughts, experiences, or ideas</span>
+                                <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>Write about any thoughts, experiences, or ideas</span>
                                 <button id="submitbtn" type="submit" onClick={onClick} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
-                                    <span className="nremove hidden-xs" >Save</span>
-                                    <span className="hidden-xl hidden-lg hidden-md hidden-sm">Save</span>
+                                    <span className="nremove hidden-xs" >{showHeader ? 'Save ' : null}</span>
                                     <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>
                                 </button>
+                            </div>
+                            <div id="progressbar">
+                                <div style={{ height: '0px', width: '0%'}}></div>
                             </div>
                         </div>
                         <div className="form-group" style={{ height: '97%' }}>

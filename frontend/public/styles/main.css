@@ -183,6 +183,23 @@ legend {
   background-color: #66CAE2;
   text-align: center;
   border-radius: 50%;
+  cursor: pointer;
+  -webkit-border-radius: 50%;
+  -moz-border-radius: 50%;
+}
+
+#emotion-change {
+  margin-top: 30px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 80px;
+  height: 80px;
+  background-color: #66CAE2;
+  text-align: center;
+  border-radius: 50%;
+  /* display: inline-block; */
+  margin: auto;
+  cursor: pointer;
   -webkit-border-radius: 50%;
   -moz-border-radius: 50%;
 }
@@ -197,6 +214,19 @@ legend {
   /* 50% of parent */
   color: #263859;
   font-weight: bold;
+}
+
+.emotion-center-change {
+  position: relative;
+  top: 32px;
+  /* 25% of parent */
+  font-size: 16px;
+  /* 50% of parent */
+  line-height: 16px;
+  /* 50% of parent */
+  color: #263859;
+  font-weight: bold;
+  /* display: inline-block; */
 }
 
 #emotion-label {

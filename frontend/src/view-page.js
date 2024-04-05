@@ -14,6 +14,8 @@ export const ViewPage = ({ entryInput = null }) => {
     const [entry, setEntry] = useState(entryInput);
     const [title, setTitle] = useState(entry && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null);
     const [editingTitle, setEditingTitle] = useState(false);
+    const [sentiment, setSentiment] = useState("Neutral");
+    const [editingSentiment, setEditingSentiment] = useState(false);
 
     useEffect(() => {
         
@@ -29,6 +31,9 @@ export const ViewPage = ({ entryInput = null }) => {
     useEffect(() => {
         if (entry && entry.entry_data && entry.entry_data.title) {
             setTitle(entry.entry_data.title);
+        }
+        if (entry && entry.entry_data && entry.entry_data.sentiment) {
+            setSentiment(capitalize(entry.entry_data.sentiment));
         }
     }, [entry]);
 
@@ -52,6 +57,12 @@ export const ViewPage = ({ entryInput = null }) => {
         updateTextEntry(entryId, { title }, null, resp => {});
     }
 
+    const onChangeSentiment = (sentiment) => {
+        setEditingSentiment(false);
+        setSentiment(capitalize(sentiment));
+        updateTextEntry(entryId, { sentiment }, null, resp => {});
+    }
+
     const onClickDelete = () => {
         if (window.confirm('Are you sure you want to delete this entry?')) {
             deleteEntry(entryId, resp => {
@@ -60,11 +71,6 @@ export const ViewPage = ({ entryInput = null }) => {
                 }
             });
         }
-    }
-
-    let sentiment = "Neutral";
-    if (entry && entry.entry_data.sentiment) {
-        sentiment = capitalize(entry.entry_data.sentiment);
     }
 
     let text = entry && entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
@@ -137,53 +143,34 @@ export const ViewPage = ({ entryInput = null }) => {
                                     Save
                                 </span>
                             </div>
-                            <div className="modal hide" id="exampleModal" role="dialog" tabindex="-1"
-                                aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                <div className="modal-dialog" role="document">
-                                    <div className="modal-content">
-                                        <div className="modal-header">
-                                            <h3 className="modal-title" id="exampleModalLabel">Correct Emotion</h3>
-                                            <p>Sometimes the model analyzes your emotion and gets it wrong. Help make Innerly better
-                                                by selecting a
-                                                more appropriate emotion.</p>
-                                        </div>
-                                        <div className="modal-body">
-                                            <div className="custom-control custom-radio">
-                                                <input type="radio" id="PositiveSelection" name="emotionSelection" value="Positive"
-                                                    className="custom-control-input" />
-                                                <label className="custom-control-label" for="PositiveSelection"
-                                                    style={{ color: "var(--dm-text)" }}>Positive</label>
-                                            </div>
-                                            <div className="custom-control custom-radio">
-                                                <input type="radio" id="NeutralSelection" name="emotionSelection" value="Neutral"
-                                                    className="custom-control-input" checked />
-                                                <label className="custom-control-label" for="NeutralSelection"
-                                                    style={{ color: "var(--dm-text)" }} > Neutral</label>
-                                            </div>
-                                            <div className="custom-control custom-radio">
-                                                <input type="radio" id="NegativeSelection" name="emotionSelection" value="Negative"
-                                                    className="custom-control-input" />
-                                                <label className="custom-control-label" for="NegativeSelection"
-                                                    style={{ color: "var(--dm-text)" }}>Negative</label>
-                                            </div>
-                                        </div>
-                                        <div className="modal-footer">
-                                            <button type="button" className="btn btn-info" data-dismiss="modal">Close</button>
-                                        </div>
+                            { editingSentiment ?
+                                (<div>
+                                    <div id="emotion-change" onClick={() => onChangeSentiment("positive")} style={{ backgroundColor: getSentimentColor("Positive") }}>
+                                        <h3 className="text-center emotion-center-change" id="originalSentiment" >Positive</h3>
                                     </div>
-                                </div>
-                            </div>
-                            <div>
-                                <div id="emotion-circle" style={{ backgroundColor: getSentimentColor(sentiment), cursor: "pointer" }}>
-                                    <h3 className="text-center emotion-center" id="originalSentiment">{sentiment}</h3>
-                                    <h3 id="emotion-label">Emotion</h3>
-                                </div>
-                                <div className="text-center" style={{
-                                    paddingTop: "10px"
-                                }} >
-                                    <span style={{ color: "var(--dm-text)" }} >(click to change)</span>
-                                </div>
-                            </div>
+                                    <div id="emotion-change" onClick={() => onChangeSentiment("neutral")} style={{ backgroundColor: getSentimentColor("Neutral") }}>
+                                        <h3 className="text-center emotion-center-change" id="originalSentiment">Neutral</h3>
+                                    </div>
+                                    <div id="emotion-change" onClick={() => onChangeSentiment("negative")} style={{ backgroundColor: getSentimentColor("Negative") }}>
+                                        <h3 className="text-center emotion-center-change" id="originalSentiment">Negative</h3>
+                                    </div>
+                                    <div className="text-center" style={{
+                                        paddingTop: "10px"
+                                    }} >
+                                        <span style={{ color: "var(--dm-text)" }} >select preferred sentiment</span>
+                                    </div>
+                                </div>):
+                                (<div>
+                                    <div id="emotion-circle" style={{ backgroundColor: getSentimentColor(sentiment), cursor: "pointer" }} onClick={() => setEditingSentiment(true)}>
+                                        <h3 className="text-center emotion-center" id="originalSentiment">{sentiment}</h3>
+                                        <h3 id="emotion-label">Emotion</h3>
+                                    </div>
+                                    <div className="text-center" style={{
+                                        paddingTop: "10px"
+                                    }} >
+                                        <span style={{ color: "var(--dm-text)" }} >(click to change)</span>
+                                    </div>
+                                </div>)}
                             <hr style={{ marginTop: "40p", fontSize: "1px", background: "#111111", height: "1px", opacity: "0.5" }} />
                             <div id="topiclist">
                                 <h2 style={{ marginTop: "0px", marginBottom: "12px" }} >Tags</h2>

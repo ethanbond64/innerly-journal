@@ -145,20 +145,23 @@ export const ViewPage = ({ entryInput = null }) => {
                             </div>
                             { editingSentiment ?
                                 (<div>
-                                    <div id="emotion-change" onClick={() => onChangeSentiment("positive")} style={{ backgroundColor: getSentimentColor("Positive") }}>
-                                        <h3 className="text-center emotion-center-change" id="originalSentiment" >Positive</h3>
-                                    </div>
-                                    <div id="emotion-change" onClick={() => onChangeSentiment("neutral")} style={{ backgroundColor: getSentimentColor("Neutral") }}>
-                                        <h3 className="text-center emotion-center-change" id="originalSentiment">Neutral</h3>
-                                    </div>
-                                    <div id="emotion-change" onClick={() => onChangeSentiment("negative")} style={{ backgroundColor: getSentimentColor("Negative") }}>
-                                        <h3 className="text-center emotion-center-change" id="originalSentiment">Negative</h3>
-                                    </div>
-                                    <div className="text-center" style={{
-                                        paddingTop: "10px"
-                                    }} >
-                                        <span style={{ color: "var(--dm-text)" }} >select preferred sentiment</span>
-                                    </div>
+                                    <ClickOutsideTracker callback={() => setEditingSentiment(false)}>
+                                        <div id="emotion-change" onClick={() => onChangeSentiment("positive")} style={{ backgroundColor: getSentimentColor("Positive") }}>
+                                            <h3 className="text-center emotion-center-change" id="originalSentiment" >Positive</h3>
+                                        </div>
+                                        <div id="emotion-change" onClick={() => onChangeSentiment("neutral")} style={{ backgroundColor: getSentimentColor("Neutral") }}>
+                                            <h3 className="text-center emotion-center-change" id="originalSentiment">Neutral</h3>
+                                        </div>
+                                        <div id="emotion-change" onClick={() => onChangeSentiment("negative")} style={{ backgroundColor: getSentimentColor("Negative") }}>
+                                            <h3 className="text-center emotion-center-change" id="originalSentiment">Negative</h3>
+                                        </div>
+                                        <div className="text-center" style={{
+                                            paddingTop: "10px"
+                                        }} >
+                                            <span style={{ color: "var(--dm-text)" }} >select preferred sentiment</span>
+                                            
+                                        </div>
+                                    </ClickOutsideTracker>
                                 </div>):
                                 (<div>
                                     <div id="emotion-circle" style={{ backgroundColor: getSentimentColor(sentiment), cursor: "pointer" }} onClick={() => setEditingSentiment(true)}>

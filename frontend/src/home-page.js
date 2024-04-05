@@ -45,7 +45,7 @@ export const HomePage = () => {
         <ImageModal path={imagePath} clear={() => setImagePath(null)} /> :
         null
       }
-      <div className={`wrapper md-margin-top`} style={{ height: '630px' }}>
+      <div className={`wrapper lg-margin-top`} style={{ height: '630px' }}>
         <div className={`container`}>
           <div id="scroller" className="mb-3">
             {list.map((row,i) => row.collapse ? 

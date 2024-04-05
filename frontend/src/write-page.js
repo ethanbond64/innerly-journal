@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Moment from "react-moment";
 import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,22 +11,25 @@ export const WritePage = () => {
 
     const navigate = useNavigate();
     const { functionalDate } = useParams();
+    
+    let functionalDatetime = null;
+
+    if (functionalDate && functionalDate.length === 10 && functionalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const dateParts = functionalDate.split('-');
+        functionalDatetime = getDateNoTime(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    }
 
     const onSubmit = (text) => {
-
-        let functionalDatetime = null;
-
-        if (functionalDate && functionalDate.length === 10 && functionalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const dateParts = functionalDate.split('-');
-            functionalDatetime = getDateNoTime(dateParts[0], dateParts[1] - 1, dateParts[2]);
-        }
 
         insertTextEntry(text, functionalDatetime, (data) => {
             navigate(viewRoute + data.id); 
         });
     }
 
-    return <WritePageBase onSumbit={onSubmit} />;
+    const heading = functionalDatetime ? (<> Write an entry for the date <Moment date={functionalDatetime} format="MMMM Do YYYY" /></>) :
+        "Write about any thoughts, experiences, or ideas";
+
+    return <WritePageBase onSumbit={onSubmit} heading={heading} />;
 };
 
 export const EditPage = () => {
@@ -33,6 +37,8 @@ export const EditPage = () => {
     const navigate = useNavigate();
     const { entryId } = useParams();
     const [text, setText] = useState(null);
+    const [title, setTitle] = useState(null);
+    const [functionalDatetime, setFunctionalDatetime] = useState(null);
     
     useEffect(() => {
         if (!entryId) {
@@ -44,6 +50,8 @@ export const EditPage = () => {
                 navigate(homeRoute);
             }
             setText(data.entry_data.text ? data.entry_data.text : '');
+            setTitle(data.entry_data.title ? data.entry_data.title : null);
+            setFunctionalDatetime(data.functional_datetime ? new Date(data.functional_datetime) : null);
         });
 
     }, [entryId, navigate]);
@@ -56,10 +64,12 @@ export const EditPage = () => {
         }
     };
 
-    return text === null ? null : <WritePageBase onSumbit={onSubmit} text={text} />;
+    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from <Moment date={functionalDatetime} format="MMMM Do YYYY" /></> : null}</>);
+
+    return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} text={text} />;
 };
 
-export const WritePageBase = ({  onSumbit, text = '' }) => {
+export const WritePageBase = ({  onSumbit, heading, text = '' }) => {
 
     const [showHeader, setShowHeader] = useState(true);
 
@@ -106,7 +116,7 @@ export const WritePageBase = ({  onSumbit, text = '' }) => {
                                     <b><i className="fa fa-chevron-left" aria-hidden="true"></i></b>
                                     <span>Back</span>
                                 </a>
-                                <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>Write about any thoughts, experiences, or ideas</span>
+                                <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>{heading}</span>
                                 <button id="submitbtn" type="submit" onClick={onSubmitInner} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
                                     <span className="nremove hidden-xs" >{showHeader ? 'Save ' : null}</span>
                                     <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>

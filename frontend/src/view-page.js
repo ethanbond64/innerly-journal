@@ -4,7 +4,7 @@ import Moment from 'react-moment';
 import { homeRoute } from "./constants.js";
 import { deleteEntry, fetchEntry } from "./requests.js";
 import { BasePage } from "./base-page.js";
-import { ClickOutsideTracker } from "./utils.js";
+import { ClickOutsideTracker, equalsDate } from "./utils.js";
 
 export const ViewPage = ({ entryInput = null }) => {
 
@@ -65,7 +65,7 @@ export const ViewPage = ({ entryInput = null }) => {
     let sentenceCount = text.split(/[.!?]/).length;
 
     let tags = entry && entry.tags ? entry.tags : [];
-    let memory = entry && entry.functional_datetime === entry.created_on;
+    let memory = entry && ! equalsDate(new Date(entry.functional_datetime), new Date(entry.created_on));
     let locked = false;
 
     return (

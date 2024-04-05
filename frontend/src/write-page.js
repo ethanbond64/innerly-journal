@@ -2,11 +2,21 @@ import React, { useEffect, useState } from "react";
 import { homeRoute, viewRoute } from "./constants.js";
 import { insertTextEntry } from "./requests.js";
 import { useNavigate, useParams } from "react-router-dom";
+import { getDateNoTime } from "./utils.js";
 
 
 export const WritePage = () => {
+    
     const { functionalDate } = useParams();
-    return <WritePageBase functionalDate={functionalDate} />;
+
+    let functionalDatetime = null;
+
+    if (functionalDate && functionalDate.length === 10 && functionalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const dateParts = functionalDate.split('-');
+        functionalDatetime = getDateNoTime(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    }
+
+    return <WritePageBase functionalDatetime={functionalDatetime} />;
 };
 
 export const EditPage = () => {
@@ -14,7 +24,7 @@ export const EditPage = () => {
     return <WritePageBase entryId={entryId} />;
 };
 
-export const WritePageBase = ({ entryId = null, functionalDate = null }) => {
+export const WritePageBase = ({ entryId = null, functionalDatetime = null }) => {
 
     const navigate = useNavigate();
     const [showHeader, setShowHeader] = useState(true);
@@ -23,8 +33,9 @@ export const WritePageBase = ({ entryId = null, functionalDate = null }) => {
         if (entryId) {
             // TODO update entry
         } else {
-            insertTextEntry(document.getElementById('writeto').value, (data) => {
-                navigate(viewRoute  + ":" + data.id); 
+            let funcationlDatetimeInput = functionalDatetime ? functionalDatetime.toISOString() : null;
+            insertTextEntry(document.getElementById('writeto').value, funcationlDatetimeInput, (data) => {
+                navigate(viewRoute + data.id); 
             });
         }
     };
@@ -45,7 +56,6 @@ export const WritePageBase = ({ entryId = null, functionalDate = null }) => {
     useEffect(() => {
 
         // TODO fetch entry if entryId, set text area value
-        console.log(entryId, functionalDate);
 
         handleMouseLeave();
 
@@ -80,7 +90,7 @@ export const WritePageBase = ({ entryId = null, functionalDate = null }) => {
                             </div>
                         </div>
                         <div className="form-group" style={{ height: '97%' }}>
-                            <textarea className="form-control form-control-inner" id="writeto" name="entry"></textarea>
+                            <textarea className="form-control form-control-inner" id="writeto" name="entry" style={{ marginTop: '20px' }} ></textarea>
                         </div>
                         <div className="writeto-display"></div>
                     </div>

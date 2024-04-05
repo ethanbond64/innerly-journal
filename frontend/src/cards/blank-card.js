@@ -2,18 +2,21 @@ import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { insertLinkEntry, insertFileEntry } from "../requests.js";
 import { writeRoute } from "../constants.js";
-import { equalsDate } from "../utils.js";
+import { dateToString, equalsDate, getTodaysDate } from "../utils.js";
 
 export const BlankCard = ({ datetime, replace }) => {
 
-    let today = false;
+    let today = equalsDate(getTodaysDate(), datetime);
     const imageRef = useRef(null);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
 
     const onClickWrite = () => {
-        console.log('Write button clicked');
-        navigate(writeRoute);
+        let param = "";
+        if (!today) {
+            param = "/" + dateToString(datetime);
+        }
+        navigate(writeRoute + param);
     }
 
     const wrappedReplace = (data) => {

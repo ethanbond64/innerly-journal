@@ -16,7 +16,7 @@ export const ImageCard = ({ entry, setPath, replace }) => {
     const onClickDelete = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (replace) {
+        if (replace && window.confirm("Are you sure you want to delete this entry?")) {
             deleteEntry(entry.id, (resp) => {
                 if (resp) {
                     replace({ entry_type: 'blank' });
@@ -31,7 +31,7 @@ export const ImageCard = ({ entry, setPath, replace }) => {
                 backgroundImage: `url(${url})`, padding: '0px', backgroundPosition: 'center', backgroundSize: 'cover'
             }} className={`well swell entryLoaded`} id="unit" >
                 <button className="delButton" onClick={onClickDelete} style={{ 'color': 'transparent' }}>
-                    <i className={`fa fa-trash-o`} style={{ color: 'var(--dm-text)' }} aria-hidden="true"></i>
+                    <i className={`fa fa-trash-o`} style={{ color: 'white' }} aria-hidden="true"></i>
                     delete
                 </button>
             </div>

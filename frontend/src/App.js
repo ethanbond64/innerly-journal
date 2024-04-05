@@ -27,7 +27,7 @@ export const App = () => {
       <Route path={signupRoute} element={<SignUpPage />} />
       <Route path={homeRoute} element={<AuthenticationGuard component={HomePage} />} />
       <Route path={writeRoute} element={<AuthenticationGuard component={WritePage} />} />
-      {/* <Route path={writeRoute+"/:functionalDate"} element={<AuthenticationGuard component={WritePage} />} /> */}
+      <Route path={writeRoute+"/:functionalDate"} element={<AuthenticationGuard component={WritePage} />} />
       <Route path={viewRoute+":entryId"} element={<AuthenticationGuard component={ViewPage} />} />
       <Route path={editRoute+":entryId"} element={<AuthenticationGuard component={EditPage} />} />
       <Route path={settingsRoute} element={<AuthenticationGuard component={SettingsPage} />} />

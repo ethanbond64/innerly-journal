@@ -23,27 +23,26 @@ export const SettingsPage = () => {
                 <div class="col-md-4 md-margin-top">
                     <h2>Settings</h2>
                     <h4 class="text-muted margin-bottom">ethanbond39@gmail.com</h4>
-
+                    <div class="well" style={{ height: '65px' }}>
+                        <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Dark Mode</h4>
+                        <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
+                            <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={initialTheme}/>
+                            <label id="swtichlabel" for="switch">Toggle</label>
+                        </div>
+                    </div>
                     <div class="list-group well">
                         <a href="/settings/update_credentials" class="list-group-item">
                             Click here to update email or password
                         </a>
                     </div>
                     <div class="well">
-                        <h4>Dark Mode</h4>
-                        <div class="toggle-container">
-                            <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={initialTheme}/>
-                            <label id="swtichlabel" for="switch">Toggle</label>
-                        </div>
-                    </div>
-                    <div class="well">
                         <h4>Text Sensitivity</h4>
-                        <input type="radio" id="default" name="sensitivity" value="default" />
-                        <label for="default">Default - Show titles, Show thumbnails</label>
-                        <input type="radio" id="blur" name="sensitivity" value="blur" checked="" />
-                        <label for="blur">Blur - Show titles, Blur thumbnails</label>
-                        <input type="radio" id="both" name="sensitivity" value="both" />
-                        <label for="both">Both - Hide titles, Blur thumbnails</label>
+                        <label for="default" className="radioLabel">Default - Show titles, Show thumbnails</label>
+                        <input type="radio" id="default" name="sensitivity" value="default" className="radioInline"/>
+                        <label for="blur" className="radioLabel">Blur - Show titles, Blur thumbnails</label>
+                        <input type="radio" id="blur" name="sensitivity" value="blur" className="radioInline" />
+                        <label for="both" className="radioLabel">Both - Hide titles, Blur thumbnails</label>
+                        <input type="radio" id="both" name="sensitivity" value="both" className="radioInline" />
                         <hr style={{ fontSize: '1px', background: '#111111', height: '1px', opacity: '0.5'}} />
                         <h4>Locking Entries</h4>
                         <p>Locked entries will be encrypted with a passcode. The passcode must be made of

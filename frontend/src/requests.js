@@ -39,7 +39,7 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
     });
 };
 
-export const insertTextEntry = async (text, callback, functional_datetime = null, onError = (e) => {}) => {
+export const insertTextEntry = async (text, functional_datetime, callback, onError = (e) => {}) => {
     axios.post('http://localhost:8000/api/insert/entries', {
         entry_type: 'text',
         entry_data: {

@@ -794,6 +794,15 @@ label {
   width: 45px;
 }
 
+.radioLabel {
+  padding-right: 6px;
+}
+
+.radioInline {
+  float: right;
+  padding-right: 15px;
+}
+
 .navbar {
   padding-top: 20px;
   padding-bottom: 10px;

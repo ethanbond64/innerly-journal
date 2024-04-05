@@ -89,6 +89,8 @@ export const WritePageBase = ({  onSumbit, text = '' }) => {
         onSumbit(text);
     }
 
+    // TODO title on edit
+
     return (
         <main style={{ height: `90vh`, padding: '0', marginBottom: '0' }} className="container" >
                 <div className="row text-center" style={{ height: '90%' }}>

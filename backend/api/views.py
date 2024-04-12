@@ -4,7 +4,7 @@ from flask import Blueprint, request, send_from_directory
 from sqlalchemy import String, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename
-from api.models import User, Entry, Tag, get_datetime
+from api.models import EntryTagXref, User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
@@ -45,8 +45,8 @@ def signup():
     password = body.get('password')
     share = body.get('share', None)
 
-    if share is None or share != share_transient:
-        return {'message': 'Unauthorized'}, 401
+    # if share is None or share != share_transient:
+    #     return {'message': 'Unauthorized'}, 401
 
     if email is None or password is None:
         return {'message': 'Email or password missing'}, 400
@@ -189,10 +189,10 @@ def insert_entry(current_user):
         entry_data, tags = process_link_entry(current_user.id, link)
 
     functional_datetime = body.get('functional_datetime', get_datetime())
-    new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, tags=tags, functional_datetime=functional_datetime)
+    new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, functional_datetime=functional_datetime)
     new_entry.save()
 
-    upsert_tags(tags, current_user.id)
+    upsert_tags(tags, current_user.id, new_entry.id)
 
     return {'data': new_entry.json(signer=sign_filename)}, 201
 
@@ -236,7 +236,7 @@ def update_entry(current_user, id):
     if tags is not None:
         entry.update(tags=tags)
         changes = True
-        tags = upsert_tags(tags, current_user.id)
+        tags = upsert_tags(tags, current_user.id, entry.id)
 
     
     if changes:
@@ -258,13 +258,13 @@ def fetch_entries(current_user):
     if search:
         # Search titles and tags
         query = query.filter(or_(
-            cast(Entry.entry_data.op('->>')('title'), String).ilike(f'%{search}%'),
-            Entry.tags.any(search) # TODO this is exact match case sensitive
+            cast(Entry.entry_data.op('->>')('title'), String).ilike(f'%{search}%')
+            # Entry.tags.any(search) # TODO this is exact match case sensitive
         ))
 
-    if tag:
-        # Exact tag search
-        query = query.filter(func.array_contains(Entry.tags, tag))
+    # if tag:
+    #     # Exact tag search
+    #     query = query.filter(func.array_contains(Entry.tags, tag))
 
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
@@ -350,15 +350,20 @@ def submit_task(current_user, task):
 
     return {'success': True}, 200
 
-def upsert_tags(tags, user_id):
+def upsert_tags(tags, user_id, entry_id):
+    
     tags = [tag.lower() for tag in tags]
     existing_tags = Tag.query.filter(Tag.user_id == user_id, Tag.name.in_(tags)).all()
     existing_tags = {tag.name: tag for tag in existing_tags}
-    for tag in list(tags):
+    
+    for tag in tags:
         if tag not in existing_tags:
-            Tag(user_id=user_id, name=tag, usages=1).save()
+            new_tag = Tag(user_id=user_id, name=tag, usages=1)
+            new_tag.save()
+
+            EntryTagXref(entry_id=entry_id, tag_id=new_tag.id).save()
         else: 
-            existing_tags[tag].usages += 1
-            existing_tags[tag].save()
+            EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
+
     return tags
 

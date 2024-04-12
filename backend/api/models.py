@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from api.extensions import db
-from sqlalchemy import ARRAY, String
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm.attributes import flag_modified
 
 PREIVEW_LENGTH = 64
@@ -62,7 +61,6 @@ class Entry(db.Model, BaseModel):
     functional_datetime = db.Column(db.DateTime(), default=get_datetime, index=True)
     entry_type = db.Column(db.String(64), nullable=False, default='text')
     entry_data = db.Column(JSON, nullable=False, default='{}')
-    tags = db.Column(ARRAY(String), nullable=False, default=[])
 
     def json(self, signer = None):
         j = super().json()
@@ -87,3 +85,12 @@ class Tag(db.Model, BaseModel):
     name = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     usages = db.Column(db.Integer, default=0)
+
+
+class EntryTagXref(db.Model, BaseModel):
+    __tablename__ = 'entry_tag_xref'
+    __table_args__ = (db.UniqueConstraint('entry_id', 'tag_id', name='_entry_tag_uc'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'), nullable=False)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)

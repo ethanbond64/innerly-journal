@@ -10,7 +10,6 @@ from api.utils import safe_get_env_var
 
 load_dotenv()
 
-
 def create_app():
     client_origin_url = safe_get_env_var("CLIENT_ORIGIN_URL")
 

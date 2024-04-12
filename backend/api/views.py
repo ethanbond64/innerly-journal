@@ -262,7 +262,7 @@ def fetch_entries(current_user):
             # Entry.tags.any(search) # TODO this is exact match case sensitive
         ))
 
-    # if tag:
+    # if tag:TODO seach by tag
     #     # Exact tag search
     #     query = query.filter(func.array_contains(Entry.tags, tag))
 

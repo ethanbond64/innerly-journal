@@ -37,7 +37,6 @@ class BaseModel(object):
     def json(self):
         return {c.name: getattr_typed(self, c.name) for c in self.__table__.columns}
 
-
 class User(db.Model, BaseModel):
     __tablename__ = 'users'
     
@@ -84,8 +83,6 @@ class Tag(db.Model, BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    usages = db.Column(db.Integer, default=0)
-
 
 class EntryTagXref(db.Model, BaseModel):
     __tablename__ = 'entry_tag_xref'

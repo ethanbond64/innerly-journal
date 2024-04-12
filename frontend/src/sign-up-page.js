@@ -8,14 +8,13 @@ export const SignUpPage = () => {
 
     // eslint-disable-next-line
     const [searchParams, _] = useSearchParams();
+    const [share, setShare] = useState(null);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const share = searchParams.get('share');
-        if (!share) {
-            setError("Invalid login link. Contact admin. A valid sign-up link with look like /signup?share=abc.");
-        }
+        let shareLocal = searchParams.get('share');
+        setShare(shareLocal);
     }, [searchParams]);
 
     const onSubmit = (e) => {
@@ -23,7 +22,13 @@ export const SignUpPage = () => {
         console.log('submit');
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const share = searchParams.get('share');
+        const password_confirm = document.getElementById('password_confirm').value;
+
+        if (password !== password_confirm) {
+            setError("Passwords do not match.");
+            return;
+        }
+        
          axios.post('http://localhost:8000/api/signup', { email, password, share }).then((response) => {
             if (response.data.token && response.data.user) {
                 setToken(response.data.token);
@@ -72,9 +77,19 @@ export const SignUpPage = () => {
                     </div>
                     <div class="form-group sm-margin-bottom">
                         <label for="password_confirm">
-                            Confirm Password
+                            <strong>Confirm Password</strong>
                         </label>
                         <input class="form-control" id="password_confirm" maxlength="128" minlength="8" name="password_confirm" type="password" placeholder="" />
+                    </div>
+                    <div class="form-group sm-margin-bottom">
+                        <label for="password_confirm">
+                            <strong>Share token</strong>
+                        </label>
+                        {
+                            share? 
+                            <input class="form-control" id="share_token" maxlength="128" minlength="8" name="share_token" type="text" value={share} disabled /> :
+                            <input class="form-control" id="share_token" maxlength="128" minlength="8" name="share_token" type="text" placeholder='Share token will look like 123-456-789-000'/>
+                        }
                     </div>
                     <div class="row">
                         <div class="col-md-6">

@@ -33,9 +33,3 @@ def create_app():
     app.register_blueprint(views, url_prefix='/api')
 
     return app
-
-
-liveapp = create_app()
-
-if __name__ == "__main__":
-    liveapp.run(debug=False, host="0.0.0.0", port=8000)

@@ -24,7 +24,7 @@ const handleUnauthorized = () => {
     window.location.href = loginRoute;
 };
 
-export const updatePassword = (oldPassword, newPassword, callback, onError) => {
+export const updatePassword = async (oldPassword, newPassword, callback, onError) => {
     axios.post('http://localhost:8000/api/update_password', { 
         current_password: oldPassword, 
         new_password: newPassword 
@@ -38,6 +38,17 @@ export const updatePassword = (oldPassword, newPassword, callback, onError) => {
         } else {
             onError("Unable to update password.");
         }
+    });
+};
+
+export const updateUser = async (userId, data, callback, onError = (e) => {}) => {
+    axios.post(`http://localhost:8000/api/update/users/${userId}`, data, {
+        headers: getHeaders()
+    }).then((response) => {
+        callback(response.data.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
     });
 };
 

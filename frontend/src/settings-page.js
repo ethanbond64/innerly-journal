@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BasePage } from "./base-page.js";
-import { getUserData, clearLocalStorage } from "./utils.js";
+import { getUserData, setUserData, clearLocalStorage } from "./utils.js";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.js";
 import { Notification } from "./notification.js";
-import { updatePassword } from "./requests.js";
+import { updatePassword, updateUser } from "./requests.js";
 
 export const SettingsPage = () => {
 
     const navigate = useNavigate();
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-    const [userData, setUserData] = useState(null);
+    const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
     const initialTheme = localStorage.getItem("color-theme") === "dark";
 
@@ -48,10 +48,18 @@ export const SettingsPage = () => {
         });
     };
 
+    const onSelectSensitivity = (e) => {
+        let newSensitivity = e.target.value;
+        updateUser(userData.id, { settings: { sensitivity: newSensitivity } }, (data) => {
+            setUserData(data);
+            setUserDataComponent(data);
+        });
+    };
+
     useEffect(() => {
         let localUserData = getUserData();
         if (localUserData) {
-            setUserData(localUserData);
+            setUserDataComponent(localUserData);
         } else {
             clearLocalStorage();
             navigate(loginRoute);
@@ -62,6 +70,8 @@ export const SettingsPage = () => {
     if (!userData) {
         return <PageLoader />;
     }
+
+    let sensitivity = userData && userData.settings && userData.settings.sensitivity ? userData.settings.sensitivity : "default";
 
     return (
         <BasePage>
@@ -109,19 +119,11 @@ export const SettingsPage = () => {
                     <div class="well">
                         <h4>Text Sensitivity</h4>
                         <label for="default" className="radioLabel">Default - Show titles, Show thumbnails</label>
-                        <input type="radio" id="default" name="sensitivity" value="default" className="radioInline"/>
+                        <input type="radio" id="default" name="sensitivity" value="default" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "default"}/>
                         <label for="blur" className="radioLabel">Blur - Show titles, Blur thumbnails</label>
-                        <input type="radio" id="blur" name="sensitivity" value="blur" className="radioInline" />
+                        <input type="radio" id="blur" name="sensitivity" value="blur" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "blur"} />
                         <label for="both" className="radioLabel">Both - Hide titles, Blur thumbnails</label>
-                        <input type="radio" id="both" name="sensitivity" value="both" className="radioInline" />
-                        {/* <hr style={{ fontSize: '1px', background: '#111111', height: '1px', opacity: '0.5'}} />
-                        <h4>Locking Entries</h4>
-                        <p>Locked entries will be encrypted with a passcode. The passcode must be made of
-                            6 unique numbers. Set and reset here:</p>
-                        <div style={{ marginTop: '10px', textAlign: 'center'}}>
-                            <button class="btn btn-md btn-info" type="button" data-toggle="modal" data-target="#resetModal">Reset
-                                Passcode</button>
-                        </div> */}
+                        <input type="radio" id="both" name="sensitivity" value="both" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "both"} />
                     </div>
                 </div>
                 <div class="col-md-4"></div>

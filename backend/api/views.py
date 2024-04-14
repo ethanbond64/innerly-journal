@@ -1,4 +1,6 @@
 import uuid
+import json
+from ast import literal_eval
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory
 
@@ -133,9 +135,12 @@ def update_user(current_user, id):
     if input_settings is not None:
         update_settings = user.settings
         if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'blocked']:
+            print(update_settings)
+            print(type(update_settings))
             update_settings['sensitivity'] = input_settings['sensitivity']
         # TODO passcode
-        user.settings = update_settings
+        user.update(settings=update_settings)
+        # print(user.settings)
         user.save()
 
     return {'data': user.json()}, 200

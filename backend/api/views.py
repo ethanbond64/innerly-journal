@@ -2,14 +2,13 @@ import uuid
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory
 
-from sqlalchemy import String, cast, func, or_
+from sqlalchemy import String, cast, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename, validate_email, validate_password
 from api.models import EntryTagXref, User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
-from api.extensions import db
 from api.tasks import submitImportEntriesTask
 
 views = Blueprint('views', __name__)
@@ -370,7 +369,7 @@ def upsert_tags(tags, user_id, entry_id):
         
         for tag in tags:
             if tag not in existing_tags:
-                new_tag = Tag(user_id=user_id, name=tag, usages=1)
+                new_tag = Tag(user_id=user_id, name=tag)
                 new_tag.save()
 
                 EntryTagXref(entry_id=entry_id, tag_id=new_tag.id).save()

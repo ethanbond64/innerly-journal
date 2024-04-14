@@ -63,6 +63,10 @@ class Entry(db.Model, BaseModel):
 
     def json(self, signer = None):
         j = super().json()
+
+        tags = Tag.query.join(EntryTagXref, Tag.id == EntryTagXref.tag_id).filter(EntryTagXref.entry_id == self.id).all()
+        j['tags'] = [tag.name for tag in tags]
+
         if signer != None and 'entry_data' in j and 'path' in j['entry_data']:
             if j['entry_data'].get('file_type') != 'external':
                 path = j['entry_data']['path']

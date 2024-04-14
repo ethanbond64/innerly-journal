@@ -7,7 +7,7 @@ from werkzeug.datastructures import FileStorage
 
 from api.security import json_abort
 from api.processors.entry_models import FileEntryData
-from api.models import User
+from api.settings import INNERLY_DIRECTORY
 
 JPG = 'jpg'
 PNG = 'png'
@@ -16,7 +16,6 @@ JPEG = 'jpeg'
 ALLOWED_EXTENSIONS = {JPG, PNG, GIF, JPEG}
 JPEG_MARK = b'\xff\xd8\xff\xe2\x02\x1cICC_PROFILE\x00\x01\x01\x00\x00\x02\x0clcms\x02\x10\x00\x00'
 
-BASE_DIRECTORY = os.path.expanduser('~/.innerly/') # TODO ADD USER and get this dynamically
 STATIC_DIRECTORY = 'static/'
 USER_DIRECTORY_PREFIX = 'user-'
 
@@ -29,7 +28,9 @@ def process_file_entry(user_id, file) -> tuple:
 # Validates the file, saves it to the file system and returns the path, file type, and original filename
 def save_file(user_id, file: FileStorage) -> tuple:
 
+    print("save_file")
     original_filename, extension = parse_file(file)
+    print(original_filename, extension)
         
     directory = get_user_directory(user_id)
     new_filename = str(uuid4()) + '.' + extension
@@ -41,6 +42,8 @@ def save_file(user_id, file: FileStorage) -> tuple:
     file.save(true_path)
 
     path = get_public_path(new_filename)
+
+    print(path, original_filename, extension)
 
     return path, original_filename, extension
     
@@ -57,12 +60,12 @@ def delete_file(user_id, path):
 def parse_file(file):
 
     filename = secure_filename(file.filename)
-
+    print(filename)
     if filename != '':
 
         file_ext_valid = validate_image(file.stream)
         
-        if not allowed_file(filename) or file_ext_valid == None:
+        if file_ext_valid not in ALLOWED_EXTENSIONS:
 
             json_abort(400)
         
@@ -87,16 +90,13 @@ def validate_image(stream):
     
     return file_format
 
-
-# CUSTOM BASED ON HEIC CONVERTED TO JPG, I MADE THIS, NEEDS TESTING
 def test_jpeg2(h):
-    '''JPEG with heic? header'''
     if len(h) >= 32 and h[:32] == JPEG_MARK:
         return JPG
     return None
 
 def get_user_directory(user_id):
-    return os.path.join(BASE_DIRECTORY, STATIC_DIRECTORY, USER_DIRECTORY_PREFIX + str(user_id))
+    return os.path.join(INNERLY_DIRECTORY, STATIC_DIRECTORY, USER_DIRECTORY_PREFIX + str(user_id))
 
 def get_public_path(filename):
     return os.path.join(STATIC_DIRECTORY, filename)

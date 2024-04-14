@@ -6,11 +6,10 @@ DEBUG = False
 SECRET_KEY = os.getenv("SECRET_KEY")
 SERVER_NAME = os.getenv("SERVER_NAME")
 
-user_home = os.path.expanduser("~")
-db_dir = os.path.join(user_home, '.innerly')
+INNERLY_DIRECTORY = os.path.join(os.path.expanduser("~"), '.innerly')
 
 # Sqlalchemy
-SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(db_dir, 'database.db')
+SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(INNERLY_DIRECTORY, 'database.db')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENGINE_OPTIONS = {
     'pool_pre_ping': True,      # Check if the connection is alive before using it

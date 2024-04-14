@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, func, or_
@@ -188,7 +189,10 @@ def insert_entry(current_user):
         
         entry_data, tags = process_link_entry(current_user.id, link)
 
-    functional_datetime = body.get('functional_datetime', get_datetime())
+    functional_datetime = body.get('functional_datetime')
+    if functional_datetime is not None:
+        functional_datetime = datetime.strptime(functional_datetime, '%Y-%m-%dT%H:%M:%S.%fZ')
+
     new_entry = Entry(user_id=current_user.id, entry_type=entry_type, entry_data=entry_data, functional_datetime=functional_datetime)
     new_entry.save()
 
@@ -352,18 +356,20 @@ def submit_task(current_user, task):
 
 def upsert_tags(tags, user_id, entry_id):
     
-    tags = [tag.lower() for tag in tags]
-    existing_tags = Tag.query.filter(Tag.user_id == user_id, Tag.name.in_(tags)).all()
-    existing_tags = {tag.name: tag for tag in existing_tags}
-    
-    for tag in tags:
-        if tag not in existing_tags:
-            new_tag = Tag(user_id=user_id, name=tag, usages=1)
-            new_tag.save()
+    if tags is not None and len(tags) > 0:
 
-            EntryTagXref(entry_id=entry_id, tag_id=new_tag.id).save()
-        else: 
-            EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
+        tags = [tag.lower() for tag in tags]
+        existing_tags = Tag.query.filter(Tag.user_id == user_id, Tag.name.in_(tags)).all()
+        existing_tags = {tag.name: tag for tag in existing_tags}
+        
+        for tag in tags:
+            if tag not in existing_tags:
+                new_tag = Tag(user_id=user_id, name=tag, usages=1)
+                new_tag.save()
 
-    return tags
+                EntryTagXref(entry_id=entry_id, tag_id=new_tag.id).save()
+            else: 
+                EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
+
+        return tags
 

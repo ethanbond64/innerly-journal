@@ -18,10 +18,9 @@ class FileEntryData(BaseEntryData):
 
 
 class LinkEntryData(BaseEntryData):
-    def __init__(self, title: str, path: str, original_path: str, file_type: str, link: str, site: str):
+    def __init__(self, title: str, path: str, original_path: str, file_type: str, link: str):
         self.title = title
         self.path = path
         self.original_path = original_path
         self.file_type = file_type
         self.link = link
-        self.site = site

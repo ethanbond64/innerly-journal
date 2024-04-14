@@ -64,9 +64,10 @@ class Entry(db.Model, BaseModel):
     def json(self, signer = None):
         j = super().json()
         if signer != None and 'entry_data' in j and 'path' in j['entry_data']:
-            path = j['entry_data']['path']
-            signature = signer(path, self.user_id)
-            j['entry_data']['path'] = str(path) + '?signature=' + signature
+            if j['entry_data'].get('file_type') != 'external':
+                path = j['entry_data']['path']
+                signature = signer(path, self.user_id)
+                j['entry_data']['path'] = '/api/' + str(path) + '?signature=' + signature
         return j
 
 

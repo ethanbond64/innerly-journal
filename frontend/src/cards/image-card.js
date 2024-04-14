@@ -4,8 +4,9 @@ import { deleteEntry } from "../requests";
 
 export const ImageCard = ({ entry, setPath, replace, heading = null, footerImage = null, footerImageSize = null }) => {
     
-    const baseUrl = "http://localhost:8000/api/";
-    const url = baseUrl + entry.entry_data.path;
+    const baseUrl = "http://localhost:8000";
+    const path = entry.entry_data.path;
+    const url = path.includes('https://') ? path : baseUrl + path;
 
     const onClick = () => {
         if (setPath) {

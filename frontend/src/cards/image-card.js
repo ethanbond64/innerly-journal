@@ -2,7 +2,7 @@ import React from "react";
 import { deleteEntry } from "../requests";
 
 
-export const ImageCard = ({ entry, setPath, replace, heading = null, footerImage = null, footerImageSize = null }) => {
+export const ImageCard = ({ entry, setPath, replace, heading = null, footer = null }) => {
     
     const baseUrl = "http://localhost:8000";
     const path = entry.entry_data.path;
@@ -36,8 +36,8 @@ export const ImageCard = ({ entry, setPath, replace, heading = null, footerImage
                     delete
                 </button>
                 {heading && <div id="media-title" className="mediaLabel">{heading}</div>}
-                {footerImage && <div className={`mediaLabel mediaBottom`} >
-                    <img id="logo-image" alt="" src={footerImage} style={{ height: footerImageSize }}/>
+                {footer && <div className={`mediaLabel mediaBottom`} >
+                    <span>{footer}</span>
                     <i className={`fa fa-chevron-right hidden-xs`} aria-hidden="true" style={{ float: 'right', paddingTop: '4px' }}></i>
                 </div>}
             </div>

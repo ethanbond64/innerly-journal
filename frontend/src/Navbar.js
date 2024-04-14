@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearLocalStorage, ClickOutsideTracker } from "./utils.js";
-import { adminRoute, homeRoute, settingsRoute } from "./constants.js";
+import { adminRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 
 export const Navbar = ({ setSearch, user }) => {
 
@@ -28,7 +28,7 @@ export const Navbar = ({ setSearch, user }) => {
     const logOut = (e) => {
         e.preventDefault();
         clearLocalStorage();
-        navigate('/login');
+        navigate(loginRoute);
     };
 
     let initial = user.email.charAt(0).toUpperCase();

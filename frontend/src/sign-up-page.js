@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { setToken, setUserData } from './utils.js';
 import { homeRoute, loginRoute } from './constants.js';
+import { Notification } from './notification.js';
 
 export const SignUpPage = () => {
 
@@ -51,16 +52,7 @@ export const SignUpPage = () => {
             <a href={homeRoute}>
                 <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
-            {error == null ? null : 
-            <div id="flash-messages" class="row sm-margin-top">
-                <div class="alert alert-error alert-dismissible md-margin-top" role="alert">
-                    {error}
-                <button type="button" className="close nondrag" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
-                </div>  
-            </div>
-            }
+            <Notification message={error} clear={() => setError(null)} />
             <div class="row">
                 <div class="col-md-3"></div>
                 <div class="col-md-6 md-margin-top well nondrag">

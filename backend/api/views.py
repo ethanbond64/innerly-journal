@@ -86,7 +86,7 @@ def login():
 
     return {'token': token, 'user': user.json()}, 200
 
-@views.route('/change_password', methods=['POST'])
+@views.route('/update_password', methods=['POST'])
 @login_required
 def reset_password(current_user):
 
@@ -100,7 +100,7 @@ def reset_password(current_user):
         return {'message': 'Bad request missing old or new password.'}, 400
     
     if not authenticated(current_user, current_password):
-        return {'message': 'Unauthorized'}, 401
+        return {'message': 'Current password incorrect.'}, 401
     
     current_user.password_hash = encrypt_password(new_password)
     current_user.save()

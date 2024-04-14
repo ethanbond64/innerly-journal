@@ -1,8 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { BasePage } from "./base-page.js";
+import { getUserData, clearLocalStorage } from "./utils.js";
+import { loginRoute } from "./constants.js";
+import { PageLoader } from "./page-loader.js";
+import { Notification } from "./notification.js";
+import { updatePassword } from "./requests.js";
 
 export const SettingsPage = () => {
 
+    const navigate = useNavigate();
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+    const [userData, setUserData] = useState(null);
+    const [editingPassword, setEditingPassword] = useState(false);
     const initialTheme = localStorage.getItem("color-theme") === "dark";
 
     const onChangeTheme = (e) => {
@@ -15,14 +26,53 @@ export const SettingsPage = () => {
         }
     };
 
+    const onClickUpdatePassword = () => {
+        let oldPassword = document.getElementById('oldPassword').value;
+        let newPassword = document.getElementById('newPassword').value;
+        let newPasswordConfirm = document.getElementById('newPasswordConfirm').value;
+        
+        if (!oldPassword || !newPassword || !newPasswordConfirm) {
+            setError("Please fill out all fields to update password.");
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            setError("New passwords do not match.");
+            return;
+        }
+        
+        updatePassword(oldPassword, newPassword, () => {
+            setSuccess("Password updated successfully.");
+            setEditingPassword(false);
+        }, (e) => {
+            setError(e);
+        });
+    };
+
+    useEffect(() => {
+        let localUserData = getUserData();
+        if (localUserData) {
+            setUserData(localUserData);
+        } else {
+            clearLocalStorage();
+            navigate(loginRoute);
+        }
+    }, []);
+
+
+    if (!userData) {
+        return <PageLoader />;
+    }
+
     return (
         <BasePage>
             <div class="md-margin-top"></div>
+            <Notification message={error} clear={() => setError(null)} type="error" />
+            <Notification message={success} clear={() => setSuccess(null)} type="success" />
             <div class="row">
                 <div class="col-md-4"></div>
                 <div class="col-md-4 md-margin-top">
                     <h2>Settings</h2>
-                    <h4 class="text-muted margin-bottom">ethanbond39@gmail.com</h4>
+                    <h4 class="text-muted margin-bottom">{userData.email}</h4>
                     <div class="well" style={{ height: '65px' }}>
                         <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Dark Mode</h4>
                         <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
@@ -31,9 +81,30 @@ export const SettingsPage = () => {
                         </div>
                     </div>
                     <div class="list-group well">
-                        <a href="/settings/update_credentials" class="list-group-item">
-                            Click here to update email or password
-                        </a>
+                        <h4>Credentials</h4>
+                        { editingPassword ?
+                        <>
+                            <div class="form-group sm-margin-bottom">
+                                <label for="password"><strong>Current Password</strong>
+                                </label>
+                                <input class="form-control" id="oldPassword" maxlength="128" minlength="8" name="oldPassword" required="" type="password" placeholder="" />
+                            </div>
+                            <div class="form-group sm-margin-bottom">
+                                <label for="password"><strong>New Password</strong>
+                                </label>
+                                <input class="form-control" id="newPassword" maxlength="128" minlength="8" name="newPassword" required="" type="password" placeholder="" />
+                            </div>
+                            <div class="form-group sm-margin-bottom">
+                                <label for="newPasswordConfirm">
+                                    <strong>Confirm New Password</strong>
+                                </label>
+                                <input class="form-control" id="newPasswordConfirm" maxlength="128" minlength="8" name="newPasswordConfirm" type="password" placeholder="" />
+                                <button onClick={onClickUpdatePassword} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px'}}>Update</button>
+                            </div>
+                        </> : 
+                        <span onClick={() => setEditingPassword(true)} class="list-group-item" style={{ cursor: 'pointer' }}>
+                            Click here to update password
+                        </span>}
                     </div>
                     <div class="well">
                         <h4>Text Sensitivity</h4>
@@ -43,14 +114,14 @@ export const SettingsPage = () => {
                         <input type="radio" id="blur" name="sensitivity" value="blur" className="radioInline" />
                         <label for="both" className="radioLabel">Both - Hide titles, Blur thumbnails</label>
                         <input type="radio" id="both" name="sensitivity" value="both" className="radioInline" />
-                        <hr style={{ fontSize: '1px', background: '#111111', height: '1px', opacity: '0.5'}} />
+                        {/* <hr style={{ fontSize: '1px', background: '#111111', height: '1px', opacity: '0.5'}} />
                         <h4>Locking Entries</h4>
                         <p>Locked entries will be encrypted with a passcode. The passcode must be made of
                             6 unique numbers. Set and reset here:</p>
                         <div style={{ marginTop: '10px', textAlign: 'center'}}>
                             <button class="btn btn-md btn-info" type="button" data-toggle="modal" data-target="#resetModal">Reset
                                 Passcode</button>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
                 <div class="col-md-4"></div>

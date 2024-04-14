@@ -1,20 +1,22 @@
 import React from "react";
 import Moment from 'react-moment';
 import { useNavigate } from "react-router-dom";
-import { equalsDate } from "../utils";
+import { equalsDate, getUserData } from "../utils";
 
 export const TextCard = ({ entry }) => {
 
     const navigate = useNavigate();
+    const userData = getUserData();
 
-    let sensitive = false;
-    let title = entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null;
+    let sensitive = userData && userData.settings && (userData.settings.sensitivity === 'blur' ||userData.settings.sensitivity === 'both' );
+    let sensitiveTitle = userData && userData.settings && userData.settings.sensitivity === 'both';
+    let title = !sensitiveTitle && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null;
         
     if (title === null) {
         let functionalDate = new Date(entry.functional_datetime);
-        let memory = equalsDate(functionalDate, new Date(entry.created_on));
+        let memory = !equalsDate(functionalDate, new Date(entry.created_on));
 
-        title = memory ? "Untitled Memory" : (<Moment date={functionalDate} format="h A" />)
+        title = memory && !sensitiveTitle ? "Untitled Memory" : (<Moment date={functionalDate} format="h A" />)
     }
 
     const color = getColor(entry.entry_data.sentiment);

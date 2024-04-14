@@ -1,6 +1,4 @@
 import uuid
-import json
-from ast import literal_eval
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory
 
@@ -134,7 +132,7 @@ def update_user(current_user, id):
     input_settings = body.get('settings')
     if input_settings is not None:
         update_settings = user.settings
-        if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'blocked']:
+        if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'both']:
             print(update_settings)
             print(type(update_settings))
             update_settings['sensitivity'] = input_settings['sensitivity']

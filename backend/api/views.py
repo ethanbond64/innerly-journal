@@ -4,7 +4,7 @@ from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, func, or_
 
-from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename
+from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename, validate_email, validate_password
 from api.models import EntryTagXref, User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -51,6 +51,12 @@ def signup():
 
     if email is None or password is None:
         return {'message': 'Email or password missing'}, 400
+    
+    if not validate_email(email):
+        return {'message': 'Invalid email'}, 400
+    
+    if not validate_password(password):
+        return {'message': 'Invalid Password. Password must be at least 8 characters.'}, 400
     
     user = User.query.filter(User.email == email).first()
     if user is not None:

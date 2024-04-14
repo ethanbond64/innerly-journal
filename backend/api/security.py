@@ -1,5 +1,6 @@
 import base64
 import os
+import re
 import datetime
 from functools import wraps
 from http import HTTPStatus
@@ -13,6 +14,7 @@ from api.models import User
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
+EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 
 cipher_suite = Fernet(os.getenv('SIGNATURE_SECRET'))
 
@@ -40,6 +42,12 @@ def login_required(function):
         return function(user, *args, **kwargs)
 
     return decorator
+
+def validate_email(email):
+    return re.fullmatch(EMAIL_REGEX, email)
+
+def validate_password(password):
+    return len(password) >= 8
 
 def encrypt_password(password):
     if password:

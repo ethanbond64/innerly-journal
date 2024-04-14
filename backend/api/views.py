@@ -132,13 +132,16 @@ def update_user(current_user, id):
     input_settings = body.get('settings')
     if input_settings is not None:
         update_settings = user.settings
+
+        # Sqlite treats initial empty json object as a string.
+        if update_settings == '{}':
+            update_settings = {}
+
         if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'both']:
-            print(update_settings)
-            print(type(update_settings))
             update_settings['sensitivity'] = input_settings['sensitivity']
         # TODO passcode
+            
         user.update(settings=update_settings)
-        # print(user.settings)
         user.save()
 
     return {'data': user.json()}, 200

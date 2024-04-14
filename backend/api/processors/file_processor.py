@@ -28,9 +28,7 @@ def process_file_entry(user_id, file) -> tuple:
 # Validates the file, saves it to the file system and returns the path, file type, and original filename
 def save_file(user_id, file: FileStorage) -> tuple:
 
-    print("save_file")
     original_filename, extension = parse_file(file)
-    print(original_filename, extension)
         
     directory = get_user_directory(user_id)
     new_filename = str(uuid4()) + '.' + extension
@@ -42,8 +40,6 @@ def save_file(user_id, file: FileStorage) -> tuple:
     file.save(true_path)
 
     path = get_public_path(new_filename)
-
-    print(path, original_filename, extension)
 
     return path, original_filename, extension
     
@@ -60,7 +56,6 @@ def delete_file(user_id, path):
 def parse_file(file):
 
     filename = secure_filename(file.filename)
-    print(filename)
     if filename != '':
 
         file_ext_valid = validate_image(file.stream)

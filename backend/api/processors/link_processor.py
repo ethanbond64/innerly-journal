@@ -54,8 +54,6 @@ def do_opengraph(link):
 
         title = data.get("title")
         image = data.get("image")
-
-        print(image, title)
         
         return title, image
     except Exception as e:
@@ -65,7 +63,6 @@ def do_opengraph(link):
     return None
 
 def download_file(url):
-    print("Downloading file")
     try:
         # Send a GET request to the URL to download the image
         response = requests.get(url, headers={'User-Agent': random.choice(user_agents)})
@@ -80,7 +77,6 @@ def download_file(url):
         # Create a FileStorage instance
         file_storage = FileStorage(image_data, filename=filename)
 
-        print("File downloaded")
         return file_storage
     except Exception as e:
         print(e)

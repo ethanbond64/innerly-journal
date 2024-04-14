@@ -1,10 +1,12 @@
+import spacy
 from api.processors.entry_models import TextEntryData
 from api.processors.keywords import positive, negative, negations
-
 
 POSITIVE = 'positive'
 NEGATIVE = 'negative'
 NEUTRAL = 'neutral'
+
+nlp = spacy.load('en_core_web_sm')
 
 # Take in the body input from the request, validate and return entry data and tags
 def process_text_entry(body: dict) -> tuple:
@@ -20,6 +22,8 @@ def build_entry_data(title: str, text: str) -> dict:
 
     if text is not None and len(text) > 0:
         sentiment = getSentiment(text)
+        entities = get_named_entities(text)
+        print(entities)
 
     return TextEntryData(title, text, sentiment)
 
@@ -62,3 +66,8 @@ def getSentiment(text: str) -> str:
         sentiment = POSITIVE
 
     return sentiment
+
+def get_named_entities(text: str) -> list:
+    
+    doc = nlp(text)
+    return [ent.text for ent in doc.ents]

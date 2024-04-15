@@ -173,6 +173,17 @@ export const fetchEntry = async (id, callback, onError = (e) => {}) => {
     });
 }
 
+export const fetchLockedEntry = async (id, password, callback, onError = (e) => {}) => {
+    return await axios.post(`http://localhost:8000/api/fetch/entries/${id}`, { password }, {
+        headers: getHeaders()
+    }).then((response) => {
+        callback(response.data.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
+    });
+}
+
 export const deleteEntry = async (id, callback, onError = (e) => {}) => {
     return await axios.post(`http://localhost:8000/api/delete/entries/${id}`, {}, {
         headers: getHeaders()

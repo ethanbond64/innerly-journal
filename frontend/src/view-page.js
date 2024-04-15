@@ -1,21 +1,29 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Moment from 'react-moment';
 import { editRoute, homeRoute } from "./constants.js";
-import { deleteEntry, fetchEntry, updateTextEntry } from "./requests.js";
+import { deleteEntry, fetchEntry, fetchLockedEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.js";
 import { ClickOutsideTracker, equalsDate } from "./utils.js";
+import { PasswordModal } from "./password-modal.js";
+import axios from "axios";
 
 export const ViewPage = ({ entryInput = null }) => {
 
     const { entryId } = useParams();
-
     const navigate = useNavigate();
+    const titleRef = useRef(null);
+
     const [entry, setEntry] = useState(entryInput);
-    const [title, setTitle] = useState(entry && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null);
-    const [editingTitle, setEditingTitle] = useState(false);
+    const [title, setTitle] = useState(null);
     const [sentiment, setSentiment] = useState("Neutral");
+    const [text, setText] = useState("");
+    const [locked, setLocked] = useState(false);
+    const [opened, setOpened] = useState(true);
+
+    const [editingTitle, setEditingTitle] = useState(false);
     const [editingSentiment, setEditingSentiment] = useState(false);
+
 
     useEffect(() => {
         
@@ -32,13 +40,25 @@ export const ViewPage = ({ entryInput = null }) => {
         if (entry && entry.entry_data && entry.entry_data.title) {
             setTitle(entry.entry_data.title);
         }
+        
+        if (entry && entry.entry_data && entry.entry_data.locked) {
+            setLocked(true);
+            setOpened(false);
+        }
+
+        if (entry && entry.entry_data && entry.entry_data.text && !entry.entry_data.locked) {
+            setText(entry.entry_data.text);
+        }
+
         if (entry && entry.entry_data && entry.entry_data.sentiment) {
             setSentiment(capitalize(entry.entry_data.sentiment));
         }
     }, [entry]);
 
-
-    console.log('rendering', title, editingTitle);
+    const onClickCurrentTitle = () => {
+        setEditingTitle(true);
+        titleRef.current.focus(); // TODO - this doesn't work
+    }
 
     const onChangeTitle = (e) => {
         setTitle(e.target.value);
@@ -71,19 +91,28 @@ export const ViewPage = ({ entryInput = null }) => {
                 }
             });
         }
-    }
+    };
 
-    let text = entry && entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
+    const openLockedEntry = (password) => {
+        fetchLockedEntry(entryId, password, data => {
+            setText(data.entry_data.text);
+            setOpened(true);
+        })
+    }
 
     let wordCount = text.split(" ").length;
     let sentenceCount = text.split(/[.!?]/).length;
 
     let tags = entry && entry.tags ? entry.tags : [];
     let memory = entry && ! equalsDate(new Date(entry.functional_datetime), new Date(entry.created_on));
-    let locked = false;
 
     return (
         <BasePage>
+            {
+                opened ?
+                null :
+                <PasswordModal prompt="Enter password to view entry" callback={openLockedEntry} />
+            }
             <div class="container sm-margin-top">
                 <div className="row text-left lg-margin-top" style={{ paddingBottom: "8%" }}>
                     <div className="col-sm-8">
@@ -91,12 +120,12 @@ export const ViewPage = ({ entryInput = null }) => {
                             <div className="col-md-10 text-left">
                                 {editingTitle ? 
                                     <ClickOutsideTracker callback={onSaveTitle}>
-                                        <input className="form-control form-control-inner" id="viewTitle" name="viewTitle" type="text"
+                                        <input className="form-control form-control-inner" id="viewTitle" name="viewTitle" type="text" ref={titleRef}
                                             defaultValue={title ? title : ""} onKeyDown={onKeyDown} onChange={onChangeTitle} placeholder="Press enter to save" />
                                     </ClickOutsideTracker> : 
                                     <>{title ?
-                                        <h1 id="titleTrigger" style={{ marginBottom: "5px" }} onClick={() => setEditingTitle(true)}>{title}</h1> :
-                                        <h2 id="untitledTrigger" class="text-muted" style={{ marginBottom: "5px" }} onClick={() => setEditingTitle(true)}>Untitled (click to add)</h2>
+                                        <h1 id="titleTrigger" style={{ marginBottom: "5px" }} onClick={onClickCurrentTitle}>{title}</h1> :
+                                        <h2 id="untitledTrigger" class="text-muted" style={{ marginBottom: "5px" }} onClick={onClickCurrentTitle}>Untitled (click to add)</h2>
                                     }
                                     </>
                                 }
@@ -122,15 +151,16 @@ export const ViewPage = ({ entryInput = null }) => {
                         </div>
                         <div className="lg-margin-top text-center">
                             <div id="read-entry" className="text-left" style={{ fontSize: "18px", color: "var(--dm-text)" }}>
-                                {entry && entry.entry_data ? entry.entry_data.text : ""}
+                                {text}
                             </div>
                         </div>
                     </div>
                     <div className="col-sm-4">
                         <div className="well">
                             <div style={{ textAlign: "right" }} >
-                                <span style={{ float: "left" }} ><i className={locked ? "fa fa- lock" : "fa fa-unlock"} aria-hidden="true"
-                                    style={{ color: "var(--dm-text)", fontSize: "xx-large" }}></i></span>
+                                <span style={{ float: "left" }} >
+                                    <i className={locked ? "fa fa-lock" : "fa fa-unlock"} aria-hidden="true" style={{ color: "var(--dm-text)", fontSize: "xx-large" }}></i>
+                                </span>
                                 <div className="wrapper toggleFormOn" style={{ padding: "0px", margin: "0px", backgroundColor: "transparent", border: "none" }}>
                                     <span id="cancelButton" style={{ cursor: "pointer", color: "#263859", backgroundColor: "#fcfcfc" }}
                                         className="badge badge-secondary" >

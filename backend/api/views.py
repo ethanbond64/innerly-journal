@@ -4,7 +4,7 @@ from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, or_
 
-from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, sign_filename, validate_email, validate_password
+from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
 from api.models import EntryTagXref, User, Entry, Tag, get_datetime
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -303,16 +303,32 @@ def fetch_tags(current_user):
     return {'data': [tag.json() for tag in tags]}, 200
 
 # POST to put passcode in the body for locked entries.
-@views.route('/fetch/entries/<int:id>', methods=['GET'])
+@views.route('/fetch/entries/<int:id>', methods=['GET', 'POST'])
 @login_required
 def fetch_entry(current_user, id):
 
     entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
 
-    # TODO passcode stuff
-
     if entry is None:
         return {'message': 'Entry not found'}, 404
+
+    # TODO passcode stuff
+    if request.method == 'POST' and entry.entry_data.get('locked', False):
+        body = request.get_json()
+        if body is None:
+            return {'message': 'Bad request'}, 400
+        
+        password = body.get('password')
+        if password is None:
+            return {'message': 'Password required to unlock entries.'}, 400
+        
+        if not authenticated(current_user, password):
+            return {'message': 'Unauthorized'}, 401
+        
+        entry_data = entry.entry_data
+        unlocked_text = unlock_text(current_user.email, entry_data.get('text', ''))
+        entry_data['text'] = unlocked_text
+        entry.update(entry_data=entry_data)
 
     return {'data': entry.json()}, 200
 
@@ -331,6 +347,67 @@ def delete_entry(current_user, id):
     entry.delete()
 
     return {'success': True}, 200
+
+@views.route('/lock/entries/<int:id>', methods=['POST'])
+@login_required
+def lock_entry(current_user, id):
+
+    entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
+    if entry is None:
+        return {'message': 'Entry not found'}, 404
+    
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+    
+    password = body.get('password')
+    if password is None:
+        return {'message': 'Password required to lock entries.'}, 400
+    
+    if not authenticated(current_user, password):
+        return {'message': 'Unauthorized'}, 401
+    
+    entry_data = entry.entry_data
+    locked_text = lock_text(current_user.email, entry_data.get('text', ''))
+    
+    entry_data['locked'] = True
+    entry_data['text'] = locked_text
+    entry.update(entry_data=entry_data)
+    
+    entry.save()
+
+    return {'data': entry.json()}, 200
+
+@views.route('/unlock/entries/<int:id>', methods=['POST'])
+@login_required
+def unlock_entry(current_user, id):
+
+    entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
+    if entry is None:
+        return {'message': 'Entry not found'}, 404
+    
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+    
+    password = body.get('password')
+    if password is None:
+        return {'message': 'Password required to unlock entries.'}, 400
+    
+    if not authenticated(current_user, password):
+        return {'message': 'Unauthorized'}, 401
+    
+    entry_data = entry.entry_data
+    unlocked_text = unlock_text(current_user.email, entry_data.get('text', ''))
+    
+    entry_data['locked'] = False
+    entry_data['text'] = unlocked_text
+    entry.update(entry_data=entry_data)
+    
+    entry.save()
+
+    return {'data': entry.json()}, 200
+
 
 @views.route('/static/<filename>', methods=['GET'])
 def get_file(filename):

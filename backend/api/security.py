@@ -84,3 +84,26 @@ def get_user_from_signature(signature):
         if datetime.datetime.now() - datetime.datetime.fromisoformat(timestamp) < datetime.timedelta(hours=12):
             user = get_user(user_identity)
     return user
+
+def create_32_byte_key(key_base):
+    
+    key = key_base
+    while len(key) < 32:
+        key += key_base
+
+    return base64.urlsafe_b64encode(bytes(key[:32], 'utf-8'))
+
+def lock_text(key_input, text):
+
+    key = create_32_byte_key(key_input)
+    fernet = Fernet(key)
+    
+    return str(fernet.encrypt(text.encode()))
+
+def unlock_text(key_input, text):
+
+        key = create_32_byte_key(key_input)
+        fernet = Fernet(key)
+        
+        text_as_bytes = text[2:-1].encode()
+        return fernet.decrypt(text_as_bytes).decode()

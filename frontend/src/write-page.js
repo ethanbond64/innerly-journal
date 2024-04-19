@@ -4,7 +4,6 @@ import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useNavigate, useParams } from "react-router-dom";
 import { getDateNoTime } from "./utils.js";
-import { PageLoader } from "./page-loader.js";
 
 
 export const WritePage = () => {
@@ -32,11 +31,11 @@ export const WritePage = () => {
     return <WritePageBase onSumbit={onSubmit} heading={heading} />;
 };
 
-export const EditPage = () => {
+export const EditPage = ({ propText = null }) => {
 
     const navigate = useNavigate();
     const { entryId } = useParams();
-    const [text, setText] = useState(null);
+    const [text, setText] = useState(propText);
     const [title, setTitle] = useState(null);
     const [functionalDatetime, setFunctionalDatetime] = useState(null);
     
@@ -49,7 +48,9 @@ export const EditPage = () => {
             if (data.entry_type !== 'text' || !data.entry_data) {
                 navigate(homeRoute);
             }
-            setText(data.entry_data.text ? data.entry_data.text : '');
+            if (text === null) {
+                setText(data.entry_data.text ? data.entry_data.text : '');
+            }
             setTitle(data.entry_data.title ? data.entry_data.title : null);
             setFunctionalDatetime(data.functional_datetime ? new Date(data.functional_datetime) : null);
         });

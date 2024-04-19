@@ -171,7 +171,7 @@ export const fetchEntry = async (id, callback, onError = (e) => {}) => {
         console.error(error);
         onError(error);
     });
-}
+};
 
 export const fetchLockedEntry = async (id, password, callback, onError = (e) => {}) => {
     return await axios.post(`http://localhost:8000/api/fetch/entries/${id}`, { password }, {
@@ -182,7 +182,7 @@ export const fetchLockedEntry = async (id, password, callback, onError = (e) => 
         console.error(error);
         onError(error);
     });
-}
+};
 
 export const deleteEntry = async (id, callback, onError = (e) => {}) => {
     return await axios.post(`http://localhost:8000/api/delete/entries/${id}`, {}, {
@@ -193,4 +193,26 @@ export const deleteEntry = async (id, callback, onError = (e) => {}) => {
         console.error(error);
         onError(error);
     });
-}
+};
+
+export const lockEntry = async (id, password, callback, onError = (e) => {}) => {
+    return await axios.post(`http://localhost:8000/api/lock/entries/${id}`, { password }, {
+        headers: getHeaders()
+    }).then((response) => {
+        callback(response.data.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
+    });
+};
+
+export const unlockEntry = async (id, password, callback, onError = (e) => {}) => {
+    return await axios.post(`http://localhost:8000/api/unlock/entries/${id}`, { password }, {
+        headers: getHeaders()
+    }).then((response) => {
+        callback(response.data.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
+    });
+};

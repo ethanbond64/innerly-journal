@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
 import Moment from 'react-moment';
 import { editRoute, homeRoute } from "./constants.js";
-import { deleteEntry, fetchEntry, fetchLockedEntry, updateTextEntry } from "./requests.js";
+import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.js";
 import { ClickOutsideTracker, equalsDate } from "./utils.js";
 import { PasswordModal } from "./password-modal.js";
-import axios from "axios";
 
 export const ViewPage = ({ entryInput = null }) => {
 
@@ -19,7 +18,7 @@ export const ViewPage = ({ entryInput = null }) => {
     const [sentiment, setSentiment] = useState("Neutral");
     const [text, setText] = useState("");
     const [locked, setLocked] = useState(false);
-    const [opened, setOpened] = useState(true);
+    const [passwordModalParams, setPasswordModalParams] = useState(null);
 
     const [editingTitle, setEditingTitle] = useState(false);
     const [editingSentiment, setEditingSentiment] = useState(false);
@@ -43,7 +42,11 @@ export const ViewPage = ({ entryInput = null }) => {
         
         if (entry && entry.entry_data && entry.entry_data.locked) {
             setLocked(true);
-            setOpened(false);
+            setPasswordModalParams({
+                prompt: "Enter password to view entry.",
+                callback: openLockedEntry,
+                cancel: null
+            });
         }
 
         if (entry && entry.entry_data && entry.entry_data.text && !entry.entry_data.locked) {
@@ -54,6 +57,10 @@ export const ViewPage = ({ entryInput = null }) => {
             setSentiment(capitalize(entry.entry_data.sentiment));
         }
     }, [entry]);
+
+    const onClickEdit = () => {
+        navigate(editRoute + entryId, { replace: true, state: text });
+    };
 
     const onClickCurrentTitle = () => {
         setEditingTitle(true);
@@ -96,9 +103,44 @@ export const ViewPage = ({ entryInput = null }) => {
     const openLockedEntry = (password) => {
         fetchLockedEntry(entryId, password, data => {
             setText(data.entry_data.text);
-            setOpened(true);
+            setPasswordModalParams(null);
         })
-    }
+    };
+        
+
+    const onClickLock = () => {
+        if (!locked) {
+            setPasswordModalParams({
+                prompt: "Enter password to lock entry.",
+                callback: onLockEntry,
+                cancel: () => setPasswordModalParams(null)
+            });
+        } 
+    };
+
+    const onLockEntry = (password) => {
+        lockEntry(entryId, password, data => {
+            setLocked(true);
+            setPasswordModalParams(null);
+        });
+    };
+
+    const onClickUnlock = () => {
+        if (locked) {
+            setPasswordModalParams({
+                prompt: "Enter password to unlock entry.",
+                callback: onUnlockEntry,
+                cancel: () => setPasswordModalParams(null)
+            });
+        } 
+    };
+
+    const onUnlockEntry = (password) => {
+        unlockEntry(entryId, password, data => {
+            setLocked(false);
+            setPasswordModalParams(null);
+        });
+    };
 
     let wordCount = text.split(" ").length;
     let sentenceCount = text.split(/[.!?]/).length;
@@ -109,9 +151,8 @@ export const ViewPage = ({ entryInput = null }) => {
     return (
         <BasePage>
             {
-                opened ?
-                null :
-                <PasswordModal prompt="Enter password to view entry" callback={openLockedEntry} />
+                passwordModalParams ?
+                <PasswordModal prompt={passwordModalParams.prompt} callback={passwordModalParams.callback} cancel={passwordModalParams.cancel} /> : null
             }
             <div class="container sm-margin-top">
                 <div className="row text-left lg-margin-top" style={{ paddingBottom: "8%" }}>
@@ -142,9 +183,7 @@ export const ViewPage = ({ entryInput = null }) => {
                                             style={{ backgroundColor: (memory ? "#d09500" : "#1cb2b5"), marginTop: "18px" }}>{memory ? "Memory" : "Live"}</span>
                                     </div>
                                     <div className="col-xs-12">
-                                        <a href={editRoute + entryId}>
-                                            <span className="badge badge-secondary">Edit</span>
-                                        </a>
+                                        <span onClick={onClickEdit} className="badge badge-secondary" style={{ cursor: 'pointer' }}>Edit</span>
                                     </div>
                                 </div>
                             </div>
@@ -246,8 +285,13 @@ export const ViewPage = ({ entryInput = null }) => {
                                 </div>
                             </div>
                             <div style={{ marginTop: "10px", textAlign: "center" }}>
-                                <button id="lockButton" className="btn btn-lg btn-info" type="button" data-toggle="modal"
-                                    data-target="#lockModal" style={{ display: "inline" }}>{locked ? "Unlock Entry" : "Lock Entry"}</button>
+                                {
+                                    locked ?
+                                    <button id="lockButton" className="btn btn-lg btn-info" type="button" onClick={onClickUnlock}
+                                    style={{ display: "inline" }}>Unlock Entry</button> :
+                                    <button id="lockButton" className="btn btn-lg btn-info" type="button" onClick={onClickLock}
+                                    style={{ display: "inline" }}>Lock Entry</button>
+                                }
                             </div>
                         </div>
                     </div>

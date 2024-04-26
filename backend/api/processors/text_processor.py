@@ -1,5 +1,5 @@
-from processors.entry_models import TextEntryData
-from processors.keywords import positive, negative, negations
+from api.processors.entry_models import TextEntryData
+from api.processors.keywords import positive, negative, negations
 
 
 POSITIVE = 'positive'

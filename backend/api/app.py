@@ -4,17 +4,15 @@ from flask_cors import CORS
 
 from flask_jwt_extended import JWTManager
 
-from views import views
-from extensions import db
-from utils import safe_get_env_var
+from api.views import views
+from api.extensions import db
 
 load_dotenv()
 
 def create_app():
-    client_origin_url = safe_get_env_var("CLIENT_ORIGIN_URL")
 
     app = Flask(__name__, instance_relative_config=True)
-    app.config.from_object("settings")
+    app.config.from_object("api.settings")
 
     db.init_app(app)
     with app.app_context():
@@ -24,7 +22,7 @@ def create_app():
     JWTManager(app)
     CORS(
         app,
-        resources={r"/*": {"origins": client_origin_url}},
+        resources={r"/*": {"origins": "*"}}, # TODO limit to frontend...?
         allow_headers=["Authorization", "Content-Type"],
         methods=["GET", "POST"],
         max_age=86400,
@@ -34,6 +32,6 @@ def create_app():
 
     return app
 
-if __name__ == "__main__":
-    app = create_app()
-    app.run()
+# if __name__ == "__main__":
+#     app = create_app()
+#     app.run()

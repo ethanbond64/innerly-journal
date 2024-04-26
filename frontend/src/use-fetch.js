@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { equalsDate, getPreviousDate, getNextDate, getTodaysDate } from "./utils.js";
+import { equalsDate, getPreviousDate, getNextDate, getTodaysDate, clearLocalStorage } from "./utils.js";
 import { fetchEntries } from "./requests.js";
 
 export const useFetch = (search, offset, limit) => {
@@ -38,6 +38,11 @@ export const useFetch = (search, offset, limit) => {
         const refresh = async () => {
 
             const results = await fetchEntries(search, offset, limit);
+
+            if (results === undefined) {
+                clearLocalStorage();
+                return;
+            }
     
             let stagedRow = {...lastRow};
             let allLoadedLocal = false;

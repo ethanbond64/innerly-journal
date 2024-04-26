@@ -4,12 +4,12 @@ from flask import Blueprint, request, send_from_directory
 
 from sqlalchemy import String, cast, or_
 
-from security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
-from models import EntryTagXref, User, Entry, Tag, get_datetime
-from processors.text_processor import process_text_entry
-from processors.file_processor import delete_file, get_user_directory, process_file_entry
-from processors.link_processor import process_link_entry
-from tasks import submitImportEntriesTask
+from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
+from api.models import EntryTagXref, User, Entry, Tag, get_datetime
+from api.processors.text_processor import process_text_entry
+from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
+from api.processors.link_processor import process_link_entry
+from api.tasks import submitImportEntriesTask
 
 views = Blueprint('views', __name__)
 

@@ -1,8 +1,8 @@
 
 import threading
 
-from processors.link_processor import process_link_entry
-from models import Entry
+from api.processors.link_processor import process_link_entry
+from api.models import Entry
 
 
 def submitImportEntriesTask(links, user_id):

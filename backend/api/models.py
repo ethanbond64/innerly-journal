@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from extensions import db
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm.attributes import flag_modified
+
+from api.extensions import db
 
 PREIVEW_LENGTH = 64
 

@@ -10,8 +10,8 @@ from flask import abort, jsonify
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from models import User
-from settings import SECRET_KEY
+from api.models import User
+from api.settings import SECRET_KEY
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
@@ -52,7 +52,7 @@ def validate_password(password):
 
 def encrypt_password(password):
     if password:
-        return generate_password_hash(password)
+        return generate_password_hash(password, method="pbkdf2")
     return None
 
 def authenticated(user: User, password):

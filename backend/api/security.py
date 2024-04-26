@@ -11,12 +11,13 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from api.models import User
+from api.settings import SECRET_KEY
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
 EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 
-cipher_suite = Fernet(os.getenv('SIGNATURE_SECRET'))
+cipher_suite = Fernet(SECRET_KEY)
 
 def json_abort(status_code, data=None):
     response = jsonify(data)

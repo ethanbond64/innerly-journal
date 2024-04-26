@@ -4,11 +4,7 @@ services:
 
   server:
     build: backend/.
-    command: >
-      gunicorn -b 0.0.0.0:8000
-        --access-logfile -
-        --reload
-        "api.app:create_app()"
+    command: python api/app.py
     env_file:
       - '.env'
     volumes:
@@ -28,15 +24,6 @@ services:
     volumes:
       - './frontend/:/frontend'
       - '/frontend/node_modules'
-
-  nginx:
-    build: './nginx'
-    command: nginx -g 'daemon off;'
-    ports:
-      - "80:80"
-    depends_on:
-      - server
-      - frontend
 
 volumes:
   postgres: null

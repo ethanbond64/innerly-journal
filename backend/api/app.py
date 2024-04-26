@@ -4,9 +4,9 @@ from flask_cors import CORS
 
 from flask_jwt_extended import JWTManager
 
-from api.views import views
-from api.extensions import db
-from api.utils import safe_get_env_var
+from views import views
+from extensions import db
+from utils import safe_get_env_var
 
 load_dotenv()
 
@@ -14,7 +14,7 @@ def create_app():
     client_origin_url = safe_get_env_var("CLIENT_ORIGIN_URL")
 
     app = Flask(__name__, instance_relative_config=True)
-    app.config.from_object("api.settings")
+    app.config.from_object("settings")
 
     db.init_app(app)
     with app.app_context():

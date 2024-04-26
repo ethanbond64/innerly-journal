@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from api.extensions import db
+from extensions import db
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm.attributes import flag_modified
 

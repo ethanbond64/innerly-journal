@@ -5,9 +5,9 @@ from uuid import uuid4
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 
-from api.security import json_abort
-from api.processors.entry_models import FileEntryData
-from api.settings import INNERLY_DIRECTORY
+from security import json_abort
+from processors.entry_models import FileEntryData
+from settings import INNERLY_DIRECTORY
 
 JPG = 'jpg'
 PNG = 'png'

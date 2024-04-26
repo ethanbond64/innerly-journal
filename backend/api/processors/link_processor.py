@@ -5,9 +5,9 @@ from opengraph_py3 import OpenGraph
 import requests
 from werkzeug.datastructures import FileStorage
 
-from api.security import json_abort
-from api.processors.entry_models import LinkEntryData
-from api.processors.file_processor import save_file
+from security import json_abort
+from processors.entry_models import LinkEntryData
+from processors.file_processor import save_file
 
 user_agents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'

@@ -1,12 +1,18 @@
 import os
+import json
 
 DEBUG = False
 
-# Flask
-SECRET_KEY = os.getenv("SECRET_KEY")
-SERVER_NAME = os.getenv("SERVER_NAME")
-
 INNERLY_DIRECTORY = os.path.join(os.path.expanduser("~"), '.innerly')
+
+config_vars = {}
+with open(os.path.join(INNERLY_DIRECTORY, 'config.json'), 'r') as config:
+    config_vars = json.load(config)
+    print(config_vars)
+
+# Flask
+SECRET_KEY = config_vars.get("secret")
+SERVER_NAME = config_vars.get("server")
 
 # Sqlalchemy
 SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(INNERLY_DIRECTORY, 'database.db')

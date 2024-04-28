@@ -1,8 +1,11 @@
 {
   "name": "frontend",
   "version": "0.1.0",
+  "author": "Ethan Bond",
+  "description": "Innerly journal desktop app.",
   "private": true,
-  "main": "electron.js",
+  "main": "public/electron.js",
+  "homepage": "./",
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
@@ -23,13 +26,21 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder build --mac"
   },
   "build": {
     "appId": "co.innerly.once",
     "productName": "Innerly",
-    "directories": {
-      "output": "dist"
+    "extends": null,
+    "mac": {
+      "icon": "./public/images/android-chrome-512x512.png"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "extraMetadata": {
+      "main": "build/electron.js"
     }
   },
   "eslintConfig": {

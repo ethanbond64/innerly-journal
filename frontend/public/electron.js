@@ -1,5 +1,5 @@
 // electron.js
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, protocol } = require('electron');
 // import { app, BrowserWindow } from 'electron.mjd';
 const path = require('path');
 // import path from 'path';
@@ -27,13 +27,13 @@ function createWindow() {
   // var subpy = require( "child_process" ).spawn(pyURL);
   // subpy.stdout.pipe(process.stdout);
 
-  // const startURL = 'http://localhost:3000';
+  const startURL = 'http://localhost:3000';
   // console.log('dirname: ', __dirname);
-  const startURL = url.format({
-    pathname: path.join(__dirname, 'index.html'),
-    protocol: 'file:',
-    slashes: true,
-  });
+  // const startURL = url.format({
+  //   pathname: path.join(__dirname, 'index.html'),
+  //   protocol: 'file:',
+  //   slashes: true,
+  // });
 
   // console.log('startURL: ', startURL);
   mainWindow.loadURL(startURL);
@@ -45,7 +45,23 @@ function createWindow() {
   });
 }
 
-app.on('ready', createWindow);
+// function setupLocalFilesNormalizerProxy() {
+//   protocol.registerHttpProtocol(
+//     "file",
+//     (request, callback) => {
+//       const url = request.url.substr(8);
+//       callback({ path: path.normalize(`${__dirname}/${url}`) });
+//     },
+//     (error) => {
+//       if (error) console.error("Failed to register protocol");
+//     },
+//   );
+// }
+
+app.on('ready', () => {
+  // setupLocalFilesNormalizerProxy();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

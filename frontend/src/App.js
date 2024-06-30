@@ -4,7 +4,7 @@ import { PageLoader } from "./page-loader.js";
 import { LoginPage } from "./login-page.js";
 import { SignUpPage } from "./sign-up-page.js";
 import { HomePage } from "./home-page.js";
-import { AuthenticationGuard } from "./AuthenticationGuard.js";
+import { AuthenticationGuard } from "./authentication-guard.js";
 import { EditPage, WritePage } from "./write-page.js";
 import { editRoute, homeRoute, loginRoute, settingsRoute, signupRoute, viewRoute, writeRoute } from "./constants.js";
 import { ViewPage } from "./view-page.js";

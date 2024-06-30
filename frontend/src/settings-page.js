@@ -64,6 +64,7 @@ export const SettingsPage = () => {
             clearLocalStorage();
             navigate(loginRoute);
         }
+    // eslint-disable-next-line
     }, []);
 
 
@@ -109,10 +110,11 @@ export const SettingsPage = () => {
                                     <strong>Confirm New Password</strong>
                                 </label>
                                 <input class="form-control" id="newPasswordConfirm" maxlength="128" minlength="8" name="newPasswordConfirm" type="password" placeholder="" />
+                                <button onClick={() => setEditingPassword(false)} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px', marginRight: '10px' }}>Cancel</button>
                                 <button onClick={onClickUpdatePassword} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px'}}>Update</button>
                             </div>
                         </> : 
-                        <span onClick={() => setEditingPassword(true)} class="list-group-item" style={{ cursor: 'pointer' }}>
+                        <span onClick={() => setEditingPassword(true)} class="list-group-item" style={{ cursor: 'pointer', 'borderRadius': '.25rem!important' }}>
                             Click here to update password
                         </span>}
                     </div>

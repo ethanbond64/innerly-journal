@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Moment from "react-moment";
 import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getDateNoTime } from "./utils.js";
 
 
@@ -31,11 +31,12 @@ export const WritePage = () => {
     return <WritePageBase onSumbit={onSubmit} heading={heading} />;
 };
 
-export const EditPage = ({ propText = null }) => {
+export const EditPage = () => {
 
+    const location = useLocation();
     const navigate = useNavigate();
     const { entryId } = useParams();
-    const [text, setText] = useState(propText);
+    const [text, setText] = useState(location.state ? location.state.text : null);
     const [title, setTitle] = useState(null);
     const [functionalDatetime, setFunctionalDatetime] = useState(null);
     

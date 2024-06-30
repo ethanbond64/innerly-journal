@@ -242,7 +242,14 @@ def update_entry(current_user, id):
             changes = True
 
         if 'text' in entry_data:
-            original_entry_data['text'] = entry_data['text']
+            
+            text = entry_data['text']
+
+            # NOTE we haven't re-asked for the password here, but since the entry was originally locked, we're locking it again.
+            if original_entry_data.get('locked', False):
+                text = lock_text(current_user.email, text)
+
+            original_entry_data['text'] = text
             changes = True
 
         entry.update(entry_data=original_entry_data)
@@ -408,7 +415,6 @@ def unlock_entry(current_user, id):
 
     return {'data': entry.json()}, 200
 
-
 @views.route('/static/<filename>', methods=['GET'])
 def get_file(filename):
 
@@ -424,7 +430,6 @@ def get_file(filename):
     base_path = get_user_directory(user.id)
 
     return send_from_directory(base_path, filename)
-
 
 @views.route('/submit/task/<task>', methods=['POST'])
 @login_required

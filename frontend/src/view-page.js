@@ -23,7 +23,6 @@ export const ViewPage = ({ entryInput = null }) => {
     const [editingTitle, setEditingTitle] = useState(false);
     const [editingSentiment, setEditingSentiment] = useState(false);
 
-
     useEffect(() => {
         
         if (!entryId) {
@@ -59,7 +58,7 @@ export const ViewPage = ({ entryInput = null }) => {
     }, [entry]);
 
     const onClickEdit = () => {
-        navigate(editRoute + entryId, { replace: true, state: text });
+        navigate(editRoute + entryId, {replace: false, state: {text: text}});
     };
 
     const onClickCurrentTitle = () => {

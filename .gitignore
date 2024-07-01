@@ -5,3 +5,4 @@ __pycache__
 **/dist
 *.spec
 .DS_Store
+frontend/public/entrypoint

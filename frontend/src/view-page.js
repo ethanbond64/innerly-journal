@@ -44,7 +44,7 @@ export const ViewPage = ({ entryInput = null }) => {
             setPasswordModalParams({
                 prompt: "Enter password to view entry.",
                 callback: openLockedEntry,
-                cancel: null
+                cancel: () => navigate(homeRoute)
             });
         }
 
@@ -55,6 +55,7 @@ export const ViewPage = ({ entryInput = null }) => {
         if (entry && entry.entry_data && entry.entry_data.sentiment) {
             setSentiment(capitalize(entry.entry_data.sentiment));
         }
+    // eslint-disable-next-line
     }, [entry]);
 
     const onClickEdit = () => {

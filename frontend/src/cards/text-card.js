@@ -21,6 +21,7 @@ export const TextCard = ({ entry }) => {
 
     const color = getColor(entry.entry_data.sentiment);
     const preview = entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
+    const locked = entry.entry_data && entry.entry_data.locked === true;
     const tags = entry.tags;
 
 
@@ -32,6 +33,7 @@ export const TextCard = ({ entry }) => {
         <div className={`col-xs-4 itemactive`}>
         <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }} onClick={onClick}>
             <h3 id="unitTitle">{title}</h3>
+            {locked && <span className="fa fa-lock" style={{ color: "var(--dm-text)", fontSize: "20px"}}></span>}
             <p id="unitSnip" className="hidden-xs"
                 style={sensitive ? { 'color': 'transparent', 'textShadow': '0 0 6px var(--dm-text)', 'padding': '2px' } : {}} >
                 {preview}

@@ -260,7 +260,6 @@ def update_entry(current_user, id):
         changes = True
         tags = upsert_tags(tags, current_user.id, entry.id)
 
-    
     if changes:
         entry.save()
 

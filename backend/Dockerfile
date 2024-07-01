@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 # COPY . .
 # RUN pip install --editable .
 
-CMD gunicorn -b 0.0.0.0:8000 --access-logfile - "api.app:create_app()"
+CMD gunicorn -b 0.0.0.0:8000 --access-logfile - "entrypoint:create_app()"

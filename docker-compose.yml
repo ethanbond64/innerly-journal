@@ -4,7 +4,7 @@ services:
 
   server:
     build: backend/.
-    command: python api/app.py
+    command: gunicorn -b 0.0.0.0:8000 --access-logfile - "entrypoint:create_app()"
     env_file:
       - '.env'
     volumes:

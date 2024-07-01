@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory
 
-from sqlalchemy import String, cast, or_
+from sqlalchemy import Boolean, String, and_, cast, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
 from api.models import EntryTagXref, User, Entry, Tag, get_datetime
@@ -279,14 +279,22 @@ def fetch_entries(current_user):
     if search:
         # Search titles and tags
         query = query.filter(or_(
-            cast(Entry.entry_data.op('->>')('title'), String).ilike(f'%{search}%')
+            cast(Entry.entry_data.op('->>')('title'), String).ilike(f'%{search}%'),
+            and_(
+                    or_(
+                        cast(Entry.entry_data.op('->>')('locked'), Boolean) == None,
+                        cast(Entry.entry_data.op('->>')('locked'), Boolean) == False,
+                    ),
+                    cast(Entry.entry_data.op('->>')('text'), String).ilike(f'%{search}%')
+                )
+            )
+        )
             # Entry.tags.any(search) # TODO this is exact match case sensitive
-        ))
 
     # if tag:TODO seach by tag
     #     # Exact tag search
     #     query = query.filter(func.array_contains(Entry.tags, tag))
-
+    print(str(query))
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200

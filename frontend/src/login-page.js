@@ -34,7 +34,7 @@ export const LoginPage = () => {
     return (
         <main className="container drag">
             <a href={homeRoute}>
-                <img src="/images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
+                <img src="./images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <Notification message={error} clear={() => setError(null)} />
             <div className="md-margin-top"></div>

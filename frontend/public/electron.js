@@ -19,29 +19,29 @@ function createWindow() {
     },
   });
 
-  // const pyURL = url.format({
-  //   pathname: path.join(__dirname, '../entrypoint'),
-  //   protocol: 'file:',
-  //   slashes: true,
-  // });
-  // var subpy = require( "child_process" ).spawn(pyURL);
+  const pyURL = url.format({
+    pathname: path.join(__dirname, '../build/entrypoint'),
+    protocol: 'file:',
+    slashes: true,
+  });
+  var subpy = require( "child_process" ).spawn(pyURL);
   // subpy.stdout.pipe(process.stdout);
 
-  const startURL = 'http://localhost:3000';
-  // console.log('dirname: ', __dirname);
-  // const startURL = url.format({
-  //   pathname: path.join(__dirname, 'index.html'),
-  //   protocol: 'file:',
-  //   slashes: true,
-  // });
+  // const startURL = 'http://localhost:3000';
+  console.log('dirname: ', __dirname);
+  const startURL = url.format({
+    pathname: path.join(__dirname, '../build/index.html'),
+    protocol: 'file:',
+    slashes: true,
+  });
 
-  // console.log('startURL: ', startURL);
+  console.log('startURL: ', startURL);
   mainWindow.loadURL(startURL);
   // mainWindow.loadFile('build/index.html');
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    // subpy.kill('SIGINT');
+    subpy.kill('SIGINT');
   });
 }
 

@@ -52,7 +52,7 @@ export const BlankCard = ({ datetime, replace }) => {
         <div className={`col-xs-4 blank_unit itemactive`}>
             <div className={`well swell ${today ? 'todayblank' : ''}`} id="unit">
                 { loading ? 
-                <img src="/images/innerly-loader.gif" alt="loading gif" /> : 
+                <img src="./images/innerly-loader.gif" alt="loading gif" /> : 
                 <>
                     <p className="swellLabel" >+</p>
                     <button className={`btn btn-lg btn-info pretty-btn writeButton`} onClick={onClickWrite}><span className={`hidden-sm hidden-xs`}>Write an Entry</span><span className={`hidden-xl hidden-lg hidden-md`}>Write</span></button>

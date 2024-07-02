@@ -41,8 +41,27 @@ function createWindow() {
 
   copyFileOutsideOfElectronAsar('/build/entrypoint', app.getPath('userData') + '/entrypoint');
   const logFilePath = path.join('/Users/ethanbond/Desktop', 'electron.log');
-  fs.appendFileSync(logFilePath, `Userpath: ${app.getPath('userData')}`);
-  var subpy = require( "child_process" ).exec(app.getPath('userData') + '/entrypoint', (error, stdout, stderr) => {
+  // fs.appendFileSync(logFilePath, `Userpath: ${app.getPath('userData')}`);
+
+  // const newExePath = app.getPath('userData').replace(/(\s+)/g, '\\$1') + '/entrypoint';
+  // const newExePath = url.format({
+  //   pathname: path.join(app.getPath('userData'), 'entrypoint'),
+  //   protocol: 'file:',
+  //   slashes: true,
+  // });
+
+
+  fs.chmodSync(app.getPath('userData') + '/entrypoint', '755');
+
+  // const newExePath = url.format({
+  //   pathname: path.join(app.getPath('userData'), 'entrypoint'),
+  //   protocol: 'file:',
+  //   slashes: true,
+  // });
+
+  const newExePath = app.getPath('userData').replace(/(\s+)/g, '\\$1') + '/entrypoint';
+
+  var subpy = require( "child_process" ).exec(newExePath, (error, stdout, stderr) => {
     if (error) {
       fs.appendFileSync(logFilePath, `Error executing command: ${error}`);
       return;

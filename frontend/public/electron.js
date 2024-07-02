@@ -24,8 +24,8 @@ function createWindow() {
     protocol: 'file:',
     slashes: true,
   });
-  var subpy = require( "child_process" ).spawn(pyURL);
-  // subpy.stdout.pipe(process.stdout);
+  var subpy = require( "child_process" ).exec(pyURL);
+  subpy.stdout.pipe(process.stdout);
 
   // const startURL = 'http://localhost:3000';
   console.log('dirname: ', __dirname);

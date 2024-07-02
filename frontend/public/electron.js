@@ -4,6 +4,8 @@ const { app, BrowserWindow, protocol } = require('electron');
 const path = require('path');
 // import path from 'path';
 const url = require('url');
+const fs = require('fs');
+const asar = require('asar');
 // // const isDev = require('electron-is-dev');
 // import isDev from 'electron-is-dev';
 
@@ -24,8 +26,36 @@ function createWindow() {
     protocol: 'file:',
     slashes: true,
   });
-  var subpy = require( "child_process" ).exec(pyURL);
-  subpy.stdout.pipe(process.stdout);
+
+  // const userDataPath = app.getPath('userData');
+  // const asarPath = path.join(process.resourcesPath, 'app.asar');
+  // const binaryPathInAsar = 'build/entrypoint'; // Adjust the path inside your ASAR
+  // const binaryDestinationPath = path.join(userDataPath, 'entrypoint');
+
+  // // Extract binary from ASAR
+  // asar.extractFile(asarPath, binaryPathInAsar, binaryDestinationPath);
+
+  // // Make the binary executable (if necessary, for Unix-based systems)
+  // fs.chmodSync(binaryDestinationPath, 0o755);
+
+
+  copyFileOutsideOfElectronAsar('/build/entrypoint', app.getPath('userData') + '/entrypoint');
+  const logFilePath = path.join('/Users/ethanbond/Desktop', 'electron.log');
+  fs.appendFileSync(logFilePath, `Userpath: ${app.getPath('userData')}`);
+  var subpy = require( "child_process" ).exec(app.getPath('userData') + '/entrypoint', (error, stdout, stderr) => {
+    if (error) {
+      fs.appendFileSync(logFilePath, `Error executing command: ${error}`);
+      return;
+    }
+    
+    if (stderr) {
+      fs.appendFileSync(logFilePath, `stderr: ${stderr}`);
+      return;
+    }
+  
+    fs.appendFileSync(logFilePath, `stdout: ${stdout}`);
+  });
+  // subpy.stdout.pipe(process.stdout);
 
   // const startURL = 'http://localhost:3000';
   console.log('dirname: ', __dirname);
@@ -74,3 +104,31 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+var copyFileOutsideOfElectronAsar = function (sourceInAsarArchive, destOutsideAsarArchive) {
+  if (fs.existsSync(app.getAppPath() + "/" + sourceInAsarArchive)) {
+
+      // file will be copied
+      if (fs.statSync(app.getAppPath() + "/" + sourceInAsarArchive).isFile()) {
+
+          let file = destOutsideAsarArchive 
+          let dir = path.dirname(file);
+          if (!fs.existsSync(dir)) {
+              fs.mkdirSync(dir, { recursive: true });
+          }
+
+          fs.writeFileSync(file, fs.readFileSync(app.getAppPath() + "/" + sourceInAsarArchive));
+
+      }
+
+      // dir is browsed
+      else if (fs.statSync(app.getAppPath() + "/" + sourceInAsarArchive).isDirectory()) {
+
+          fs.readdirSync(app.getAppPath() + "/" + sourceInAsarArchive).forEach(function (fileOrFolderName) {
+
+              copyFileOutsideOfElectronAsar(sourceInAsarArchive + "/" + fileOrFolderName, destOutsideAsarArchive + "/" + fileOrFolderName);
+          });
+      }
+  }
+
+}

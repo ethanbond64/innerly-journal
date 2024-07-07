@@ -64,7 +64,11 @@ export const ViewPage = ({ entryInput = null }) => {
 
     const onClickCurrentTitle = () => {
         setEditingTitle(true);
-        titleRef.current.focus(); // TODO - this doesn't work
+        setTimeout(() => {
+            if (titleRef.current) {
+                titleRef.current.focus();
+            }
+        }, 800); // TODO - is there a less hacky way to do this?
     }
 
     const onChangeTitle = (e) => {

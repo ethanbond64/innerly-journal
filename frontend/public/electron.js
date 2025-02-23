@@ -41,7 +41,7 @@ function createWindow() {
   });
 
   // Load your React frontend (this could be a local file or a URL)
-  mainWindow.loadURL('http://localhost:3000'); // or use loadFile('index.html') if pre-built
+  mainWindow.loadURL('http://localhost:3000#login'); // or use loadFile('index.html') if pre-built
 }
 
 app.whenReady().then(() => {

@@ -454,6 +454,43 @@ def submit_task(current_user, task):
 
     return {'success': True}, 200
 
+@views.route('/import')
+@login_required
+def import_entries(current_user):
+
+    # TODO need user's password to lock entries
+
+    user_df = []
+    
+    entries_df = []
+    media_entries_df = []
+    
+    themes_df = []
+    specifics_df = []
+    entry_theme_xref_df = []
+    entry_specfic_xref_df = []
+
+    # Import sensitivity for user
+
+    # For entry in entries
+
+    # If text
+     # Lock if locked
+     # Insert
+    # If file upload
+     # Save photo
+     # Insert
+    # If link
+     # Download + save photo/media
+     # Insert
+    
+    # get xref specific/theme ids
+    # get theme & specific values
+    # upsert as tags
+
+    return None
+
+
 def upsert_tags(tags, user_id, entry_id):
     
     if tags is not None and len(tags) > 0:
@@ -472,4 +509,3 @@ def upsert_tags(tags, user_id, entry_id):
                 EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
 
         return tags
-

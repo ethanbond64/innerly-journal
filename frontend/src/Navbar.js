@@ -64,11 +64,11 @@ export const Navbar = ({ setSearch, user }) => {
                                     <li role="separator" className="divider"></li>
                                 </> : null}
                             <li>
-                                <a href={settingsRoute}>Settings</a>
+                                <a href="#settings">Settings</a>
                             </li>
                             <li role="separator" className={`divider`}></li>
                             <li>
-                                <a href="/login" onClick={logOut}>Log out</a>
+                                <a href="#login" onClick={logOut}>Log out</a>
                             </li>
                         </ul>
                     </ClickOutsideTracker> : null

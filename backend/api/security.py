@@ -61,7 +61,7 @@ def authenticated(user: User, password):
     return False
 
 def get_token(user: User):
-        return create_access_token(identity=get_user_identity(user.id), expires_delta=datetime.timedelta(hours=12))
+        return create_access_token(identity=get_user_identity(user.id), expires_delta=False)
 
 def get_user_identity(user_id):
     return str(user_id) + IDENTITY_PADDING

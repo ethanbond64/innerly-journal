@@ -1,7 +1,13 @@
+import math
+import os
+import threading
 import uuid
-from datetime import datetime
-from flask import Blueprint, request, send_from_directory
+from datetime import datetime, timezone
+import zipfile
+from flask import Blueprint, request, send_from_directory, current_app
 
+from io import BytesIO
+from werkzeug.datastructures import FileStorage
 import pandas
 from sqlalchemy import Boolean, String, and_, cast, or_
 
@@ -11,7 +17,8 @@ from api.processors.text_processor import process_text_entry, sentiment_index_to
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.tasks import submitImportEntriesTask
-from backend.api.processors.entry_models import FileEntryData, LinkEntryData, TextEntryData
+from api.processors.entry_models import FileEntryData, LinkEntryData, TextEntryData
+from api.settings import INNERLY_DIRECTORY
 
 views = Blueprint('views', __name__)
 
@@ -458,40 +465,15 @@ def submit_task(current_user, task):
     return {'success': True}, 200
 
 @views.route('/import')
-@login_required
-def import_entries(current_user):
+def import_entries():
 
-    # TODO need user's password to lock entries
+    current_user = 7
+    import_entries("",current_user,"","")
+    # thread = threading.Thread(target=import_entries_wrapper, args=(current_app,"",current_user,"",""))
+    # thread.daemon = True  # Ensures thread won't prevent app shutdown
+    # thread.start()
 
-    user_df = []
-    
-    entries_df = []
-    media_entries_df = []
-    
-    themes_df = []
-    specifics_df = []
-    entry_theme_xref_df = []
-    entry_specfic_xref_df = []
-
-    # Import sensitivity for user
-
-    # For entry in entries
-
-    # If text
-     # Lock if locked
-     # Insert
-    # If file upload
-     # Save photo
-     # Insert
-    # If link
-     # Download + save photo/media
-     # Insert
-    
-    # get xref specific/theme ids
-    # get theme & specific values
-    # upsert as tags
-
-    return None
+    return {"status": "submitted"}
 
 
 def upsert_tags(tags, user_id, entry_id):
@@ -512,32 +494,47 @@ def upsert_tags(tags, user_id, entry_id):
                 EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
 
         return tags
+    
+
+def import_entries_wrapper(app, *args):
+    with app.app_context():
+        import_entries(*args)
 
 def import_entries(zip_path, user_id, password, passcode):
 
+    # TODO use the real path on the machine...
+    test_zip_path = os.path.join(INNERLY_DIRECTORY, "export.zip")
+    zip_path = test_zip_path
+
     # Unzip the zip file contents to ~/.innerly/imports
+    import_path = os.path.join(INNERLY_DIRECTORY, "imports/")
+    os.makedirs(import_path, exist_ok=True)
+
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(import_path)
 
     # TODO validate passcode against the hash in the user record
 
     # Read entries csv into a dataframe
-    entries = pandas.read_csv(UNZIPPED_PATH + "entries.csv")
-    media_entries = pandas.read_csv(UNZIPPED_PATH + "media_entries.csv")
-    specifics = pandas.read_csv(UNZIPPED_PATH + "specifics.csv")
-    themes = pandas.read_csv(UNZIPPED_PATH + "themes.csv")
-    entry_specific_xref = pandas.read_csv(UNZIPPED_PATH + "entry_specific_xref.csv")
-    entry_theme_xref = pandas.read_csv(UNZIPPED_PATH + "entry_theme_xref.csv")
+    entries = pandas.read_csv(os.path.join(import_path, "entries.csv"))
+    media_entries = pandas.read_csv(os.path.join(import_path, "media_entries.csv"))
+    specifics = pandas.read_csv(os.path.join(import_path, "specifics.csv"))
+    themes = pandas.read_csv(os.path.join(import_path, "themes.csv"))
+    entry_specific_xref = pandas.read_csv(os.path.join(import_path, "entry_specific_xref.csv"))
+    entry_theme_xref = pandas.read_csv(os.path.join(import_path, "entry_theme_xref.csv"))
 
     for _, entry in entries.iterrows():        
         media_entry_id = entry["media_entry_id"]
-        
+
         # Common values
-        created_on = entry["created_on"]
-        updated_on = entry["updated_on"]
-        functional_datetime = entry["functional_timestamp"]
+        created_on = parse_utc_datetime(entry["created_on"])
+        updated_on = parse_utc_datetime(entry["updated_on"])
+        functional_datetime = parse_utc_datetime(entry["functional_timestamp"])
         title = entry["title"]
+        title = "" if title is None or (isinstance(title, str) and title.lower() == "nan") or (isinstance(title,float) and math.isnan(title)) else title
 
         # Text entry
-        if media_entry_id is None or media_entry_id == "":
+        if media_entry_id is None or media_entry_id == "" or math.isnan(media_entry_id):
             sentiment = sentiment_index_to_value(entry["sentiment_idx"])
             
             if entry["locked"]:
@@ -546,40 +543,52 @@ def import_entries(zip_path, user_id, password, passcode):
             else:
                 text = entry["text"]
             
+            # Create new entry row data
             entry_type = "text"
             entry_data = TextEntryData(title, text, sentiment).json()
 
         # General media entry
         else:
-            
-            media_entry = media_entries[media_entries["id"] == media_entry_id]
+            media_entry = media_entries[media_entries["id"] == int(media_entry_id)].iloc[0]
+            # if media_entry is None:
+            #     continue
             media_entry_type = media_entry["media_type"]
-
 
             # Link entry
             if media_entry_type == "link":
-                original_path = media_entry["thumbnail_img"]
-                # TODO write to images folder in .innerly, save path below
-                path = ""
-                file_type = path.split(".")[-1]
+                # original_path = media_entry["thumbnail_img"]
+                # # TODO write to images folder in .innerly, save path below
+                # path = ""
+                # file_type = path.split(".")[-1]
                 link = media_entry["link"]
-
                 entry_type = "link"
-                entry_data = LinkEntryData(title, path, original_path, file_type, link).json()
+                entry_data, _tags = process_link_entry(user_id, link)
+                if entry_data.get("path") is None: 
+                    continue
+                # # Create new entry row data
+                # entry_type = "link"
+                # entry_data = LinkEntryData(title, path, original_path, file_type, link).json()
 
             # File entry
-            elif media_entry_type == "s3_image_upload":
-                
+            elif media_entry_type == "image_upload_s3":
                 filename = media_entry["thumbnail_img"].replace("imgs/","")
-                # TODO write to images folder in .innerly, save path below
-                path = ""
-                file_type = path.split(".")[-1]
-
+                # # TODO write to images folder in .innerly, save path below
+                # path = ""
+                # file_type = path.split(".")[-1]
+                file_content = "application/octet-stream"
+                filepath = os.path.join(import_path, "images", filename)
+                with open(filepath, 'rb') as f:
+                    file_content = f.read()
+                stream = BytesIO(file_content)
+                file = FileStorage(stream=stream, filename=filepath.split('/')[-1])
+                entry_data = process_file_entry(user_id, file)
+                # Create new entry row data
                 entry_type = "file"
-                entry_data = FileEntryData(title, path, file_type).json()
+                # entry_data = FileEntryData(title, path, file_type).json()
 
             else:
-                raise Exception()
+                print("unknow media type:", media_entry_type)
+                raise NotImplementedError()
             
         # Create the row and save to the db
         new_entry = Entry()
@@ -589,7 +598,7 @@ def import_entries(zip_path, user_id, password, passcode):
         new_entry.functional_datetime = functional_datetime
         new_entry.entry_type = entry_type
         new_entry.entry_data = entry_data
-        # new_entry.save()
+        new_entry.save()
 
         print(new_entry.json())
 
@@ -599,19 +608,28 @@ def import_entries(zip_path, user_id, password, passcode):
         # Tags from specifics
         specific_xref_rows = entry_specific_xref[entry_specific_xref["entry_id"] == entry_id]
         specific_ids = set(specific_xref_rows["specific_id"])
-        specific_rows = specifics[specifics["id"] in specific_ids]
-        specifics = set(specific_rows["title"])
-        tags.extend(specifics)
+        specific_rows = specifics[specifics["id"].isin(specific_ids)]
+        specifics_values = set(specific_rows["title"])
+        tags.extend(specifics_values)
 
         # Tags from themes
         theme_xref_rows = entry_theme_xref[entry_theme_xref["entry_id"] == entry_id]
         theme_ids = set(theme_xref_rows["theme_id"])
-        theme_rows = themes[themes["id"] in theme_ids]
-        themes = set(theme_rows["title"])
-        tags.extend(themes)
+        theme_rows = themes[themes["id"].isin(theme_ids)]
+        themes_values = set(theme_rows["title"])
+        tags.extend(themes_values)
 
         # Save and link tags
         print("Upserting tags:", tags)
-        # upsert_tags(tags, user_id, new_entry.id)
+        upsert_tags(tags, user_id, new_entry.id)
 
-        print("complete")
+    print("complete")
+
+def parse_utc_datetime(datetime_str: str) -> datetime:
+    # Remove the timezone part (e.g. '+00') by splitting on the plus sign.
+    dt_without_offset = datetime_str.rsplit("+", 1)[0]
+    # Parse the remaining datetime string.
+    pattern = "%Y-%m-%d %H:%M:%S" + (".%f" if "." in datetime_str else "")
+    dt = datetime.strptime(dt_without_offset, pattern)
+    # Attach the UTC timezone.
+    return dt.replace(tzinfo=timezone.utc)

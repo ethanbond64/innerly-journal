@@ -2,17 +2,20 @@ import uuid
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory
 
+import pandas
 from sqlalchemy import Boolean, String, and_, cast, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
 from api.models import EntryTagXref, User, Entry, Tag, get_datetime
-from api.processors.text_processor import process_text_entry
+from api.processors.text_processor import process_text_entry, sentiment_index_to_value
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.tasks import submitImportEntriesTask
+from backend.api.processors.entry_models import FileEntryData, LinkEntryData, TextEntryData
 
 views = Blueprint('views', __name__)
 
+UNZIPPED_PATH = "~/.innerly/imports/"
 SHARE_INIIAL = "todo"
 TAG_LIMIT = 32
 
@@ -509,3 +512,106 @@ def upsert_tags(tags, user_id, entry_id):
                 EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
 
         return tags
+
+def import_entries(zip_path, user_id, password, passcode):
+
+    # Unzip the zip file contents to ~/.innerly/imports
+
+    # TODO validate passcode against the hash in the user record
+
+    # Read entries csv into a dataframe
+    entries = pandas.read_csv(UNZIPPED_PATH + "entries.csv")
+    media_entries = pandas.read_csv(UNZIPPED_PATH + "media_entries.csv")
+    specifics = pandas.read_csv(UNZIPPED_PATH + "specifics.csv")
+    themes = pandas.read_csv(UNZIPPED_PATH + "themes.csv")
+    entry_specific_xref = pandas.read_csv(UNZIPPED_PATH + "entry_specific_xref.csv")
+    entry_theme_xref = pandas.read_csv(UNZIPPED_PATH + "entry_theme_xref.csv")
+
+    for _, entry in entries.iterrows():        
+        media_entry_id = entry["media_entry_id"]
+        
+        # Common values
+        created_on = entry["created_on"]
+        updated_on = entry["updated_on"]
+        functional_datetime = entry["functional_timestamp"]
+        title = entry["title"]
+
+        # Text entry
+        if media_entry_id is None or media_entry_id == "":
+            sentiment = sentiment_index_to_value(entry["sentiment_idx"])
+            
+            if entry["locked"]:
+                print("Locked entries not supported yet")
+                text = ""
+            else:
+                text = entry["text"]
+            
+            entry_type = "text"
+            entry_data = TextEntryData(title, text, sentiment).json()
+
+        # General media entry
+        else:
+            
+            media_entry = media_entries[media_entries["id"] == media_entry_id]
+            media_entry_type = media_entry["media_type"]
+
+
+            # Link entry
+            if media_entry_type == "link":
+                original_path = media_entry["thumbnail_img"]
+                # TODO write to images folder in .innerly, save path below
+                path = ""
+                file_type = path.split(".")[-1]
+                link = media_entry["link"]
+
+                entry_type = "link"
+                entry_data = LinkEntryData(title, path, original_path, file_type, link).json()
+
+            # File entry
+            elif media_entry_type == "s3_image_upload":
+                
+                filename = media_entry["thumbnail_img"].replace("imgs/","")
+                # TODO write to images folder in .innerly, save path below
+                path = ""
+                file_type = path.split(".")[-1]
+
+                entry_type = "file"
+                entry_data = FileEntryData(title, path, file_type).json()
+
+            else:
+                raise Exception()
+            
+        # Create the row and save to the db
+        new_entry = Entry()
+        new_entry.created_on = created_on
+        new_entry.updated_on = updated_on
+        new_entry.user_id = user_id
+        new_entry.functional_datetime = functional_datetime
+        new_entry.entry_type = entry_type
+        new_entry.entry_data = entry_data
+        # new_entry.save()
+
+        print(new_entry.json())
+
+        tags = []
+        entry_id = entry["id"]
+
+        # Tags from specifics
+        specific_xref_rows = entry_specific_xref[entry_specific_xref["entry_id"] == entry_id]
+        specific_ids = set(specific_xref_rows["specific_id"])
+        specific_rows = specifics[specifics["id"] in specific_ids]
+        specifics = set(specific_rows["title"])
+        tags.extend(specifics)
+
+        # Tags from themes
+        theme_xref_rows = entry_theme_xref[entry_theme_xref["entry_id"] == entry_id]
+        theme_ids = set(theme_xref_rows["theme_id"])
+        theme_rows = themes[themes["id"] in theme_ids]
+        themes = set(theme_rows["title"])
+        tags.extend(themes)
+
+        # Save and link tags
+        print("Upserting tags:", tags)
+        # upsert_tags(tags, user_id, new_entry.id)
+
+        print("complete")

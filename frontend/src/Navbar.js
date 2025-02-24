@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearLocalStorage, ClickOutsideTracker } from "./utils.js";
-import { adminRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
+import { adminRoute, homeRoute, loginRoute } from "./constants.js";
 
 export const Navbar = ({ setSearch, user }) => {
 

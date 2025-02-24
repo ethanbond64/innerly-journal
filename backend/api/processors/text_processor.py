@@ -5,6 +5,7 @@ from api.processors.keywords import positive, negative, negations
 POSITIVE = 'positive'
 NEGATIVE = 'negative'
 NEUTRAL = 'neutral'
+SENTIMENT_VALUES = [NEGATIVE, NEUTRAL, POSITIVE]
 
 # Take in the body input from the request, validate and return entry data and tags
 def process_text_entry(body: dict) -> tuple:
@@ -62,3 +63,10 @@ def getSentiment(text: str) -> str:
         sentiment = POSITIVE
 
     return sentiment
+
+def sentiment_index_to_value(idx: int) -> str:
+
+    if idx in {0, 1, 2}:
+        return SENTIMENT_VALUES[idx]
+    
+    return NEUTRAL

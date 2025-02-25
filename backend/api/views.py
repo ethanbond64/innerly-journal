@@ -581,7 +581,7 @@ def import_entries(zip_path, user_id, password, passcode):
                     file_content = f.read()
                 stream = BytesIO(file_content)
                 file = FileStorage(stream=stream, filename=filepath.split('/')[-1])
-                entry_data = process_file_entry(user_id, file)
+                entry_data, _tags = process_file_entry(user_id, file)
                 # Create new entry row data
                 entry_type = "file"
                 # entry_data = FileEntryData(title, path, file_type).json()

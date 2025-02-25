@@ -468,10 +468,10 @@ def submit_task(current_user, task):
 def import_entries():
 
     current_user = 7
-    import_entries("",current_user,"","")
-    # thread = threading.Thread(target=import_entries_wrapper, args=(current_app,"",current_user,"",""))
-    # thread.daemon = True  # Ensures thread won't prevent app shutdown
-    # thread.start()
+    # import_entries("",current_user,"","")
+    thread = threading.Thread(target=import_entries_wrapper, args=(current_app.app_context(),"",current_user,"",""))
+    thread.daemon = True  # Ensures thread won't prevent app shutdown
+    thread.start()
 
     return {"status": "submitted"}
 
@@ -496,9 +496,9 @@ def upsert_tags(tags, user_id, entry_id):
         return tags
     
 
-def import_entries_wrapper(app, *args):
-    with app.app_context():
-        import_entries(*args)
+def import_entries_wrapper(app_context, *args):
+    app_context.push()
+    import_entries(*args)
 
 def import_entries(zip_path, user_id, password, passcode):
 
@@ -537,7 +537,7 @@ def import_entries(zip_path, user_id, password, passcode):
         if media_entry_id is None or media_entry_id == "" or math.isnan(media_entry_id):
             sentiment = sentiment_index_to_value(entry["sentiment_idx"])
             
-            if entry["locked"]:
+            if entry["locked"] == True:
                 print("Locked entries not supported yet")
                 text = ""
             else:

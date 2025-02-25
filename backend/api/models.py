@@ -97,3 +97,23 @@ class EntryTagXref(db.Model, BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'), nullable=False)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)
+
+
+def upsert_tags(tags, user_id, entry_id):
+
+    if tags is not None and len(tags) > 0:
+
+        tags = [tag.lower() for tag in tags]
+        existing_tags = Tag.query.filter(Tag.user_id == user_id, Tag.name.in_(tags)).all()
+        existing_tags = {tag.name: tag for tag in existing_tags}
+
+        for tag in tags:
+            if tag not in existing_tags:
+                new_tag = Tag(user_id=user_id, name=tag)
+                new_tag.save()
+
+                EntryTagXref(entry_id=entry_id, tag_id=new_tag.id).save()
+            else:
+                EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
+
+        return tags

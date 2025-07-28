@@ -6,6 +6,7 @@ from io import BytesIO
 import math
 import os
 import zipfile
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 import pandas
 from werkzeug.datastructures import FileStorage
@@ -151,3 +152,34 @@ def parse_utc_datetime(datetime_str: str) -> datetime:
     dt = datetime.strptime(dt_without_offset, pattern)
     # Attach the UTC timezone.
     return dt.replace(tzinfo=timezone.utc)
+
+def get_aes_key(keyname):
+    # s3_object = s3.get_object(Bucket=KEY_BUCKET, Key=keyname)
+    # body = s3_object["Body"]
+    # return body.read()
+    with open(keyname, "rb") as f:
+        return f.read()
+
+def decrypt(key, associated_data, iv, ciphertext, tag):
+    # Construct a Cipher object, with the key, iv, and additionally the
+    # GCM tag used for authenticating the message.
+    decryptor = Cipher(
+        algorithms.AES(key),
+        modes.GCM(iv, tag),
+    ).decryptor()
+
+    # We put associated_data back in or the tag will fail to verify
+    # when we finalize the decryptor.
+    decryptor.authenticate_additional_data(associated_data)
+
+    # Decryption gets us the authenticated plaintext.
+    # If the tag does not match an InvalidTag exception will be raised.
+    return decryptor.update(ciphertext) + decryptor.finalize()
+
+# All arguments other than passcode are from the row itself
+def unlockText(keyname, iv, cipher_text, tag, passcode):
+    # decrypt and save plaintext
+    key = get_aes_key(keyname)
+    locked_auth = str(passcode).encode("utf8")
+    textBytes = decrypt(key, locked_auth, iv, cipher_text, tag)
+    return textBytes.decode("utf8")

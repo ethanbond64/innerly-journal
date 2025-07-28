@@ -68,12 +68,16 @@ export const EditPage = () => {
 
     const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from <Moment date={functionalDatetime} format="MMMM Do YYYY" /></> : null}</>);
 
-    return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} text={text} />;
+    return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };
 
-export const WritePageBase = ({  onSumbit, heading, text = '' }) => {
+export const WritePageBase = ({  onSumbit, heading, initialId = null, text = '' }) => {
 
+    const navigate = useNavigate();
     const [showHeader, setShowHeader] = useState(true);
+    const [untrackedChanges, setUntrackedChanges] = useState(false);
+    const [asyncSaving, setAsyncSaving] = useState(false);
+    const [entryId, setEntryId] = useState(initialId);
 
     let timeoutId;
 
@@ -95,11 +99,41 @@ export const WritePageBase = ({  onSumbit, heading, text = '' }) => {
         };
     }, []); 
 
+    const onTextChange = (e) => {
+        setUntrackedChanges(true);
+        if (!asyncSaving) {
+            setAsyncSaving(true);
+            if (entryId === null) {
+                // TODO need to suspend tags and sentiment analysis until the user clicks save.
+                setTimeout(() => {
+                    setUntrackedChanges(false);
+                    insertTextEntry(document.getElementById('writeto').value, null, data => {
+                        setEntryId(data.id);
+                        setAsyncSaving(false);
+                    }); // TODO need fn datetime
+                }, 3000); // TODO handle failure
+            } else {
+                setTimeout(() => {
+                    setUntrackedChanges(false);
+                    updateTextEntry(entryId, { text: document.getElementById('writeto').value}, null, data => {
+                        setAsyncSaving(false);
+                    });
+                }, 3000); // TODO handle failure
+            }
+        }
+    };
+
     const onSubmitInner = (e) => {
         e.preventDefault();
         const text = document.getElementById('writeto').value;
-        onSumbit(text);
-    }
+        if (entryId === null) {
+            onSumbit(text);
+        } else {
+            updateTextEntry(entryId, { text }, null, (data) => {
+                navigate(viewRoute + data.id); 
+            });
+        }
+    };
 
     return (
         <main style={{ height: `90vh`, padding: '0', marginBottom: '0' }} className="container" >
@@ -121,13 +155,14 @@ export const WritePageBase = ({  onSumbit, heading, text = '' }) => {
                                     <span className="nremove hidden-xs" >{showHeader ? 'Save ' : null}</span>
                                     <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>
                                 </button>
+                                <span style={{ float: 'right', marginRight: '8px', fontSize: 'xx-large', textAlign: 'center', marginTop: '-6px', color: (untrackedChanges ? '#ffcc00' : '#00ff00') }}>•</span>
                             </div>
                             <div id="progressbar">
                                 <div style={{ height: '0px', width: '0%'}}></div>
                             </div>
                         </div>
                         <div className="form-group" style={{ height: '97%' }}>
-                            <textarea className="form-control form-control-inner" id="writeto" name="entry" style={{ marginTop: '20px' }} defaultValue={text}></textarea>
+                            <textarea className="form-control form-control-inner" id="writeto" name="entry" onChange={onTextChange} style={{ marginTop: '20px' }} defaultValue={text}></textarea>
                         </div>
                         <div className="writeto-display"></div>
                     </div>

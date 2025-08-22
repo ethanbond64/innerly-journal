@@ -31,6 +31,12 @@ export const LoginPage = () => {
          });
     };
 
+    const handlePasswordKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            onSubmit(e);
+        }
+    };
+
     return (
         <main className="container drag">
             <a href={homeRoute}>
@@ -49,7 +55,7 @@ export const LoginPage = () => {
                     <div className="form-group sm-margin-bottom">
                         <label for="password"><strong>Password</strong>
                         </label>
-                        <input className="form-control bg-white" id="password" maxlength="128" minlength="8" name="password" required="" type="password" placeholder="" />
+                        <input className="form-control bg-white" id="password" maxlength="128" minlength="8" name="password" required="" type="password" placeholder="" onKeyDown={handlePasswordKeyDown} />
                     </div>
                     <div className="row">
                         <div className="col-md-6">
@@ -69,5 +75,3 @@ export const LoginPage = () => {
         </main>
     );
 };
-
-

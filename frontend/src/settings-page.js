@@ -6,6 +6,7 @@ import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.js";
 import { Notification } from "./notification.js";
 import { updatePassword, updateUser } from "./requests.js";
+import { useDarkMode } from "./dark-mode.js";
 
 export const SettingsPage = () => {
 
@@ -14,16 +15,11 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
-    const initialTheme = localStorage.getItem("color-theme") === "dark";
+    
+    const { isDarkMode, setDarkMode } = useDarkMode();
 
     const onChangeTheme = (e) => {
-        if (e.target.checked) {
-            localStorage.setItem("color-theme", "dark");
-            document.documentElement.setAttribute("data-theme","dark");
-        } else {
-            localStorage.setItem("color-theme", "light");
-            document.documentElement.setAttribute("data-theme","light");
-        }
+        setDarkMode(e.target.checked);
     };
 
     const onClickUpdatePassword = () => {
@@ -87,7 +83,7 @@ export const SettingsPage = () => {
                     <div class="well" style={{ height: '65px' }}>
                         <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Dark Mode</h4>
                         <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
-                            <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={initialTheme}/>
+                            <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={isDarkMode}/>
                             <label id="swtichlabel" for="switch">Toggle</label>
                         </div>
                     </div>

@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearLocalStorage, ClickOutsideTracker } from "./utils.js";
 import { adminRoute, homeRoute, loginRoute } from "./constants.js";
+import { useDarkMode } from "./dark-mode.js";
 
 export const Navbar = ({ setSearch, user }) => {
 
     const navigate = useNavigate();
     const [searchLocal, setSearchLocal] = useState('')
     const [menuOpen, setMenuOpen] = useState(false);
+    const { isDarkMode, setDarkMode } = useDarkMode();
 
     const searchChange = (e) => {
         setSearchLocal(e.target.value)
@@ -29,6 +31,10 @@ export const Navbar = ({ setSearch, user }) => {
         e.preventDefault();
         clearLocalStorage();
         navigate(loginRoute);
+    };
+
+    const onChangeTheme = (e) => {
+        setDarkMode(e.target.checked);
     };
 
     let initial = user.email.charAt(0).toUpperCase();
@@ -63,6 +69,15 @@ export const Navbar = ({ setSearch, user }) => {
                                     </li>
                                     <li role="separator" className="divider"></li>
                                 </> : null}
+                            <li style={{ padding: '3px 20px' }}>
+                                <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
+                                    <span>dark</span>
+                                    <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={isDarkMode}/>
+                                    <label id="swtichlabel" for="switch">Toggle</label>
+                                    <span>light</span>
+                                </div>
+                            </li>
+                            <li role="separator" className="divider"></li>
                             <li>
                                 <a href="#settings">Settings</a>
                             </li>
@@ -91,6 +106,3 @@ export const Navbar = ({ setSearch, user }) => {
         </nav>
     );
 };
-
-
-

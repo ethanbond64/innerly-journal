@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearLocalStorage, ClickOutsideTracker } from "./utils.js";
+import { clearLocalStorage } from "./utils.js";
 import { adminRoute, homeRoute, loginRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
 
@@ -10,6 +10,39 @@ export const Navbar = ({ setSearch, user }) => {
     const [searchLocal, setSearchLocal] = useState('')
     const [menuOpen, setMenuOpen] = useState(false);
     const { isDarkMode, setDarkMode } = useDarkMode();
+    const dropdownRef = useRef(null);
+
+    // Handle clicks outside of dropdown - Safari-friendly version
+    useEffect(() => {
+        if (!menuOpen) return;
+
+        // Small delay to let the click that opened the menu to complete
+        const timer = setTimeout(() => {
+            const handleClickAnywhere = (event) => {
+                // If clicking the avatar button, let the toggleMenu handle it
+                const avatarButton = event.target.closest('.custom-letter-box');
+                if (avatarButton) {
+                    return;
+                }
+                
+                // If clicking inside the dropdown, don't close
+                if (dropdownRef.current && dropdownRef.current.contains(event.target)) {
+                    return;
+                }
+                
+                // Click was outside, close the menu
+                setMenuOpen(false);
+            };
+
+            document.addEventListener('click', handleClickAnywhere, true);
+            
+            return () => {
+                document.removeEventListener('click', handleClickAnywhere, true);
+            };
+        }, 10);
+
+        return () => clearTimeout(timer);
+    }, [menuOpen]);
 
     const searchChange = (e) => {
         setSearchLocal(e.target.value)
@@ -26,7 +59,6 @@ export const Navbar = ({ setSearch, user }) => {
             submit();
         }
     }
-
     const logOut = (e) => {
         e.preventDefault();
         clearLocalStorage();
@@ -35,6 +67,12 @@ export const Navbar = ({ setSearch, user }) => {
 
     const onChangeTheme = (e) => {
         setDarkMode(e.target.checked);
+    };
+
+    const toggleMenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(prev => !prev);
     };
 
     let initial = user.email.charAt(0).toUpperCase();
@@ -52,42 +90,41 @@ export const Navbar = ({ setSearch, user }) => {
                             style={{ marginTop: '20px', marginLeft: '15px', borderRadius: '5px' }} />
                 </a>
             </div>
-            <div className={``} style={{ float: 'right' }}>
-                <button type="button" onClick={() => setMenuOpen(true)} className={`custom-letter-box dropdown-toggle`} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
+            <div style={{ float: 'right' }}>
+                <button type="button" onClick={toggleMenu} className={`custom-letter-box dropdown-toggle`} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
                     <div className={`avatar-circle`}>
                         <span className={`initials`}>{initial}</span>
                     </div>
                 </button>
                 { menuOpen ?
-                    <ClickOutsideTracker callback={() => setMenuOpen(false)}>
-                        <ul className={`dropdown-menu pull-right show`} style={{ float: 'right' }}>
-                            {
-                                user.admin ? 
-                                <>
-                                    <li>
-                                        <a href={adminRoute}>Admin</a>
-                                    </li>
-                                    <li role="separator" className="divider"></li>
-                                </> : null}
-                            <li style={{ padding: '3px 20px' }}>
-                                <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
-                                    <span>dark</span>
-                                    <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={isDarkMode}/>
-                                    <label id="swtichlabel" for="switch">Toggle</label>
-                                    <span>light</span>
-                                </div>
-                            </li>
-                            <li role="separator" className="divider"></li>
-                            <li>
-                                <a href="#settings">Settings</a>
-                            </li>
-                            <li role="separator" className={`divider`}></li>
-                            <li>
-                                <a href="#login" onClick={logOut}>Log out</a>
-                            </li>
-                        </ul>
-                    </ClickOutsideTracker> : null
-                }   
+                    (<ul ref={dropdownRef}  className={`dropdown-menu pull-right show`} style={{ float: 'right' }}>
+                        {
+                            user.admin ? 
+                            <>
+                                <li>
+                                    <a href={adminRoute}>Admin</a>
+                                </li>
+                                <li role="separator" className="divider"></li>
+                            </> : null}
+                        <li style={{ padding: '3px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ marginRight: '10px', fontSize: '14px' }}>Light</span>
+                            <div className="toggle-container" style={{ display: 'inline-block', marginTop: '3px' }}>
+                                <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={isDarkMode}/>
+                                <label id="swtichlabel" for="switch">Toggle</label>
+                            </div>
+                            <span style={{ marginLeft: '10px', fontSize: '14px' }}>Dark</span>
+                        </li>
+                        <li role="separator" className="divider"></li>
+                        <li>
+                            <a href="#settings" style={{ fontSize: '15px' }}>Settings</a>
+                        </li>
+                        <li role="separator" className={`divider`}></li>
+                        <li>
+                            <a href="#login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
+                        </li>
+                    </ul>)
+                    : null
+            }
             </div>
             <div className="container" style={{textAlign:'center', maxWidth:'84%'}}>
                 { setSearch ?

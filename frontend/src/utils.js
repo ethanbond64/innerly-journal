@@ -58,14 +58,15 @@ export const equalsDate = (date1, date2) => {
 const useOutsideAlerter = (ref, callback) => {
     useEffect(() => {
         const handleClickOutside = (event) => {
-        if (ref.current && !ref.current.contains(event.target)) {
-            callback();
+            if (ref.current && !ref.current.contains(event.target)) {
+                callback();
+                document.removeEventListener("click", handleClickOutside);
+            }
         }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("click", handleClickOutside);
         return () => {
-        // Unbind the event listener on clean up
-        document.removeEventListener("mousedown", handleClickOutside);
+            // Unbind the event listener on clean up
+            document.removeEventListener("click", handleClickOutside);
         };
     }, [ref, callback]);
 }
@@ -73,6 +74,5 @@ const useOutsideAlerter = (ref, callback) => {
 export const ClickOutsideTracker = ({ callback, children }) => {
     const wrapperRef = useRef(null);
     useOutsideAlerter(wrapperRef, callback);
-
     return <div ref={wrapperRef}>{children}</div>;
 }

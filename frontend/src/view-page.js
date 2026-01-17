@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Moment from 'react-moment';
 import { editRoute, homeRoute } from "./constants.js";
 import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
@@ -63,6 +63,7 @@ export const ViewPage = ({ entryInput = null }) => {
     };
 
     const onClickCurrentTitle = () => {
+        console.log("Title clicked");
         setEditingTitle(true);
         setTimeout(() => {
             if (titleRef.current) {

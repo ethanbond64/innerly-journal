@@ -1,6 +1,6 @@
 import React from "react";
 import Moment from 'react-moment';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { equalsDate, getUserData } from "../utils";
 
 export const TextCard = ({ entry }) => {
@@ -30,19 +30,21 @@ export const TextCard = ({ entry }) => {
     }
 
     return (
-        <div className={`col-xs-4 itemactive`}>
-        <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }} onClick={onClick}>
-            <h3 id="unitTitle">{title}</h3>
-            {locked && <span className="fa fa-lock" style={{ color: "var(--dm-text)", fontSize: "20px"}}></span>}
-            <p id="unitSnip" className="hidden-xs"
-                style={sensitive ? { 'color': 'transparent', 'textShadow': '0 0 6px var(--dm-text)', 'padding': '2px' } : {}} >
-                {preview}
-            </p>
-            <span id="unitTopics">
-                {tags ? tags.map((topic, i) => ((i === tags.length - 1 || tags.length  === 1  ? topic : `${topic} | `))) : null}
-            </span>
-        </div>
-    </div>
+        <Link to={`/view/${entry.id}`}>
+            <div className={`col-xs-4 itemactive`}>
+                <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }} onClick={onClick}>
+                    <h3 id="unitTitle">{title}</h3>
+                    {locked && <span className="fa fa-lock" style={{ color: "var(--dm-text)", fontSize: "20px"}}></span>}
+                    <p id="unitSnip" className="hidden-xs"
+                        style={sensitive ? { 'color': 'transparent', 'textShadow': '0 0 6px var(--dm-text)', 'padding': '2px' } : {}} >
+                        {preview}
+                    </p>
+                    <span id="unitTopics">
+                        {tags ? tags.map((topic, i) => ((i === tags.length - 1 || tags.length  === 1  ? topic : `${topic} | `))) : null}
+                    </span>
+                </div>
+            </div>
+        </Link>
     );
 };
 

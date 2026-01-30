@@ -4,6 +4,7 @@ import axios from 'axios';
 import { setToken, setUserData } from './utils.js';
 import { homeRoute, signupRoute } from './constants.js';
 import { Notification } from './notification.js';
+import { API_BASE_URL, getPublicUrl } from './config.js';
 
 export const LoginPage = () => {
 
@@ -14,7 +15,7 @@ export const LoginPage = () => {
         e.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-         axios.post('http://localhost:8000/api/login', { email, password }).then((response) => {
+         axios.post(`${API_BASE_URL}/api/login`, { email, password }).then((response) => {
             if (response.data.token && response.data.user) {
                 setToken(response.data.token);
                 setUserData(response.data.user);
@@ -40,7 +41,7 @@ export const LoginPage = () => {
     return (
         <main className="container drag">
             <a href={homeRoute}>
-                <img src="./images/innerly_wordmark_200616_02.png" className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
+                <img src={getPublicUrl('images/innerly_wordmark_200616_02.png')} className="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <Notification message={error} clear={() => setError(null)} />
             <div className="md-margin-top"></div>

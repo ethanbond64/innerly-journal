@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { insertLinkEntry, insertFileEntry } from "../requests.js";
 import { writeRoute } from "../constants.js";
 import { dateToString, equalsDate, getTodaysDate } from "../utils.js";
+import { getPublicUrl } from "../config.js";
 
 export const BlankCard = ({ datetime, replace }) => {
 
@@ -51,8 +52,8 @@ export const BlankCard = ({ datetime, replace }) => {
     return (
         <div className={`col-xs-4 blank_unit itemactive`}>
             <div className={`well swell ${today ? 'todayblank' : ''}`} id="unit">
-                { loading ? 
-                <img src="./images/innerly-loader.gif" alt="loading gif" /> : 
+                { loading ?
+                <img src={getPublicUrl('images/innerly-loader.gif')} alt="loading gif" /> : 
                 <>
                     <p className="swellLabel" >+</p>
                     <button className={`btn btn-lg btn-info pretty-btn writeButton`} onClick={onClickWrite}><span className={`hidden-sm hidden-xs`}>Write an Entry</span><span className={`hidden-xl hidden-lg hidden-md`}>Write</span></button>

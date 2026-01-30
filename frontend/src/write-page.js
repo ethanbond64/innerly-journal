@@ -4,6 +4,7 @@ import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getDateNoTime } from "./utils.js";
+import { getPublicUrl } from "./config.js";
 
 
 export const WritePage = () => {
@@ -140,7 +141,7 @@ export const WritePageBase = ({  onSumbit, heading, initialId = null, text = '' 
                 <div className="row text-center" style={{ height: '90%' }}>
                     <div className="col-md-2 hidden-sm hidden-xs text-left" >
                         <a href={homeRoute} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                            <img src="./images/innerly_wordmark_200616_03.png" style={{ opacity: showHeader ? 1 : 0, marginTop: '30px', }} className="img-responsive md-margin-right" width="170" height="80" id="innerlyImage" title="Innerly" alt="Innerly" />
+                            <img src={getPublicUrl('images/innerly_wordmark_200616_03.png')} style={{ opacity: showHeader ? 1 : 0, marginTop: '30px', }} className="img-responsive md-margin-right" width="170" height="80" id="innerlyImage" title="Innerly" alt="Innerly" />
                         </a>
                     </div>
                     <div className="col-lg-8 col-md-10" style={{ height: '97%' }}>

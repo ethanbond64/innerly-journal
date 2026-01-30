@@ -4,6 +4,7 @@ import axios from 'axios';
 import { setToken, setUserData } from './utils.js';
 import { homeRoute, loginRoute } from './constants.js';
 import { Notification } from './notification.js';
+import { API_BASE_URL, getPublicUrl } from './config.js';
 
 export const SignUpPage = () => {
 
@@ -30,7 +31,7 @@ export const SignUpPage = () => {
             return;
         }
         
-         axios.post('http://localhost:8000/api/signup', { email, password, share }).then((response) => {
+         axios.post(`${API_BASE_URL}/api/signup`, { email, password, share }).then((response) => {
             if (response.data.token && response.data.user) {
                 setToken(response.data.token);
                 setUserData(response.data.user);
@@ -50,7 +51,7 @@ export const SignUpPage = () => {
     return (
         <main class="container drag">
             <a href={homeRoute}>
-                <img src="./images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
+                <img src={getPublicUrl('images/innerly_wordmark_200616_02.png')} class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <Notification message={error} clear={() => setError(null)} />
             <div class="row">

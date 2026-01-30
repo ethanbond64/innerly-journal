@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearLocalStorage } from "./utils.js";
-import { adminRoute, homeRoute, loginRoute } from "./constants.js";
+import { adminRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
 import { getPublicUrl } from "./config.js";
 
@@ -117,11 +117,11 @@ export const Navbar = ({ setSearch, user }) => {
                         </li>
                         <li role="separator" className="divider"></li>
                         <li>
-                            <a href="#settings" style={{ fontSize: '15px' }}>Settings</a>
+                            <a href={settingsRoute} style={{ fontSize: '15px' }}>Settings</a>
                         </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
-                            <a href="#login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
+                            <a href={loginRoute}  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
                         </li>
                     </ul>)
                     : null

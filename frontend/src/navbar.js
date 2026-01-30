@@ -66,6 +66,11 @@ export const Navbar = ({ setSearch, user }) => {
         navigate(loginRoute);
     };
 
+    const goToSettings = (e) => {
+        e.preventDefault();
+        navigate(settingsRoute);
+    };
+
     const onChangeTheme = (e) => {
         setDarkMode(e.target.checked);
     };
@@ -117,11 +122,11 @@ export const Navbar = ({ setSearch, user }) => {
                         </li>
                         <li role="separator" className="divider"></li>
                         <li>
-                            <a href={settingsRoute} style={{ fontSize: '15px' }}>Settings</a>
+                            <a href="#" onClick={goToSettings} style={{ fontSize: '15px' }}>Settings</a>
                         </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
-                            <a href={loginRoute}  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
+                            <a href="#" style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
                         </li>
                     </ul>)
                     : null

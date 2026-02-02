@@ -115,11 +115,13 @@ export const ViewPage = ({ entryInput = null }) => {
 
     const onClickLock = () => {
         if (!locked) {
-            setPasswordModalParams({
-                prompt: "Enter password to lock entry.",
-                callback: onLockEntry,
-                cancel: () => setPasswordModalParams(null)
-            });
+            // NO longer require password to lock entry
+            onLockEntry("");
+            // setPasswordModalParams({
+            //     prompt: "Enter password to lock entry.",
+            //     callback: onLockEntry,
+            //     cancel: () => setPasswordModalParams(null)
+            // });
         } 
     };
 

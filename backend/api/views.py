@@ -377,13 +377,14 @@ def lock_entry(current_user, id):
     body = request.get_json()
     if body is None:
         return {'message': 'Bad request'}, 400
-    
-    password = body.get('password')
-    if password is None:
-        return {'message': 'Password required to lock entries.'}, 400
-    
-    if not authenticated(current_user, password):
-        return {'message': 'Unauthorized'}, 401
+
+    # Try no-longer requiring password to lock entries
+    # password = body.get('password')
+    # if password is None:
+    #     return {'message': 'Password required to lock entries.'}, 400
+    #
+    # if not authenticated(current_user, password):
+    #     return {'message': 'Unauthorized'}, 401
     
     entry_data = entry.entry_data
     locked_text = lock_text(current_user.email, entry_data.get('text', ''))

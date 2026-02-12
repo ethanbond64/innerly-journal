@@ -161,7 +161,7 @@ export const ViewPage = ({ entryInput = null }) => {
                 passwordModalParams ?
                 <PasswordModal prompt={passwordModalParams.prompt} callback={passwordModalParams.callback} cancel={passwordModalParams.cancel} /> : null
             }
-            <div class="container sm-margin-top">
+            <div className="container sm-margin-top">
                 <div className="row text-left lg-margin-top" style={{ paddingBottom: "8%" }}>
                     <div className="col-sm-8">
                         <div className="row text-left">
@@ -274,19 +274,19 @@ export const ViewPage = ({ entryInput = null }) => {
                             <hr style={{ fontSize: "1px", background: "#111111", height: "1px", opacity: "0.5" }} />
                             <div>
                                 <h2 style={{marginTop: '0px', marginBottom: '12px'}}>Size</h2>
-                                <div class="row text-center">
-                                    <div class="col-lg-6">
+                                <div className="row text-center">
+                                    <div className="col-lg-6">
                                         <h4 class="text-left">Word Count</h4>
                                     </div>
-                                    <div class="col-lg-6">
+                                    <div className="col-lg-6">
                                         <h4>{wordCount}</h4>
                                     </div>
                                 </div>
-                                <div class="row text-center">
-                                    <div class="col-lg-6">
+                                <div className="row text-center">
+                                    <div className="col-lg-6">
                                         <h4 class="text-left">Sentence Count</h4>
                                     </div>
-                                    <div class="col-lg-6">
+                                    <div className="col-lg-6">
                                         <h4>{sentenceCount}</h4>
                                     </div>
                                 </div>

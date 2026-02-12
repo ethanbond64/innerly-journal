@@ -107,17 +107,23 @@ export const WritePageBase = ({  onSumbit, heading, initialId = null, text = '' 
                 // TODO need to suspend tags and sentiment analysis until the user clicks save.
                 setTimeout(() => {
                     setUntrackedChanges(false);
-                    insertTextEntry(document.getElementById('writeto').value, null, data => {
-                        setEntryId(data.id);
-                        setAsyncSaving(false);
-                    }); // TODO need fn datetime
+                    let writeTo = document.getElementById('writeto');
+                    if (writeTo) {
+                        insertTextEntry(writeTo.value, null, data => {
+                            setEntryId(data.id);
+                            setAsyncSaving(false);
+                        }); // TODO need fn datetime
+                    }
                 }, 3000); // TODO handle failure
             } else {
                 setTimeout(() => {
                     setUntrackedChanges(false);
-                    updateTextEntry(entryId, { text: document.getElementById('writeto').value}, null, data => {
-                        setAsyncSaving(false);
-                    });
+                    let writeTo = document.getElementById('writeto');
+                    if (writeTo) {
+                        updateTextEntry(entryId, {text: writeTo.value}, null, data => {
+                            setAsyncSaving(false);
+                        });
+                    }
                 }, 3000); // TODO handle failure
             }
         }

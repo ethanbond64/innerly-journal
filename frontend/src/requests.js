@@ -1,4 +1,3 @@
-import axios from "axios"
 import { clearLocalStorage, getToken } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 
@@ -24,13 +23,22 @@ const handleUnauthorized = () => {
     window.location.href = loginRoute;
 };
 
+const handleResponse = async (response) => {
+    const data = await response.json();
+    if (!response.ok) {
+        const error = new Error(data.message || response.statusText);
+        error.response = { status: response.status, data };
+        throw error;
+    }
+    return { status: response.status, data };
+};
+
 export const updatePassword = async (oldPassword, newPassword, callback, onError) => {
-    axios.post('http://localhost:8000/api/update_password', { 
-        current_password: oldPassword, 
-        new_password: newPassword 
-    }, {
-        headers: getHeaders()
-    }).then((response) => {
+    fetch('http://localhost:8000/api/update_password', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ current_password: oldPassword, new_password: newPassword })
+    }).then(handleResponse).then((response) => {
         callback();
     }).catch((error) => {
         if (error.response && error.response.data && error.response.data.message) {
@@ -42,9 +50,11 @@ export const updatePassword = async (oldPassword, newPassword, callback, onError
 };
 
 export const updateUser = async (userId, data, callback, onError = (e) => {}) => {
-    axios.post(`http://localhost:8000/api/update/users/${userId}`, data, {
-        headers: getHeaders()
-    }).then((response) => {
+    fetch(`http://localhost:8000/api/update/users/${userId}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    }).then(handleResponse).then((response) => {
         callback(response.data.data);
     }).catch((error) => {
         console.error(error);
@@ -53,9 +63,9 @@ export const updateUser = async (userId, data, callback, onError = (e) => {}) =>
 };
 
 export const fetchEntries = async (search, offset, limit, onError = (e) => {}) => {
-    return await axios.get(`http://localhost:8000/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
+    return await fetch(`http://localhost:8000/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
         headers: getHeaders()
-    }).then((response) => {
+    }).then(handleResponse).then((response) => {
         return response.data.data;
     }).catch((error) => {
         console.error(error);
@@ -68,15 +78,15 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
 };
 
 export const insertTextEntry = async (text, functional_datetime, callback, onError = (e) => {}) => {
-    axios.post('http://localhost:8000/api/insert/entries', {
-        entry_type: 'text',
-        entry_data: {
-            text: text
-        },
-        functional_datetime: functional_datetime
-    }, {
-        headers: getHeaders()
-    }).then((response) => {
+    fetch('http://localhost:8000/api/insert/entries', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+            entry_type: 'text',
+            entry_data: { text },
+            functional_datetime
+        })
+    }).then(handleResponse).then((response) => {
         if (response.status === 201) {
             callback(response.data.data);
         }
@@ -91,12 +101,11 @@ export const insertTextEntry = async (text, functional_datetime, callback, onErr
 };
 
 export const updateTextEntry = async (id, entry_data, tags, callback, onError = (e) => {}) => {
-    axios.post(`http://localhost:8000/api/update/entries/${id}`, {
-        entry_data: entry_data,
-        tags: tags
-    }, {
-        headers: getHeaders()
-    }).then((response) => {
+    fetch(`http://localhost:8000/api/update/entries/${id}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ entry_data, tags })
+    }).then(handleResponse).then((response) => {
         if (response.status === 200) {
             callback(response.data.data);
         }
@@ -111,15 +120,15 @@ export const updateTextEntry = async (id, entry_data, tags, callback, onError = 
 };
 
 export const insertLinkEntry = async (link, callback, functional_datetime = null, onError = (e) => {}) => {
-    axios.post('http://localhost:8000/api/insert/entries', {
-        entry_type: 'link',
-        entry_data: {
-            link: link
-        },
-        functional_datetime: functional_datetime
-    }, { 
-        headers: getHeaders()
-    }).then((response) => {
+    fetch('http://localhost:8000/api/insert/entries', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+            entry_type: 'link',
+            entry_data: { link },
+            functional_datetime
+        })
+    }).then(handleResponse).then((response) => {
         if (response.status === 201) {
             callback(response.data.data);
         }
@@ -134,7 +143,7 @@ export const insertLinkEntry = async (link, callback, functional_datetime = null
 };
 
 export const insertFileEntry = async (file, callback, functional_datetime = null, onError = (e) => {}) => {
-    
+
     let formData = new FormData();
     formData.append('file', file);
     formData.append('entry_type', 'file');
@@ -142,12 +151,13 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
         formData.append('functional_datetime', functional_datetime);
     }
 
-    axios.post('http://localhost:8000/api/insert/entries', formData, {
+    fetch('http://localhost:8000/api/insert/entries', {
+        method: 'POST',
         headers: {
-            'Content-Type': 'form-data',
-            'Authorization': getAuthorizationHeader("multipart/form-data")
-        }
-    }).then((response) => {
+            'Authorization': getAuthorizationHeader()
+        },
+        body: formData
+    }).then(handleResponse).then((response) => {
         if (response.status === 201) {
             callback(response.data.data);
         }
@@ -163,9 +173,9 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
 
 
 export const fetchEntry = async (id, callback, onError = (e) => {}) => {
-    return await axios.get(`http://localhost:8000/api/fetch/entries/${id}`, {
+    return await fetch(`http://localhost:8000/api/fetch/entries/${id}`, {
         headers: getHeaders()
-    }).then((response) => {
+    }).then(handleResponse).then((response) => {
         callback(response.data.data);
     }).catch((error) => {
         console.error(error);
@@ -174,9 +184,11 @@ export const fetchEntry = async (id, callback, onError = (e) => {}) => {
 };
 
 export const fetchLockedEntry = async (id, password, callback, onError = (e) => {}) => {
-    return await axios.post(`http://localhost:8000/api/fetch/entries/${id}`, { password }, {
-        headers: getHeaders()
-    }).then((response) => {
+    return await fetch(`http://localhost:8000/api/fetch/entries/${id}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ password })
+    }).then(handleResponse).then((response) => {
         callback(response.data.data);
     }).catch((error) => {
         console.error(error);
@@ -185,9 +197,11 @@ export const fetchLockedEntry = async (id, password, callback, onError = (e) => 
 };
 
 export const deleteEntry = async (id, callback, onError = (e) => {}) => {
-    return await axios.post(`http://localhost:8000/api/delete/entries/${id}`, {}, {
-        headers: getHeaders()
-    }).then((response) => {
+    return await fetch(`http://localhost:8000/api/delete/entries/${id}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({})
+    }).then(handleResponse).then((response) => {
         callback(response.data.success);
     }).catch((error) => {
         console.error(error);
@@ -196,9 +210,11 @@ export const deleteEntry = async (id, callback, onError = (e) => {}) => {
 };
 
 export const lockEntry = async (id, password, callback, onError = (e) => {}) => {
-    return await axios.post(`http://localhost:8000/api/lock/entries/${id}`, { password }, {
-        headers: getHeaders()
-    }).then((response) => {
+    return await fetch(`http://localhost:8000/api/lock/entries/${id}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ password })
+    }).then(handleResponse).then((response) => {
         callback(response.data.data);
     }).catch((error) => {
         console.error(error);
@@ -207,9 +223,11 @@ export const lockEntry = async (id, password, callback, onError = (e) => {}) => 
 };
 
 export const unlockEntry = async (id, password, callback, onError = (e) => {}) => {
-    return await axios.post(`http://localhost:8000/api/unlock/entries/${id}`, { password }, {
-        headers: getHeaders()
-    }).then((response) => {
+    return await fetch(`http://localhost:8000/api/unlock/entries/${id}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ password })
+    }).then(handleResponse).then((response) => {
         callback(response.data.data);
     }).catch((error) => {
         console.error(error);

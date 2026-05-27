@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { setToken, setUserData } from './utils.jsx';
 import { homeRoute, loginRoute } from './constants.js';
 import { Notification } from './notification.jsx';
@@ -29,11 +28,23 @@ export const SignUpPage = () => {
             setError("Passwords do not match.");
             return;
         }
-        
-         axios.post('http://localhost:8000/api/signup', { email, password, share }).then((response) => {
-            if (response.data.token && response.data.user) {
-                setToken(response.data.token);
-                setUserData(response.data.user);
+
+         fetch('http://localhost:8000/api/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, share })
+         }).then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+                const err = new Error(data.message || res.statusText);
+                err.response = { data };
+                throw err;
+            }
+            return data;
+         }).then((data) => {
+            if (data.token && data.user) {
+                setToken(data.token);
+                setUserData(data.user);
                 navigate(homeRoute);
             } else {
                 setError("Unable to sign up.");

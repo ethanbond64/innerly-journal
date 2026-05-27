@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { setToken, setUserData } from './utils.jsx';
 import { homeRoute, signupRoute } from './constants.js';
 import { Notification } from './notification.jsx';
@@ -14,10 +13,22 @@ export const LoginPage = () => {
         e.preventDefault();
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-         axios.post('http://localhost:8000/api/login', { email, password }).then((response) => {
-            if (response.data.token && response.data.user) {
-                setToken(response.data.token);
-                setUserData(response.data.user);
+         fetch('http://localhost:8000/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+         }).then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+                const err = new Error(data.message || res.statusText);
+                err.response = { data };
+                throw err;
+            }
+            return data;
+         }).then((data) => {
+            if (data.token && data.user) {
+                setToken(data.token);
+                setUserData(data.user);
                 navigate(homeRoute);
             } else {
                 setError("Unable to login.");

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BasePage } from "./base-page.js";
-import { getUserData, setUserData, clearLocalStorage } from "./utils.js";
+import { BasePage } from "./base-page.jsx";
+import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
-import { PageLoader } from "./page-loader.js";
-import { Notification } from "./notification.js";
+import { PageLoader } from "./page-loader.jsx";
+import { Notification } from "./notification.jsx";
 import { updatePassword, updateUser } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 

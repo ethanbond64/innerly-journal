@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { setToken, setUserData } from './utils.js';
+import { setToken, setUserData } from './utils.jsx';
 import { homeRoute, loginRoute } from './constants.js';
-import { Notification } from './notification.js';
+import { Notification } from './notification.jsx';
 
 export const SignUpPage = () => {
 

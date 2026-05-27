@@ -1,7 +1,7 @@
 import React from "react";
 import Moment from 'react-moment';
 import { useNavigate, Link } from "react-router-dom";
-import { equalsDate, getUserData } from "../utils";
+import { equalsDate, getUserData } from "../utils.jsx";
 
 export const TextCard = ({ entry }) => {
 

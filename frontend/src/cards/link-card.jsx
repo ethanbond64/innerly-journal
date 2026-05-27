@@ -1,5 +1,5 @@
 import React from "react";
-import { ImageCard } from "./image-card.js";
+import { ImageCard } from "./image-card.jsx";
 
 export const LinkCard = ({ entry, replace }) => {
 

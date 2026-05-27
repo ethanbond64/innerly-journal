@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import Moment from 'react-moment';
-import { Row } from "./row.js";
-import { equalsDate } from "./utils.js";
+import { Row } from "./row.jsx";
+import { equalsDate } from "./utils.jsx";
 
 export const Collapse = ({ row, setImagePath }) => {
 

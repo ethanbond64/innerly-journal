@@ -3,7 +3,7 @@ import Moment from "react-moment";
 import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getDateNoTime } from "./utils.js";
+import { getDateNoTime } from "./utils.jsx";
 
 
 export const WritePage = () => {

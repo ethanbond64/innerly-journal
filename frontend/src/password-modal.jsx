@@ -1,4 +1,4 @@
-import { ClickOutsideTracker } from "./utils";
+import { ClickOutsideTracker } from "./utils.jsx";
 
 
 export const PasswordModal = ({ prompt = "Enter password to...", callback = (p) => {}, cancel = null }) => {

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { setToken, setUserData } from './utils.js';
+import { setToken, setUserData } from './utils.jsx';
 import { homeRoute, signupRoute } from './constants.js';
-import { Notification } from './notification.js';
+import { Notification } from './notification.jsx';
 
 export const LoginPage = () => {
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { deleteEntry } from "../requests";
+import { deleteEntry } from "../requests.js";
 
 
 export const ImageCard = ({ entry, setPath, replace, heading = null, footer = null }) => {

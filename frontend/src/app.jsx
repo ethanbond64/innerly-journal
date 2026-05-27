@@ -1,14 +1,14 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { PageLoader } from "./page-loader.js";
-import { LoginPage } from "./login-page.js";
-import { SignUpPage } from "./sign-up-page.js";
-import { HomePage } from "./home-page.js";
-import { AuthenticationGuard } from "./authentication-guard.js";
-import { EditPage, WritePage } from "./write-page.js";
+import { PageLoader } from "./page-loader.jsx";
+import { LoginPage } from "./login-page.jsx";
+import { SignUpPage } from "./sign-up-page.jsx";
+import { HomePage } from "./home-page.jsx";
+import { AuthenticationGuard } from "./authentication-guard.jsx";
+import { EditPage, WritePage } from "./write-page.jsx";
 import { editRoute, homeRoute, loginRoute, settingsRoute, signupRoute, viewRoute, writeRoute } from "./constants.js";
-import { ViewPage } from "./view-page.js";
-import { SettingsPage } from "./settings-page.js";
+import { ViewPage } from "./view-page.jsx";
+import { SettingsPage } from "./settings-page.jsx";
 
 export const App = () => {
   return (

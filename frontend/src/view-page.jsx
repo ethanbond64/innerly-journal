@@ -3,9 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import Moment from 'react-moment';
 import { editRoute, homeRoute } from "./constants.js";
 import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
-import { BasePage } from "./base-page.js";
-import { ClickOutsideTracker, equalsDate } from "./utils.js";
-import { PasswordModal } from "./password-modal.js";
+import { BasePage } from "./base-page.jsx";
+import { ClickOutsideTracker, equalsDate } from "./utils.jsx";
+import { PasswordModal } from "./password-modal.jsx";
 
 export const ViewPage = ({ entryInput = null }) => {
 

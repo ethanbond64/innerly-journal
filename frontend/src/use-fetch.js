@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { equalsDate, getPreviousDate, getNextDate, getTodaysDate, clearLocalStorage } from "./utils.js";
+import { equalsDate, getPreviousDate, getNextDate, getTodaysDate, clearLocalStorage } from "./utils.jsx";
 import { fetchEntries } from "./requests.js";
 
 export const useFetch = (search, offset, limit) => {

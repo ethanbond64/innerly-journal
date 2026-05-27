@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import Moment from 'react-moment';
+import moment from 'moment';
 import { Row } from "./row.jsx";
 import { equalsDate } from "./utils.jsx";
 
@@ -41,13 +41,15 @@ export const Collapse = ({ row, setImagePath }) => {
         rows.map((r, i) => <Row key={`collapse-row-${i}`} row={r} setImagePath={setImagePath} />) :
         (<div className="c_well" style={{ textAlign: 'center' }}>
             <div className={`row sm-margin-bottom`}>
-                <div className="col-sm-3"></div>
+                <div className="col-sm-3">
+
+                </div>
                 <div className="col-sm-8">
                     <button className="c_button" onClick={onClick}>
                         <span id="day1">
-                            <Moment date={row.date} format="MMM D" />
+                            {moment(row.date).format("MMM D")}
                             { row.endDate !== null ?
-                                <>&nbsp;...&nbsp;<Moment date={row.endDate} format="MMM D" /></>:
+                                <>&nbsp;...&nbsp;{moment(row.endDate).format("MMM D")}</>:
                                 null
                             }
                         </span>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Moment from 'react-moment';
+import moment from 'moment';
 import { TextCard } from './cards/text-card.jsx';
 import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
@@ -81,7 +81,7 @@ export const Row = ({ row, setImagePath }) =>  {
                     { i > 0 ? 
                         null :
                         <h3 id="title" className="datelabel" >
-                            <Moment date={row.date} format="MMMM Do, YYYY" />
+                            {moment(row.date).format("MMMM Do, YYYY")}
                         </h3>
                     }
                 </div>

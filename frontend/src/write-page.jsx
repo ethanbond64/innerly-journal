@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Moment from "react-moment";
+import moment from 'moment';
 import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -25,7 +25,7 @@ export const WritePage = () => {
         });
     }
 
-    const heading = functionalDatetime ? (<> Write an entry for the date <Moment date={functionalDatetime} format="MMMM Do YYYY" /></>) :
+    const heading = functionalDatetime ? (<> Write an entry for the date {moment(functionalDatetime).format("MMMM Do YYYY")}</>) :
         "Write about any thoughts, experiences, or ideas";
 
     return <WritePageBase onSumbit={onSubmit} heading={heading} />;
@@ -66,7 +66,7 @@ export const EditPage = () => {
         }
     };
 
-    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from <Moment date={functionalDatetime} format="MMMM Do YYYY" /></> : null}</>);
+    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from {moment(functionalDatetime).format("MMMM Do YYYY")}</> : null}</>);
 
     return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };

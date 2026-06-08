@@ -5,7 +5,7 @@ import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
-import { updatePassword, updateUser } from "./requests.js";
+import { updatePassword, updateUser, importEntries, getImportStatus } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const SettingsPage = () => {
@@ -15,7 +15,10 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
-    
+    const [importFile, setImportFile] = useState(null);
+    const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
+    const [importing, setImporting] = useState(false);
+
     const { isDarkMode, setDarkMode } = useDarkMode();
 
     const onChangeTheme = (e) => {
@@ -52,6 +55,27 @@ export const SettingsPage = () => {
         });
     };
 
+    const onStartImport = () => {
+        if (!importFile) return;
+        setImporting(true);
+        setError(null);
+        importEntries(importFile, () => {
+            setImporting(false);
+            setImportFile(null);
+            // Start polling
+            pollImportStatus();
+        }, (e) => {
+            setImporting(false);
+            setError(typeof e === 'string' ? e : "Import failed.");
+        });
+    };
+
+    const pollImportStatus = () => {
+        getImportStatus((data) => {
+            if (data) setImportStatus(data);
+        });
+    };
+
     useEffect(() => {
         let localUserData = getUserData();
         if (localUserData) {
@@ -60,8 +84,22 @@ export const SettingsPage = () => {
             clearLocalStorage();
             navigate(loginRoute);
         }
+        // Check for an existing import job on mount
+        pollImportStatus();
     // eslint-disable-next-line
     }, []);
+
+    // Poll every 5 seconds while an import is running
+    useEffect(() => {
+        if (!importStatus || importStatus.status !== "running") return;
+        const interval = setInterval(() => {
+            getImportStatus((data) => {
+                if (data) setImportStatus(data);
+            });
+        }, 5000);
+        return () => clearInterval(interval);
+    // eslint-disable-next-line
+    }, [importStatus?.status]);
 
 
     if (!userData) {
@@ -122,6 +160,42 @@ export const SettingsPage = () => {
                         <input type="radio" id="blur" name="sensitivity" value="blur" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "blur"} />
                         <label for="both" className="radioLabel">Both - Hide titles, Blur thumbnails</label>
                         <input type="radio" id="both" name="sensitivity" value="both" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "both"} />
+                    </div>
+                    <div class="well">
+                        <h4>Import Entries</h4>
+                        {importStatus && importStatus.status === "running" ? (
+                            <>
+                                <p>Importing entries... {importStatus.processed} / {importStatus.total}</p>
+                                <div style={{ background: '#e0e0e0', borderRadius: '4px', overflow: 'hidden', height: '20px' }}>
+                                    <div style={{
+                                        width: importStatus.total > 0 ? `${Math.round((importStatus.processed / importStatus.total) * 100)}%` : '0%',
+                                        background: '#4a90d9',
+                                        height: '100%',
+                                        transition: 'width 0.3s ease'
+                                    }}></div>
+                                </div>
+                                {importStatus.failures > 0 && (
+                                    <p class="text-muted" style={{ marginTop: '8px' }}>{importStatus.failures} failed so far</p>
+                                )}
+                            </>
+                        ) : importStatus && (importStatus.status === "complete" || importStatus.status === "failed") ? (
+                            <>
+                                <p>{importStatus.status === "complete" ? "Import complete." : "Import failed."} {importStatus.processed} entries imported.</p>
+                                {importStatus.failures > 0 && (
+                                    <p class="text-muted">{importStatus.failures} entries failed to import.</p>
+                                )}
+                                <button onClick={() => setImportStatus(null)} class="btn btn-md btn-info" type="button" style={{ marginTop: '8px' }}>Dismiss</button>
+                            </>
+                        ) : (
+                            <>
+                                <p class="text-muted">Select a .zip archive to import entries from a previous export.</p>
+                                <input type="file" accept=".zip" onChange={(e) => setImportFile(e.target.files[0] || null)} style={{ marginBottom: '10px' }} />
+                                <br />
+                                <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importFile || importing}>
+                                    {importing ? "Uploading..." : "Import"}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
                 <div class="col-md-4"></div>

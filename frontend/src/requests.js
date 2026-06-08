@@ -234,3 +234,40 @@ export const unlockEntry = async (id, password, callback, onError = (e) => {}) =
         onError(error);
     });
 };
+
+export const importEntries = async (file, callback, onError = (e) => {}) => {
+    let formData = new FormData();
+    formData.append('file', file);
+
+    fetch('http://localhost:8000/api/import', {
+        method: 'POST',
+        headers: {
+            'Authorization': getAuthorizationHeader()
+        },
+        body: formData
+    }).then(handleResponse).then((response) => {
+        callback(response.data);
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error.response?.data?.message || "Import failed.");
+        }
+    });
+};
+
+export const getImportStatus = async (callback, onError = (e) => {}) => {
+    return await fetch('http://localhost:8000/api/import/status', {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        callback(response.data);
+    }).catch((error) => {
+        if (error.response && error.response.status === 404) {
+            callback(null);
+        } else {
+            console.error(error);
+            onError(error);
+        }
+    });
+};

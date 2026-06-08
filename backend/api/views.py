@@ -1,5 +1,8 @@
+import os
+import tempfile
 import threading
 import uuid
+import zipfile
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory, current_app
 
@@ -10,12 +13,11 @@ from api.models import User, Entry, Tag, upsert_tags
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
-from api.imports import import_entries
+from api.imports import import_entries, import_jobs, validate_zip
 
 
 views = Blueprint('views', __name__)
 
-UNZIPPED_PATH = "~/.innerly/imports/"
 SHARE_INIIAL = "todo"
 TAG_LIMIT = 32
 
@@ -442,18 +444,78 @@ def get_file(filename):
 
     return send_from_directory(base_path, filename)
 
-@views.route('/import')
-def import_zip():
+@views.route('/import', methods=['POST'])
+@login_required
+def start_import(current_user):
 
-    current_user = 7
-    # import_entries("",current_user,"","")
-    thread = threading.Thread(target=import_entries_wrapper, args=(current_app.app_context(),"",current_user,"",""))
-    thread.daemon = True  # Ensures thread won't prevent app shutdown
+    # Check if an import is already running for this user
+    existing = import_jobs.get(current_user.id)
+    if existing and existing["status"] == "running":
+        return {'message': 'An import is already in progress.'}, 409
+
+    file = request.files.get('file')
+    if file is None:
+        return {'message': 'No file provided.'}, 400
+
+    # Save uploaded file to a temp location
+    tmp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+    try:
+        file.save(tmp_zip)
+        tmp_zip.close()
+
+        if not zipfile.is_zipfile(tmp_zip.name):
+            os.unlink(tmp_zip.name)
+            return {'message': 'File is not a valid ZIP archive.'}, 400
+
+        valid, error = validate_zip(tmp_zip.name)
+        if not valid:
+            os.unlink(tmp_zip.name)
+            return {'message': error}, 400
+
+        # Extract to a temp directory
+        extract_path = tempfile.mkdtemp()
+        with zipfile.ZipFile(tmp_zip.name, 'r') as zf:
+            zf.extractall(extract_path)
+
+    finally:
+        # Clean up the temp zip file (extracted copy remains)
+        if os.path.exists(tmp_zip.name):
+            os.unlink(tmp_zip.name)
+
+    passcode = request.form.get('passcode', '')
+
+    # Initialize job state
+    job_state = {
+        "status": "running",
+        "total": 0,
+        "processed": 0,
+        "failures": 0,
+        "errors": [],
+    }
+    import_jobs[current_user.id] = job_state
+
+    app_context = current_app.app_context()
+    thread = threading.Thread(
+        target=_import_worker,
+        args=(app_context, extract_path, current_user.id, passcode, job_state),
+        daemon=True,
+    )
     thread.start()
 
-    return {"status": "submitted"}
+    return {'started': True}, 200
 
 
-def import_entries_wrapper(app_context, *args):
+@views.route('/import/status', methods=['GET'])
+@login_required
+def import_status(current_user):
+
+    job = import_jobs.get(current_user.id)
+    if job is None:
+        return {'message': 'No import job found.'}, 404
+
+    return job, 200
+
+
+def _import_worker(app_context, extract_path, user_id, passcode, job_state):
     app_context.push()
-    import_entries(*args)
+    import_entries(extract_path, user_id, passcode, job_state)

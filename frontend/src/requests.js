@@ -241,9 +241,7 @@ export const importEntries = async (file, callback, onError = (e) => {}) => {
 
     fetch('http://localhost:8000/api/import', {
         method: 'POST',
-        headers: {
-            'Authorization': getAuthorizationHeader()
-        },
+        headers: getHeaders("multipart/form-data")
         body: formData
     }).then(handleResponse).then((response) => {
         callback(response.data);

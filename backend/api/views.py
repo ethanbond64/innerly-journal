@@ -10,7 +10,6 @@ from api.models import User, Entry, Tag, upsert_tags
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
-from api.tasks import submitImportEntriesTask
 from api.imports import import_entries
 
 
@@ -442,22 +441,6 @@ def get_file(filename):
     base_path = get_user_directory(user.id)
 
     return send_from_directory(base_path, filename)
-
-@views.route('/submit/task/<task>', methods=['POST'])
-@login_required
-def submit_task(current_user, task):
-
-    body = request.get_json()
-    if body is None:
-        return {'message': 'Bad request'}, 400
-    
-    links = body.get('links')
-    if links is None:
-        return {'message': 'Bad request'}, 400
-    
-    submitImportEntriesTask(links, current_user.id)
-
-    return {'success': True}, 200
 
 @views.route('/import')
 def import_zip():

@@ -103,7 +103,7 @@ def upsert_tags(tags, user_id, entry_id):
 
     if tags is not None and len(tags) > 0:
 
-        tags = [tag.lower() for tag in tags]
+        tags = list(set(tag.lower() for tag in tags))
         existing_tags = Tag.query.filter(Tag.user_id == user_id, Tag.name.in_(tags)).all()
         existing_tags = {tag.name: tag for tag in existing_tags}
 
@@ -116,4 +116,4 @@ def upsert_tags(tags, user_id, entry_id):
             else:
                 EntryTagXref(entry_id=entry_id, tag_id=existing_tags[tag].id).save()
 
-        return tags
+    return tags

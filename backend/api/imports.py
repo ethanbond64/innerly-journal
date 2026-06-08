@@ -142,19 +142,19 @@ def import_entries(extract_path, user_id, passcode, job_state):
                 new_entry.save()
 
                 # Resolve and save tags
-                tags = []
+                tags = set()
 
                 for xref in entry_specific_xref:
                     if xref["entry_id"] == entry_id:
                         tag_name = specifics_by_id.get(xref["specific_id"])
                         if tag_name:
-                            tags.append(tag_name)
+                            tags.add(tag_name)
 
                 for xref in entry_theme_xref:
                     if xref["entry_id"] == entry_id:
                         tag_name = themes_by_id.get(xref["theme_id"])
                         if tag_name:
-                            tags.append(tag_name)
+                            tags.add(tag_name)
 
                 if tags:
                     upsert_tags(tags, user_id, new_entry.id)

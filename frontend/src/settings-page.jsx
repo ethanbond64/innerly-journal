@@ -166,18 +166,13 @@ export const SettingsPage = () => {
                         {importStatus && importStatus.status === "running" ? (
                             <>
                                 <p>Importing entries... {importStatus.processed} / {importStatus.total}</p>
-                                <div style={{ background: '#e0e0e0', borderRadius: '4px', overflow: 'hidden', height: '20px' }}>
-                                    <div style={{
-                                        width: importStatus.total > 0 ? `${Math.round((importStatus.processed / importStatus.total) * 100)}%` : '0%',
-                                        background: '#4a90d9',
-                                        height: '100%',
-                                        transition: 'width 0.3s ease'
-                                    }}></div>
+                                <div class="import-progress-track">
+                                    <div class="import-progress-bar" style={{ width: importStatus.total > 0 ? `${Math.round((importStatus.processed / importStatus.total) * 100)}%` : '0%' }}></div>
                                 </div>
                                 {importStatus.failures > 0 && (
-                                    <p class="text-muted" style={{ marginTop: '8px' }}>{importStatus.failures} failed so far</p>
+                                    <p class="text-muted import-hint">{importStatus.failures} failed so far</p>
                                 )}
-                                <button onClick={() => cancelImport(() => pollImportStatus(), (e) => setError(e))} class="btn btn-md btn-info" type="button" style={{ marginTop: '8px' }}>Cancel</button>
+                                <button onClick={() => cancelImport(() => pollImportStatus(), (e) => setError(e))} class="btn btn-md btn-info import-hint" type="button">Cancel</button>
                             </>
                         ) : importStatus && (importStatus.status === "complete" || importStatus.status === "failed" || importStatus.status === "cancelled") ? (
                             <>
@@ -188,12 +183,12 @@ export const SettingsPage = () => {
                                 {importStatus.failures > 0 && (
                                     <p class="text-muted">{importStatus.failures} entries failed to import.</p>
                                 )}
-                                <button onClick={() => setImportStatus(null)} class="btn btn-md btn-info" type="button" style={{ marginTop: '8px' }}>Dismiss</button>
+                                <button onClick={() => setImportStatus(null)} class="btn btn-md btn-info import-hint" type="button">Dismiss</button>
                             </>
                         ) : (
                             <>
                                 <p class="text-muted">Enter the path to a .zip archive on your machine to import entries.</p>
-                                <input class="form-control" type="text" placeholder="~/exports/innerly-export.zip" value={importPath} onChange={(e) => setImportPath(e.target.value)} style={{ marginBottom: '10px' }} />
+                                <input class="form-control import-path-input" type="text" placeholder="~/exports/innerly-export.zip" value={importPath} onChange={(e) => setImportPath(e.target.value)} />
                                 <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || importing}>
                                     {importing ? "Starting..." : "Import"}
                                 </button>

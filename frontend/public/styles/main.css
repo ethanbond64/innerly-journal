@@ -833,6 +833,28 @@ label {
   padding-right: 15px;
 }
 
+/* Import */
+.import-progress-track {
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 20px;
+}
+
+.import-progress-bar {
+  background: #4a90d9;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.import-hint {
+  margin-top: 8px;
+}
+
+.import-path-input {
+  margin-bottom: 10px;
+}
+
 .navbar {
   padding-top: 20px;
   padding-bottom: 10px;

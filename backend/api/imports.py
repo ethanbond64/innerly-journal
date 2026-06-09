@@ -27,6 +27,7 @@ class ImportFailure:
     error: str
     link: str = None
     file: str = None
+    file_resolved_path: str = None
 
     def json(self):
         result = {"entry_id": self.entry_id, "entry_type": self.entry_type, "error": self.error}
@@ -34,6 +35,8 @@ class ImportFailure:
             result["link"] = self.link
         if self.file:
             result["file"] = self.file
+        if self.file_resolved_path:
+            result["file_resolved_path"] = self.file_resolved_path
         return result
 
     def log(self):
@@ -41,7 +44,9 @@ class ImportFailure:
         if self.link:
             parts.append(f"    link: {self.link}")
         if self.file:
-            parts.append(f"    file: {self.file}")
+            parts.append(f"    thumbnail_img: {self.file}")
+        if self.file_resolved_path:
+            parts.append(f"    resolved path: {self.file_resolved_path}")
         print("\n".join(parts))
 
 
@@ -222,8 +227,18 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
                             raise ValueError(f"Failed to fetch link: {link}")
 
                     elif media_type == "image_upload_s3":
-                        filename = media_entry["thumbnail_img"].replace("imgs/", "")
+                        raw_thumbnail = media_entry.get("thumbnail_img", "")
+                        filename = os.path.basename(raw_thumbnail)
+                        if not filename:
+                            raise ValueError(f"Empty filename after cleaning thumbnail_img: '{raw_thumbnail}'")
+
                         filepath = os.path.join(extract_path, "images", filename)
+                        if not os.path.isfile(filepath):
+                            raise FileNotFoundError(f"Image not found at '{filepath}' (thumbnail_img: '{raw_thumbnail}')")
+
+                        file_size = os.path.getsize(filepath)
+                        print(f"  Processing file entry: {filename} ({file_size} bytes)")
+
                         with open(filepath, 'rb') as f:
                             file_content = f.read()
                         stream = BytesIO(file_content)
@@ -282,7 +297,9 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
                         if me["media_type"] == "link":
                             failure.link = me.get("link")
                         elif me["media_type"] == "image_upload_s3":
-                            failure.file = me.get("thumbnail_img")
+                            raw_thumb = me.get("thumbnail_img", "")
+                            failure.file = raw_thumb
+                            failure.file_resolved_path = os.path.join(extract_path, "images", os.path.basename(raw_thumb))
                 except (ValueError, TypeError):
                     pass
 

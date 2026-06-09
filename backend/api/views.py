@@ -500,7 +500,7 @@ def import_status(current_user):
     if job is None:
         return {'message': 'No import job found.'}, 404
 
-    return job, 200
+    return job.json(), 200
 
 
 @views.route('/import', methods=['DELETE'])

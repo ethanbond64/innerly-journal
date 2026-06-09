@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import threading
 import zipfile
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from io import BytesIO
 
@@ -19,12 +20,62 @@ from api.processors.link_processor import process_link_entry
 from api.processors.text_processor import sentiment_index_to_value
 
 
+@dataclass
+class ImportFailure:
+    entry_id: str
+    entry_type: str
+    error: str
+    link: str = None
+    file: str = None
+
+    def json(self):
+        result = {"entry_id": self.entry_id, "entry_type": self.entry_type, "error": self.error}
+        if self.link:
+            result["link"] = self.link
+        if self.file:
+            result["file"] = self.file
+        return result
+
+    def log(self):
+        parts = [f"  FAILED entry {self.entry_id} ({self.entry_type}): {self.error}"]
+        if self.link:
+            parts.append(f"    link: {self.link}")
+        if self.file:
+            parts.append(f"    file: {self.file}")
+        print("\n".join(parts))
+
+
+@dataclass
+class ImportJobState:
+    status: str = "running"
+    total: int = 0
+    processed: int = 0
+    failures: int = 0
+    errors: list = field(default_factory=list)
+
+    def record_success(self):
+        self.processed += 1
+
+    def record_failure(self, failure):
+        self.failures += 1
+        self.errors.append(failure)
+
+    def json(self):
+        return {
+            "status": self.status,
+            "total": self.total,
+            "processed": self.processed,
+            "failures": self.failures,
+            "errors": [e.json() for e in self.errors],
+        }
+
+
 class ImportJobManager:
     """Thread-safe manager for import jobs, keyed by user_id."""
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._jobs = {}  # user_id -> { "state": dict, "thread": Thread, "cancel": Event }
+        self._jobs = {}  # user_id -> { "state": ImportJobState, "thread": Thread, "cancel": Event }
 
     def get(self, user_id):
         with self._lock:
@@ -34,17 +85,11 @@ class ImportJobManager:
     def is_running(self, user_id):
         with self._lock:
             job = self._jobs.get(user_id)
-            return job is not None and job["state"]["status"] == "running"
+            return job is not None and job["state"].status == "running"
 
     def create(self, user_id, thread):
         cancel_event = threading.Event()
-        state = {
-            "status": "running",
-            "total": 0,
-            "processed": 0,
-            "failures": 0,
-            "errors": [],
-        }
+        state = ImportJobState()
         with self._lock:
             self._jobs[user_id] = {
                 "state": state,
@@ -56,7 +101,7 @@ class ImportJobManager:
     def cancel(self, user_id):
         with self._lock:
             job = self._jobs.get(user_id)
-            if job and job["state"]["status"] == "running":
+            if job and job["state"].status == "running":
                 job["cancel"].set()
                 return True
             return False
@@ -119,11 +164,11 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
         specifics_by_id = {row["id"]: row["title"] for row in specifics}
         themes_by_id = {row["id"]: row["title"] for row in themes}
 
-        job_state["total"] = len(entries)
+        job_state.total = len(entries)
 
         for row in entries:
             if cancel_event.is_set():
-                job_state["status"] = "cancelled"
+                job_state.status = "cancelled"
                 break
 
             try:
@@ -217,24 +262,55 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
                 if tags:
                     upsert_tags(tags, user_id, new_entry.id)
 
-                job_state["processed"] += 1
+                job_state.record_success()
 
             except Exception as e:
                 db.session.rollback()
-                job_state["failures"] += 1
-                job_state["errors"].append(f"Entry {row.get('id', '?')}: {str(e)}")
 
-        if job_state["status"] != "cancelled":
-            job_state["status"] = "complete"
+                failure = ImportFailure(
+                    entry_id=row.get("id"),
+                    entry_type="text",
+                    error=str(e),
+                )
+
+                raw_media_id = row.get("media_entry_id", "")
+                try:
+                    mid = str(int(float(raw_media_id)))
+                    me = media_by_id.get(mid)
+                    if me:
+                        failure.entry_type = me["media_type"]
+                        if me["media_type"] == "link":
+                            failure.link = me.get("link")
+                        elif me["media_type"] == "image_upload_s3":
+                            failure.file = me.get("thumbnail_img")
+                except (ValueError, TypeError):
+                    pass
+
+                failure.log()
+                job_state.record_failure(failure)
+
+        if job_state.status != "cancelled":
+            job_state.status = "complete"
 
     except Exception as e:
-        job_state["status"] = "failed"
-        job_state["errors"].append(f"Import failed: {str(e)}")
+        job_state.status = "failed"
+        failure = ImportFailure(entry_id=None, entry_type=None, error=f"Import failed: {str(e)}")
+        failure.log()
+        job_state.record_failure(failure)
 
     finally:
         # Clean up extracted files
         if os.path.exists(extract_path):
             shutil.rmtree(extract_path, ignore_errors=True)
+
+        print(f"\n--- Import {job_state.status} ---")
+        print(f"  Total:     {job_state.total}")
+        print(f"  Imported:  {job_state.processed}")
+        print(f"  Failed:    {job_state.failures}")
+        if job_state.errors:
+            print(f"\n  Failures:")
+            for f in job_state.errors:
+                f.log()
 
 
 def parse_utc_datetime(datetime_str):

@@ -855,6 +855,18 @@ label {
   margin-bottom: 10px;
 }
 
+.import-failures {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  font-size: small;
+}
+
+.import-failure-item {
+  padding: 6px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .navbar {
   padding-top: 20px;
   padding-bottom: 10px;

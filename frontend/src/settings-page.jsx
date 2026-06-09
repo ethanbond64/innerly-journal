@@ -181,7 +181,20 @@ export const SettingsPage = () => {
                                     {" "}{importStatus.processed} entries imported.
                                 </p>
                                 {importStatus.failures > 0 && (
-                                    <p class="text-muted">{importStatus.failures} entries failed to import.</p>
+                                    <>
+                                        <p class="text-muted">{importStatus.failures} entries failed to import:</p>
+                                        <div class="import-failures">
+                                            {importStatus.errors.map((err, i) => (
+                                                <div key={i} class="import-failure-item">
+                                                    <strong>Entry {err.entry_id || "?"}</strong> ({err.entry_type})
+                                                    <br />
+                                                    <span class="text-muted">{err.error}</span>
+                                                    {err.link && <><br /><span class="text-muted">Link: {err.link}</span></>}
+                                                    {err.file && <><br /><span class="text-muted">File: {err.file}</span></>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
                                 <button onClick={() => setImportStatus(null)} class="btn btn-md btn-info import-hint" type="button">Dismiss</button>
                             </>

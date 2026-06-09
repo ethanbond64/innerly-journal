@@ -235,14 +235,11 @@ export const unlockEntry = async (id, password, callback, onError = (e) => {}) =
     });
 };
 
-export const importEntries = async (file, callback, onError = (e) => {}) => {
-    let formData = new FormData();
-    formData.append('file', file);
-
+export const importEntries = async (zipPath, callback, onError = (e) => {}) => {
     fetch('http://localhost:8000/api/import', {
         method: 'POST',
-        headers: getHeaders("multipart/form-data"),
-        body: formData
+        headers: getHeaders(),
+        body: JSON.stringify({ path: zipPath })
     }).then(handleResponse).then((response) => {
         callback(response.data);
     }).catch((error) => {

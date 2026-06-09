@@ -15,7 +15,7 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
-    const [importFile, setImportFile] = useState(null);
+    const [importPath, setImportPath] = useState("");
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
     const [importing, setImporting] = useState(false);
 
@@ -56,12 +56,12 @@ export const SettingsPage = () => {
     };
 
     const onStartImport = () => {
-        if (!importFile) return;
+        if (!importPath.trim()) return;
         setImporting(true);
         setError(null);
-        importEntries(importFile, () => {
+        importEntries(importPath.trim(), () => {
             setImporting(false);
-            setImportFile(null);
+            setImportPath("");
             // Start polling
             pollImportStatus();
         }, (e) => {
@@ -188,11 +188,10 @@ export const SettingsPage = () => {
                             </>
                         ) : (
                             <>
-                                <p class="text-muted">Select a .zip archive to import entries from a previous export.</p>
-                                <input type="file" accept=".zip" onChange={(e) => setImportFile(e.target.files[0] || null)} style={{ marginBottom: '10px' }} />
-                                <br />
-                                <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importFile || importing}>
-                                    {importing ? "Uploading..." : "Import"}
+                                <p class="text-muted">Enter the path to a .zip archive on your machine to import entries.</p>
+                                <input class="form-control" type="text" placeholder="~/exports/innerly-export.zip" value={importPath} onChange={(e) => setImportPath(e.target.value)} style={{ marginBottom: '10px' }} />
+                                <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || importing}>
+                                    {importing ? "Starting..." : "Import"}
                                 </button>
                             </>
                         )}

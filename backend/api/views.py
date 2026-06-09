@@ -453,36 +453,32 @@ def start_import(current_user):
     if existing and existing["status"] == "running":
         return {'message': 'An import is already in progress.'}, 409
 
-    file = request.files.get('file')
-    if file is None:
-        return {'message': 'No file provided.'}, 400
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
 
-    # Save uploaded file to a temp location
-    tmp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
-    try:
-        file.save(tmp_zip)
-        tmp_zip.close()
+    zip_path = body.get('path')
+    if not zip_path:
+        return {'message': 'No path provided.'}, 400
 
-        if not zipfile.is_zipfile(tmp_zip.name):
-            os.unlink(tmp_zip.name)
-            return {'message': 'File is not a valid ZIP archive.'}, 400
+    zip_path = os.path.expanduser(zip_path)
 
-        valid, error = validate_zip(tmp_zip.name)
-        if not valid:
-            os.unlink(tmp_zip.name)
-            return {'message': error}, 400
+    if not os.path.isfile(zip_path):
+        return {'message': 'File not found at the specified path.'}, 400
 
-        # Extract to a temp directory
-        extract_path = tempfile.mkdtemp()
-        with zipfile.ZipFile(tmp_zip.name, 'r') as zf:
-            zf.extractall(extract_path)
+    if not zipfile.is_zipfile(zip_path):
+        return {'message': 'File is not a valid ZIP archive.'}, 400
 
-    finally:
-        # Clean up the temp zip file (extracted copy remains)
-        if os.path.exists(tmp_zip.name):
-            os.unlink(tmp_zip.name)
+    valid, error = validate_zip(zip_path)
+    if not valid:
+        return {'message': error}, 400
 
-    passcode = request.form.get('passcode', '')
+    # Extract to a temp directory
+    extract_path = tempfile.mkdtemp()
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        zf.extractall(extract_path)
+
+    passcode = body.get('passcode', '')
 
     # Initialize job state
     job_state = {

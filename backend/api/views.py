@@ -449,8 +449,7 @@ def get_file(filename):
 def start_import(current_user):
 
     # Check if an import is already running for this user
-    existing = import_jobs.get(current_user.id)
-    if existing and existing["status"] == "running":
+    if import_jobs.is_running(current_user.id):
         return {'message': 'An import is already in progress.'}, 409
 
     body = request.get_json()
@@ -480,22 +479,14 @@ def start_import(current_user):
 
     passcode = body.get('passcode', '')
 
-    # Initialize job state
-    job_state = {
-        "status": "running",
-        "total": 0,
-        "processed": 0,
-        "failures": 0,
-        "errors": [],
-    }
-    import_jobs[current_user.id] = job_state
-
     app_context = current_app.app_context()
     thread = threading.Thread(
         target=_import_worker,
-        args=(app_context, extract_path, current_user.id, passcode, job_state),
+        args=(app_context, extract_path, current_user.id, passcode),
         daemon=True,
     )
+
+    job_state, _cancel_event = import_jobs.create(current_user.id, thread)
     thread.start()
 
     return {'started': True}, 200
@@ -512,6 +503,18 @@ def import_status(current_user):
     return job, 200
 
 
-def _import_worker(app_context, extract_path, user_id, passcode, job_state):
+@views.route('/import', methods=['DELETE'])
+@login_required
+def cancel_import(current_user):
+
+    if import_jobs.cancel(current_user.id):
+        return {'message': 'Import cancellation requested.'}, 200
+
+    return {'message': 'No running import to cancel.'}, 404
+
+
+def _import_worker(app_context, extract_path, user_id, passcode):
     app_context.push()
-    import_entries(extract_path, user_id, passcode, job_state)
+    job_state = import_jobs.get(user_id)
+    cancel_event = import_jobs.get_cancel_event(user_id)
+    import_entries(extract_path, user_id, passcode, job_state, cancel_event)

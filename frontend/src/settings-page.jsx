@@ -5,7 +5,7 @@ import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
-import { updatePassword, updateUser, importEntries, getImportStatus } from "./requests.js";
+import { updatePassword, updateUser, importEntries, getImportStatus, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const SettingsPage = () => {
@@ -177,10 +177,14 @@ export const SettingsPage = () => {
                                 {importStatus.failures > 0 && (
                                     <p class="text-muted" style={{ marginTop: '8px' }}>{importStatus.failures} failed so far</p>
                                 )}
+                                <button onClick={() => cancelImport(() => pollImportStatus(), (e) => setError(e))} class="btn btn-md btn-info" type="button" style={{ marginTop: '8px' }}>Cancel</button>
                             </>
-                        ) : importStatus && (importStatus.status === "complete" || importStatus.status === "failed") ? (
+                        ) : importStatus && (importStatus.status === "complete" || importStatus.status === "failed" || importStatus.status === "cancelled") ? (
                             <>
-                                <p>{importStatus.status === "complete" ? "Import complete." : "Import failed."} {importStatus.processed} entries imported.</p>
+                                <p>
+                                    {importStatus.status === "complete" ? "Import complete." : importStatus.status === "cancelled" ? "Import cancelled." : "Import failed."}
+                                    {" "}{importStatus.processed} entries imported.
+                                </p>
                                 {importStatus.failures > 0 && (
                                     <p class="text-muted">{importStatus.failures} entries failed to import.</p>
                                 )}

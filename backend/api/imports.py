@@ -3,6 +3,7 @@ import math
 import os
 import shutil
 import tempfile
+import threading
 import zipfile
 from datetime import datetime, timezone
 from io import BytesIO
@@ -17,8 +18,60 @@ from api.processors.file_processor import process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.processors.text_processor import sentiment_index_to_value
 
-# In-memory job state, keyed by user_id
-import_jobs = {}
+
+class ImportJobManager:
+    """Thread-safe manager for import jobs, keyed by user_id."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._jobs = {}  # user_id -> { "state": dict, "thread": Thread, "cancel": Event }
+
+    def get(self, user_id):
+        with self._lock:
+            job = self._jobs.get(user_id)
+            return job["state"] if job else None
+
+    def is_running(self, user_id):
+        with self._lock:
+            job = self._jobs.get(user_id)
+            return job is not None and job["state"]["status"] == "running"
+
+    def create(self, user_id, thread):
+        cancel_event = threading.Event()
+        state = {
+            "status": "running",
+            "total": 0,
+            "processed": 0,
+            "failures": 0,
+            "errors": [],
+        }
+        with self._lock:
+            self._jobs[user_id] = {
+                "state": state,
+                "thread": thread,
+                "cancel": cancel_event,
+            }
+        return state, cancel_event
+
+    def cancel(self, user_id):
+        with self._lock:
+            job = self._jobs.get(user_id)
+            if job and job["state"]["status"] == "running":
+                job["cancel"].set()
+                return True
+            return False
+
+    def get_cancel_event(self, user_id):
+        with self._lock:
+            job = self._jobs.get(user_id)
+            return job["cancel"] if job else None
+
+    def clear(self, user_id):
+        with self._lock:
+            self._jobs.pop(user_id, None)
+
+
+import_jobs = ImportJobManager()
 
 REQUIRED_CSVS = [
     "entries.csv",
@@ -46,7 +99,7 @@ def read_csv_rows(path):
         return list(csv.DictReader(f))
 
 
-def import_entries(extract_path, user_id, passcode, job_state):
+def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
     """Import entries from an extracted ZIP directory. Runs in a background thread."""
 
     # TODO: validate passcode against the hash in the user record
@@ -69,6 +122,10 @@ def import_entries(extract_path, user_id, passcode, job_state):
         job_state["total"] = len(entries)
 
         for row in entries:
+            if cancel_event.is_set():
+                job_state["status"] = "cancelled"
+                break
+
             try:
                 entry_id = row["id"]
                 media_entry_id = row.get("media_entry_id", "")
@@ -167,7 +224,8 @@ def import_entries(extract_path, user_id, passcode, job_state):
                 job_state["failures"] += 1
                 job_state["errors"].append(f"Entry {row.get('id', '?')}: {str(e)}")
 
-        job_state["status"] = "complete"
+        if job_state["status"] != "cancelled":
+            job_state["status"] = "complete"
 
     except Exception as e:
         job_state["status"] = "failed"

@@ -252,6 +252,18 @@ export const importEntries = async (zipPath, callback, onError = (e) => {}) => {
     });
 };
 
+export const cancelImport = async (callback, onError = (e) => {}) => {
+    fetch('http://localhost:8000/api/import', {
+        method: 'DELETE',
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        callback(response.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error.response?.data?.message || "Failed to cancel import.");
+    });
+};
+
 export const getImportStatus = async (callback, onError = (e) => {}) => {
     return await fetch('http://localhost:8000/api/import/status', {
         headers: getHeaders()

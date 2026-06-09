@@ -17,7 +17,7 @@ export const SettingsPage = () => {
     const [editingPassword, setEditingPassword] = useState(false);
     const [importPath, setImportPath] = useState("");
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
-    const [importing, setImporting] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     const { isDarkMode, setDarkMode } = useDarkMode();
 
@@ -57,15 +57,15 @@ export const SettingsPage = () => {
 
     const onStartImport = () => {
         if (!importPath.trim()) return;
-        setImporting(true);
+        setSubmitting(true);
         setError(null);
         importEntries(importPath.trim(), () => {
-            setImporting(false);
+            setSubmitting(false);
             setImportPath("");
             // Start polling
             pollImportStatus();
         }, (e) => {
-            setImporting(false);
+            setSubmitting(false);
             setError(typeof e === 'string' ? e : "Import failed.");
         });
     };
@@ -189,8 +189,8 @@ export const SettingsPage = () => {
                             <>
                                 <p class="text-muted">Enter the path to a .zip archive on your machine to import entries.</p>
                                 <input class="form-control import-path-input" type="text" placeholder="~/exports/innerly-export.zip" value={importPath} onChange={(e) => setImportPath(e.target.value)} />
-                                <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || importing}>
-                                    {importing ? "Starting..." : "Import"}
+                                <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || submitting}>
+                                    {submitting ? "Starting..." : "Import"}
                                 </button>
                             </>
                         )}

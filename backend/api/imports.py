@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from werkzeug.datastructures import FileStorage
 
 from api.extensions import db
-from api.models import Entry, upsert_tags
+from api.models import Entry, EntryTagXref, upsert_tags
 from api.processors.entry_models import TextEntryData
 from api.processors.file_processor import process_file_entry
 from api.processors.link_processor import process_link_entry
@@ -249,15 +249,37 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
                     else:
                         raise ValueError(f"Unknown media type: {media_type}")
 
-                # Create and commit the entry
-                new_entry = Entry()
-                new_entry.created_on = created_on
-                new_entry.updated_on = updated_on
-                new_entry.user_id = user_id
-                new_entry.functional_datetime = functional_datetime
-                new_entry.entry_type = entry_type
-                new_entry.entry_data = entry_data
-                new_entry.save()
+                # Tag import_id into entry_data
+                entry_data["import_id"] = entry_id
+
+                # Check for existing imported entry
+                existing = Entry.query.filter(
+                    Entry.user_id == user_id,
+                    Entry.entry_data.op('->>')('import_id') == str(entry_id),
+                ).first()
+
+                if existing:
+                    existing.created_on = created_on
+                    existing.updated_on = updated_on
+                    existing.functional_datetime = functional_datetime
+                    existing.entry_type = entry_type
+                    existing.update(entry_data=entry_data)
+                    existing.save()
+                    target_entry = existing
+
+                    # Clear old tag xrefs so they get replaced
+                    EntryTagXref.query.filter(EntryTagXref.entry_id == existing.id).delete()
+                    db.session.commit()
+                else:
+                    new_entry = Entry()
+                    new_entry.created_on = created_on
+                    new_entry.updated_on = updated_on
+                    new_entry.user_id = user_id
+                    new_entry.functional_datetime = functional_datetime
+                    new_entry.entry_type = entry_type
+                    new_entry.entry_data = entry_data
+                    new_entry.save()
+                    target_entry = new_entry
 
                 # Resolve and save tags
                 tags = set()
@@ -275,7 +297,7 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
                             tags.add(tag_name)
 
                 if tags:
-                    upsert_tags(tags, user_id, new_entry.id)
+                    upsert_tags(tags, user_id, target_entry.id)
 
                 job_state.record_success()
 

@@ -478,11 +478,12 @@ def start_import(current_user):
         zf.extractall(extract_path)
 
     passcode = body.get('passcode', '')
+    aes_key = body.get('aes_key', '')
 
     app_context = current_app.app_context()
     thread = threading.Thread(
         target=_import_worker,
-        args=(app_context, extract_path, current_user.id, passcode),
+        args=(app_context, extract_path, current_user.id, passcode, aes_key, current_user.email),
         daemon=True,
     )
 
@@ -513,8 +514,8 @@ def cancel_import(current_user):
     return {'message': 'No running import to cancel.'}, 404
 
 
-def _import_worker(app_context, extract_path, user_id, passcode):
+def _import_worker(app_context, extract_path, user_id, passcode, aes_key, email):
     app_context.push()
     job_state = import_jobs.get(user_id)
     cancel_event = import_jobs.get_cancel_event(user_id)
-    import_entries(extract_path, user_id, passcode, job_state, cancel_event)
+    import_entries(extract_path, user_id, passcode, aes_key, email, job_state, cancel_event)

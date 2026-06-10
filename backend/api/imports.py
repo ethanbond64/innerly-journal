@@ -1,3 +1,4 @@
+import base64
 import csv
 import math
 import os
@@ -18,6 +19,7 @@ from api.processors.entry_models import TextEntryData
 from api.processors.file_processor import process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.processors.text_processor import sentiment_index_to_value
+from api.security import lock_text
 
 
 @dataclass
@@ -149,10 +151,8 @@ def read_csv_rows(path):
         return list(csv.DictReader(f))
 
 
-def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
+def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, cancel_event):
     """Import entries from an extracted ZIP directory. Runs in a background thread."""
-
-    # TODO: validate passcode against the hash in the user record
 
     try:
         entries = read_csv_rows(os.path.join(extract_path, "entries.csv"))
@@ -202,14 +202,25 @@ def import_entries(extract_path, user_id, passcode, job_state, cancel_event):
                     sentiment = sentiment_index_to_value(int(float(row.get("sentiment_idx", 1))))
                     locked = row.get("locked", "").lower() == "true"
 
-                    if locked:
-                        # TODO: use passcode to decrypt locked entry text via unlockText()
-                        text = ""
+                    if locked and passcode and aes_key:
+                        # Decrypt from old AES-GCM format using supplied passcode + key
+                        iv = base64.b64decode(row.get("iv", ""))
+                        cipher_text = base64.b64decode(row.get("text", ""))
+                        tag = base64.b64decode(row.get("tag", ""))
+                        text = unlockText(aes_key, iv, cipher_text, tag, passcode)
+                        # Re-encrypt using this project's Fernet format with user email
+                        text = lock_text(email, text)
+                    elif locked:
+                        # No credentials supplied, import ciphertext as-is
+                        print(f"  Skipping decryption for locked entry {entry_id} (no passcode/key supplied)")
+                        text = row.get("text", "")
                     else:
                         text = row.get("text", "")
 
                     entry_type = "text"
                     entry_data = TextEntryData(title, text, sentiment).json()
+                    if locked:
+                        entry_data["locked"] = True
                 else:
                     # Media entry
                     media_id_key = str(int(float(media_entry_id)))
@@ -360,35 +371,18 @@ def parse_utc_datetime(datetime_str):
     return dt.replace(tzinfo=timezone.utc)
 
 
-def get_aes_key(keyname):
-    # s3_object = s3.get_object(Bucket=KEY_BUCKET, Key=keyname)
-    # body = s3_object["Body"]
-    # return body.read()
-    with open(keyname, "rb") as f:
-        return f.read()
-
-
 def decrypt(key, associated_data, iv, ciphertext, tag):
-    # Construct a Cipher object, with the key, iv, and additionally the
-    # GCM tag used for authenticating the message.
     decryptor = Cipher(
         algorithms.AES(key),
         modes.GCM(iv, tag),
     ).decryptor()
-
-    # We put associated_data back in or the tag will fail to verify
-    # when we finalize the decryptor.
     decryptor.authenticate_additional_data(associated_data)
-
-    # Decryption gets us the authenticated plaintext.
-    # If the tag does not match an InvalidTag exception will be raised.
     return decryptor.update(ciphertext) + decryptor.finalize()
 
 
-# All arguments other than passcode are from the row itself
-def unlockText(keyname, iv, cipher_text, tag, passcode):
-    # decrypt and save plaintext
-    key = get_aes_key(keyname)
+def unlockText(aes_key_b64, iv, cipher_text, tag, passcode):
+    """Decrypt text using AES-GCM with a base64-encoded key and passcode as authenticated data."""
+    key = base64.b64decode(aes_key_b64)
     locked_auth = str(passcode).encode("utf8")
-    textBytes = decrypt(key, locked_auth, iv, cipher_text, tag)
-    return textBytes.decode("utf8")
+    text_bytes = decrypt(key, locked_auth, iv, cipher_text, tag)
+    return text_bytes.decode("utf8")

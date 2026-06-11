@@ -116,11 +116,11 @@ export const Navbar = ({ setSearch, user }) => {
                         </li>
                         <li role="separator" className="divider"></li>
                         <li>
-                            <a href="#settings" style={{ fontSize: '15px' }}>Settings</a>
+                            <a href="/settings" style={{ fontSize: '15px' }}>Settings</a>
                         </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
-                            <a href="#login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
+                            <a href="/login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
                         </li>
                     </ul>)
                     : null

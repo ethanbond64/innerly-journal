@@ -1,5 +1,7 @@
+import ast
 import base64
 import csv
+import traceback
 import math
 import os
 import shutil
@@ -204,9 +206,10 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
 
                     if locked and passcode and aes_key:
                         # Decrypt from old AES-GCM format using supplied passcode + key
-                        iv = base64.b64decode(row.get("iv", ""))
-                        cipher_text = base64.b64decode(row.get("text", ""))
-                        tag = base64.b64decode(row.get("tag", ""))
+                        # CSV stores these as Python bytes repr: b'\x93\x06...'
+                        iv = parse_bytes_repr(row.get("iv", ""))
+                        cipher_text = parse_bytes_repr(row.get("cipher_text", ""))
+                        tag = parse_bytes_repr(row.get("tag", ""))
                         text = unlockText(aes_key, iv, cipher_text, tag, passcode)
                         # Re-encrypt using this project's Fernet format with user email
                         text = lock_text(email, text)
@@ -314,11 +317,13 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
 
             except Exception as e:
                 db.session.rollback()
+                traceback.print_exc()
 
+                error_msg = str(e) or repr(e)
                 failure = ImportFailure(
                     entry_id=row.get("id"),
                     entry_type="text",
-                    error=str(e),
+                    error=f"{type(e).__name__}: {error_msg}",
                 )
 
                 raw_media_id = row.get("media_entry_id", "")
@@ -363,6 +368,15 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
                 f.log()
 
 
+def parse_bytes_repr(s):
+    """Parse a Python bytes repr string like b'\\x93\\x06...' into actual bytes."""
+    s = s.strip()
+    if s.startswith("b'") or s.startswith('b"'):
+        return ast.literal_eval(s)
+    # Fallback: try base64
+    return base64.b64decode(s)
+
+
 def parse_utc_datetime(datetime_str):
     """Parse a datetime string like '2024-01-15 12:30:00+00' into a UTC datetime."""
     dt_without_offset = datetime_str.rsplit("+", 1)[0]
@@ -380,9 +394,14 @@ def decrypt(key, associated_data, iv, ciphertext, tag):
     return decryptor.update(ciphertext) + decryptor.finalize()
 
 
-def unlockText(aes_key_b64, iv, cipher_text, tag, passcode):
-    """Decrypt text using AES-GCM with a base64-encoded key and passcode as authenticated data."""
-    key = base64.b64decode(aes_key_b64)
+def unlockText(aes_key_input, iv, cipher_text, tag, passcode):
+    """Decrypt text using AES-GCM with the supplied key and passcode as authenticated data."""
+    # Try base64 first, fall back to raw bytes if it's already the right size
+    try:
+        key = base64.b64decode(aes_key_input.strip())
+    except Exception:
+        key = aes_key_input.encode("utf8") if isinstance(aes_key_input, str) else aes_key_input
+    print(f"  AES key length: {len(key)} bytes, IV length: {len(iv)} bytes, tag length: {len(tag)} bytes, ciphertext length: {len(cipher_text)} bytes", flush=True)
     locked_auth = str(passcode).encode("utf8")
     text_bytes = decrypt(key, locked_auth, iv, cipher_text, tag)
     return text_bytes.decode("utf8")

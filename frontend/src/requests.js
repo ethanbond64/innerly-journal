@@ -235,10 +235,10 @@ export const unlockEntry = async (id, password, callback, onError = (e) => {}) =
     });
 };
 
-export const importEntries = async (zipPath, passcode, aesKey, callback, onError = (e) => {}) => {
+export const importEntries = async (zipPath, passcode, secretKey, callback, onError = (e) => {}) => {
     const body = { path: zipPath };
     if (passcode) body.passcode = passcode;
-    if (aesKey) body.aes_key = aesKey;
+    if (secretKey) body.secret_key = secretKey;
 
     fetch('http://localhost:8000/api/import', {
         method: 'POST',

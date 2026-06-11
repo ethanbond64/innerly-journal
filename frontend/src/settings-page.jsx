@@ -17,7 +17,7 @@ export const SettingsPage = () => {
     const [editingPassword, setEditingPassword] = useState(false);
     const [importPath, setImportPath] = useState("");
     const [importPasscode, setImportPasscode] = useState("");
-    const [importAesKey, setImportAesKey] = useState("");
+    const [importSecretKey, setImportSecretKey] = useState("");
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
     const [submitting, setSubmitting] = useState(false);
 
@@ -61,7 +61,7 @@ export const SettingsPage = () => {
         if (!importPath.trim()) return;
         setSubmitting(true);
         setError(null);
-        importEntries(importPath.trim(), importPasscode, importAesKey, () => {
+        importEntries(importPath.trim(), importPasscode, importSecretKey, () => {
             setSubmitting(false);
             setImportPath("");
             setImportPasscode("");
@@ -206,9 +206,9 @@ export const SettingsPage = () => {
                             <>
                                 <p class="text-muted">Enter the path to a .zip archive on your machine to import entries.</p>
                                 <input class="form-control import-path-input" type="text" placeholder="~/exports/innerly-export.zip" value={importPath} onChange={(e) => setImportPath(e.target.value)} />
-                                <p class="text-muted import-hint">Optional: supply passcode and AES key to decrypt locked entries.</p>
+                                <p class="text-muted import-hint">Optional: supply passcode and secret key to decrypt locked entries.</p>
                                 <input class="form-control import-path-input" type="password" placeholder="Passcode" value={importPasscode} onChange={(e) => setImportPasscode(e.target.value)} />
-                                <input class="form-control import-path-input" type="password" placeholder="AES key (base64)" value={importAesKey} onChange={(e) => setImportAesKey(e.target.value)} />
+                                <input class="form-control import-path-input" type="password" placeholder="Secret key (base64)" value={importSecretKey} onChange={(e) => setImportSecretKey(e.target.value)} />
                                 <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || submitting}>
                                     {submitting ? "Starting..." : "Import"}
                                 </button>

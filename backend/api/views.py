@@ -478,7 +478,7 @@ def start_import(current_user):
         zf.extractall(extract_path)
 
     passcode = body.get('passcode', '')
-    aes_key = body.get('aes_key', '')
+    aes_key = body.get('secret_key', '')
 
     app_context = current_app.app_context()
     thread = threading.Thread(

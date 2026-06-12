@@ -5,7 +5,7 @@ import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
-import { updatePassword, updateUser, importEntries, getImportStatus, cancelImport } from "./requests.js";
+import { updatePassword, updateUser, importEntries, getImportStatus, getImportFiles, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const SettingsPage = () => {
@@ -15,6 +15,7 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
+    const [importFiles, setImportFiles] = useState([]);
     const [importPath, setImportPath] = useState("");
     const [importPasscode, setImportPasscode] = useState("");
     const [importSecretKey, setImportSecretKey] = useState("");
@@ -65,7 +66,7 @@ export const SettingsPage = () => {
             setSubmitting(false);
             setImportPath("");
             setImportPasscode("");
-            setImportAesKey("");
+            setImportSecretKey("");
             // Start polling
             pollImportStatus();
         }, (e) => {
@@ -90,6 +91,7 @@ export const SettingsPage = () => {
         }
         // Check for an existing import job on mount
         pollImportStatus();
+        getImportFiles((files) => setImportFiles(files));
     // eslint-disable-next-line
     }, []);
 
@@ -204,8 +206,15 @@ export const SettingsPage = () => {
                             </>
                         ) : (
                             <>
-                                <p class="text-muted">Enter the path to a .zip archive on your machine to import entries.</p>
-                                <input class="form-control import-path-input" type="text" placeholder="~/exports/innerly-export.zip" value={importPath} onChange={(e) => setImportPath(e.target.value)} />
+                                <p class="text-muted">Select a .zip archive from ~/.innerly/imports/ to import entries.</p>
+                                {importFiles.length > 0 ? (
+                                    <select class="form-control import-path-input" value={importPath} onChange={(e) => setImportPath(e.target.value)}>
+                                        <option value="">Select a file...</option>
+                                        {importFiles.map((f) => <option key={f} value={f}>{f}</option>)}
+                                    </select>
+                                ) : (
+                                    <p class="text-muted">No .zip files found in ~/.innerly/imports/</p>
+                                )}
                                 <p class="text-muted import-hint">Optional: supply passcode and secret key to decrypt locked entries.</p>
                                 <input class="form-control import-path-input" type="password" placeholder="Passcode" value={importPasscode} onChange={(e) => setImportPasscode(e.target.value)} />
                                 <input class="form-control import-path-input" type="password" placeholder="Secret key (base64)" value={importSecretKey} onChange={(e) => setImportSecretKey(e.target.value)} />

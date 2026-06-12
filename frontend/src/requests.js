@@ -268,6 +268,21 @@ export const cancelImport = async (callback, onError = (e) => {}) => {
     });
 };
 
+export const getImportFiles = async (callback, onError = (e) => {}) => {
+    return await fetch('http://localhost:8000/api/import/files', {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        callback(response.data.files);
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
+
 export const getImportStatus = async (callback, onError = (e) => {}) => {
     return await fetch('http://localhost:8000/api/import/status', {
         headers: getHeaders()

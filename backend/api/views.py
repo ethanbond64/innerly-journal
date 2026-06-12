@@ -443,6 +443,15 @@ def get_file(filename):
 
     return send_from_directory(base_path, filename)
 
+@views.route('/import/files', methods=['GET'])
+@login_required
+def import_files(current_user):
+    imports_dir = os.path.expanduser('~/.innerly/imports')
+    os.makedirs(imports_dir, exist_ok=True)
+    files = sorted(f for f in os.listdir(imports_dir) if f.endswith('.zip'))
+    return {'files': files}, 200
+
+
 @views.route('/import', methods=['POST'])
 @login_required
 def start_import(current_user):
@@ -459,7 +468,7 @@ def start_import(current_user):
     if not zip_path:
         return {'message': 'No path provided.'}, 400
 
-    zip_path = os.path.expanduser(zip_path)
+    zip_path = os.path.join(os.path.expanduser('~/.innerly/imports'), zip_path)
 
     if not os.path.isfile(zip_path):
         return {'message': 'File not found at the specified path.'}, 400

@@ -11,7 +11,6 @@ export const useFetch = (search, offset, limit) => {
 
     const appender = (row) => {
         setList((prev) => {
-            console.log(`allLoaded ${allLoaded} appending: `, row);
             if (prev.length > 0 && (equalsDate(prev[prev.length - 1].date, row.date) || 
                 equalsDate(prev[prev.length - 1].date, row.date))) {
                 return prev;

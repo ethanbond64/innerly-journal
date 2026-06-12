@@ -8,7 +8,6 @@ INNERLY_DIRECTORY = os.path.join(os.path.expanduser("~"), '.innerly')
 config_vars = {}
 with open(os.path.join(INNERLY_DIRECTORY, 'config.json'), 'r') as config:
     config_vars = json.load(config)
-    print(config_vars)
 
 # Flask
 SECRET_KEY = config_vars.get("secret")

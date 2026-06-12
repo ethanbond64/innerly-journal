@@ -67,7 +67,6 @@ def parse_file(file):
 
         if file_ext_valid not in ALLOWED_EXTENSIONS:
             detected = file_ext_valid or "unknown"
-            print(f"  Rejected file '{filename}': detected format '{detected}', allowed: {ALLOWED_EXTENSIONS}")
             json_abort(400, f"Unsupported image format: '{detected}' for file '{filename}'")
 
         return filename, file_ext_valid

@@ -6,10 +6,8 @@ import { App } from "./app.jsx";
 const container = document.getElementById("root");
 const root = createRoot(container);
 
-console.log("Rendering app...");
 root.render(
     <BrowserRouter>
       <App />
     </BrowserRouter>
 );
-console.log("App rendered.");

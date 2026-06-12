@@ -78,6 +78,5 @@ def download_file(url):
         file_storage = FileStorage(image_data, filename=filename)
 
         return file_storage
-    except Exception as e:
-        print(e)
+    except Exception:
         return None

@@ -299,7 +299,6 @@ def fetch_entries(current_user):
     # if tag:TODO seach by tag
     #     # Exact tag search
     #     query = query.filter(func.array_contains(Entry.tags, tag))
-    print(str(query))
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200

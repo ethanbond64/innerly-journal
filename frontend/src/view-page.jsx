@@ -63,7 +63,6 @@ export const ViewPage = ({ entryInput = null }) => {
     };
 
     const onClickCurrentTitle = () => {
-        console.log("Title clicked");
         setEditingTitle(true);
         setTimeout(() => {
             if (titleRef.current) {

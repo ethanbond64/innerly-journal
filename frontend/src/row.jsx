@@ -10,7 +10,6 @@ export const Row = ({ row, setImagePath }) =>  {
     const [entryGroups, setEntryGroups] = useState([]);
 
     const replace = (entry, index) => {
-        console.log('replace', entry, index);
         setEntryGroups((prev) => {
 
             let outerIndex = Math.floor(index / 3);
@@ -96,7 +95,6 @@ export const Row = ({ row, setImagePath }) =>  {
 }
 
 const padGroups = (groups) => {
-    console.log('padGroups', groups);
     let containsBlanks = groups.some((group) => group.some((entry) => entry.entry_type === 'blank'));
     if (!containsBlanks) {
         let newGroup = [];

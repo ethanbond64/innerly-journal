@@ -19,7 +19,6 @@ export const SignUpPage = () => {
 
     const onSubmit = (e) => {
         e.preventDefault();
-        console.log('submit');
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const password_confirm = document.getElementById('password_confirm').value;

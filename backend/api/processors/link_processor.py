@@ -1,4 +1,5 @@
 import random
+import time
 import traceback
 from io import BytesIO
 from opengraph_py3 import OpenGraph
@@ -50,11 +51,19 @@ def do_opengraph(link):
         return None
     
     try:
-        data = OpenGraph(url=link)
+        is_wikipedia = 'wikipedia.org' in link
+
+        if is_wikipedia:
+            time.sleep(0.33)
+            response = requests.get(link, headers={'User-Agent': random.choice(user_agents)}, timeout=10)
+            response.raise_for_status()
+            data = OpenGraph(html=response.text)
+        else:
+            data = OpenGraph(url=link)
 
         title = data.get("title")
         image = data.get("image")
-        
+
         return title, image
     except Exception as e:
         traceback.print_exc()

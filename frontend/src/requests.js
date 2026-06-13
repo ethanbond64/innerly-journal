@@ -234,3 +234,66 @@ export const unlockEntry = async (id, password, callback, onError = (e) => {}) =
         onError(error);
     });
 };
+
+export const importEntries = async (zipPath, passcode, secretKey, callback, onError = (e) => {}) => {
+    const body = { path: zipPath };
+    if (passcode) body.passcode = passcode;
+    if (secretKey) body.secret_key = secretKey;
+
+    fetch('http://localhost:8000/api/import', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body)
+    }).then(handleResponse).then((response) => {
+        callback(response.data);
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error.response?.data?.message || "Import failed.");
+        }
+    });
+};
+
+export const cancelImport = async (callback, onError = (e) => {}) => {
+    fetch('http://localhost:8000/api/import', {
+        method: 'DELETE',
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        callback(response.data);
+    }).catch((error) => {
+        console.error(error);
+        onError(error.response?.data?.message || "Failed to cancel import.");
+    });
+};
+
+export const getImportFiles = async (callback, onError = (e) => {}) => {
+    return await fetch('http://localhost:8000/api/import/files', {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        callback(response.data.files);
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
+
+export const getImportStatus = async (callback, onError = (e) => {}) => {
+    return await fetch('http://localhost:8000/api/import/status', {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        callback(response.data);
+    }).catch((error) => {
+        if (error.response && error.response.status === 404) {
+            callback(null);
+        } else {
+            console.error(error);
+            onError(error);
+        }
+    });
+};

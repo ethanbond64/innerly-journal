@@ -81,11 +81,11 @@ export const Navbar = ({ setSearch, user }) => {
         <nav className={`navbar navbar-default navbar-fixed-top`} style={{zIndex:1000}}>
             <div className={``} style={{float:'left'}}>
                 <a href={homeRoute} className={`hidden-sm hidden-xs`} >
-                    <img src="./images/innerly_wordmark_200616_02.png" style={{ marginTop: '0px', marginLeft: '30px' }}
+                    <img src="/images/innerly_wordmark_200616_02.png" style={{ marginTop: '0px', marginLeft: '30px' }}
                             className={`img-responsive sm-margin-top`} width="150" height="73" title="Innerly" alt="Innerly" />
                 </a>
                 <a href={homeRoute} className={`hidden-xl hidden-lg hidden-md`} >
-                        <img src="./images/apple-touch-icon128.png"
+                        <img src="/images/apple-touch-icon128.png"
                             className={`img-responsive sm-margin-top`} width="40" height="40" title="Innerly" alt="Innerly"
                             style={{ marginTop: '20px', marginLeft: '15px', borderRadius: '5px' }} />
                 </a>
@@ -116,11 +116,11 @@ export const Navbar = ({ setSearch, user }) => {
                         </li>
                         <li role="separator" className="divider"></li>
                         <li>
-                            <a href="#settings" style={{ fontSize: '15px' }}>Settings</a>
+                            <a href="/settings" style={{ fontSize: '15px' }}>Settings</a>
                         </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
-                            <a href="#login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
+                            <a href="/login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
                         </li>
                     </ul>)
                     : null

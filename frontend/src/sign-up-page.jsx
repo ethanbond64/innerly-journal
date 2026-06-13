@@ -19,7 +19,6 @@ export const SignUpPage = () => {
 
     const onSubmit = (e) => {
         e.preventDefault();
-        console.log('submit');
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const password_confirm = document.getElementById('password_confirm').value;
@@ -61,7 +60,7 @@ export const SignUpPage = () => {
     return (
         <main class="container drag">
             <a href={homeRoute}>
-                <img src="./images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
+                <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
             </a>
             <Notification message={error} clear={() => setError(null)} />
             <div class="row">

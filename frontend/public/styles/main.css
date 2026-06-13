@@ -833,6 +833,50 @@ label {
   padding-right: 15px;
 }
 
+/* Import */
+.import-progress-track {
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 20px;
+}
+
+.import-progress-bar {
+  background: #4a90d9;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.import-hint {
+  margin-top: 8px;
+}
+
+.import-path-input {
+  margin-bottom: 10px;
+}
+
+select.import-path-input {
+  height: 38px !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ccc !important;
+}
+
+.import-failures {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  font-size: small;
+}
+
+.import-failure-item {
+  padding: 6px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .navbar {
   padding-top: 20px;
   padding-bottom: 10px;

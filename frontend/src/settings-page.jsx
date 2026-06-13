@@ -5,7 +5,7 @@ import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
-import { updatePassword, updateUser } from "./requests.js";
+import { updatePassword, updateUser, importEntries, getImportStatus, getImportFiles, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const SettingsPage = () => {
@@ -15,7 +15,13 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
-    
+    const [importFiles, setImportFiles] = useState([]);
+    const [importPath, setImportPath] = useState("");
+    const [importPasscode, setImportPasscode] = useState("");
+    const [importSecretKey, setImportSecretKey] = useState("");
+    const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
+    const [submitting, setSubmitting] = useState(false);
+
     const { isDarkMode, setDarkMode } = useDarkMode();
 
     const onChangeTheme = (e) => {
@@ -52,6 +58,29 @@ export const SettingsPage = () => {
         });
     };
 
+    const onStartImport = () => {
+        if (!importPath.trim()) return;
+        setSubmitting(true);
+        setError(null);
+        importEntries(importPath.trim(), importPasscode, importSecretKey, () => {
+            setSubmitting(false);
+            setImportPath("");
+            setImportPasscode("");
+            setImportSecretKey("");
+            // Start polling
+            pollImportStatus();
+        }, (e) => {
+            setSubmitting(false);
+            setError(typeof e === 'string' ? e : "Import failed.");
+        });
+    };
+
+    const pollImportStatus = () => {
+        getImportStatus((data) => {
+            if (data) setImportStatus(data);
+        });
+    };
+
     useEffect(() => {
         let localUserData = getUserData();
         if (localUserData) {
@@ -60,8 +89,23 @@ export const SettingsPage = () => {
             clearLocalStorage();
             navigate(loginRoute);
         }
+        // Check for an existing import job on mount
+        pollImportStatus();
+        getImportFiles((files) => setImportFiles(files));
     // eslint-disable-next-line
     }, []);
+
+    // Poll every 5 seconds while an import is running
+    useEffect(() => {
+        if (!importStatus || importStatus.status !== "running") return;
+        const interval = setInterval(() => {
+            getImportStatus((data) => {
+                if (data) setImportStatus(data);
+            });
+        }, 5000);
+        return () => clearInterval(interval);
+    // eslint-disable-next-line
+    }, [importStatus?.status]);
 
 
     if (!userData) {
@@ -122,6 +166,63 @@ export const SettingsPage = () => {
                         <input type="radio" id="blur" name="sensitivity" value="blur" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "blur"} />
                         <label for="both" className="radioLabel">Both - Hide titles, Blur thumbnails</label>
                         <input type="radio" id="both" name="sensitivity" value="both" className="radioInline" onChange={onSelectSensitivity} defaultChecked={sensitivity === "both"} />
+                    </div>
+                    <div class="well">
+                        <h4>Import Entries</h4>
+                        {importStatus && importStatus.status === "running" ? (
+                            <>
+                                <p>Importing entries... {importStatus.processed} / {importStatus.total}</p>
+                                <div class="import-progress-track">
+                                    <div class="import-progress-bar" style={{ width: importStatus.total > 0 ? `${Math.round((importStatus.processed / importStatus.total) * 100)}%` : '0%' }}></div>
+                                </div>
+                                {importStatus.failures > 0 && (
+                                    <p class="text-muted import-hint">{importStatus.failures} failed so far</p>
+                                )}
+                                <button onClick={() => cancelImport(() => pollImportStatus(), (e) => setError(e))} class="btn btn-md btn-info import-hint" type="button">Cancel</button>
+                            </>
+                        ) : importStatus && (importStatus.status === "complete" || importStatus.status === "failed" || importStatus.status === "cancelled") ? (
+                            <>
+                                <p>
+                                    {importStatus.status === "complete" ? "Import complete." : importStatus.status === "cancelled" ? "Import cancelled." : "Import failed."}
+                                    {" "}{importStatus.processed} entries imported.
+                                </p>
+                                {importStatus.failures > 0 && (
+                                    <>
+                                        <p class="text-muted">{importStatus.failures} entries failed to import:</p>
+                                        <div class="import-failures">
+                                            {importStatus.errors.map((err, i) => (
+                                                <div key={i} class="import-failure-item">
+                                                    <strong>Entry {err.entry_id || "?"}</strong> ({err.entry_type})
+                                                    <br />
+                                                    <span class="text-muted">{err.error}</span>
+                                                    {err.link && <><br /><span class="text-muted">Link: {err.link}</span></>}
+                                                    {err.file && <><br /><span class="text-muted">File: {err.file}</span></>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                                <button onClick={() => setImportStatus(null)} class="btn btn-md btn-info import-hint" type="button">Dismiss</button>
+                            </>
+                        ) : (
+                            <>
+                                <p class="text-muted">Select a .zip archive from ~/.innerly/imports/ to import entries.</p>
+                                {importFiles.length > 0 ? (
+                                    <select class="form-control import-path-input" value={importPath} onChange={(e) => setImportPath(e.target.value)}>
+                                        <option value="">Select a file...</option>
+                                        {importFiles.map((f) => <option key={f} value={f}>{f}</option>)}
+                                    </select>
+                                ) : (
+                                    <p class="text-muted">No .zip files found in ~/.innerly/imports/</p>
+                                )}
+                                <p class="text-muted import-hint">Optional: supply passcode and secret key to decrypt locked entries.</p>
+                                <input class="form-control import-path-input" type="password" placeholder="Passcode" value={importPasscode} onChange={(e) => setImportPasscode(e.target.value)} />
+                                <input class="form-control import-path-input" type="password" placeholder="Secret key (base64)" value={importSecretKey} onChange={(e) => setImportSecretKey(e.target.value)} />
+                                <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || submitting}>
+                                    {submitting ? "Starting..." : "Import"}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
                 <div class="col-md-4"></div>

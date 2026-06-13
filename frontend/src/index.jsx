@@ -1,15 +1,13 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, HashRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 import { App } from "./app.jsx";
 
 const container = document.getElementById("root");
 const root = createRoot(container);
 
-console.log("Rendering app...");
 root.render(
-    <HashRouter>
+    <BrowserRouter>
       <App />
-    </HashRouter>
+    </BrowserRouter>
 );
-console.log("App rendered.");

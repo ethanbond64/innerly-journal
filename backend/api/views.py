@@ -1,5 +1,8 @@
+import os
+import tempfile
 import threading
 import uuid
+import zipfile
 from datetime import datetime
 from flask import Blueprint, request, send_from_directory, current_app
 
@@ -10,13 +13,11 @@ from api.models import User, Entry, Tag, upsert_tags
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
-from api.tasks import submitImportEntriesTask
-from api.imports import import_entries
+from api.imports import import_entries, import_jobs, validate_zip
 
 
 views = Blueprint('views', __name__)
 
-UNZIPPED_PATH = "~/.innerly/imports/"
 SHARE_INIIAL = "todo"
 TAG_LIMIT = 32
 
@@ -298,7 +299,6 @@ def fetch_entries(current_user):
     # if tag:TODO seach by tag
     #     # Exact tag search
     #     query = query.filter(func.array_contains(Entry.tags, tag))
-    print(str(query))
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200
@@ -443,34 +443,87 @@ def get_file(filename):
 
     return send_from_directory(base_path, filename)
 
-@views.route('/submit/task/<task>', methods=['POST'])
+@views.route('/import/files', methods=['GET'])
 @login_required
-def submit_task(current_user, task):
+def import_files(current_user):
+    imports_dir = os.path.expanduser('~/.innerly/imports')
+    os.makedirs(imports_dir, exist_ok=True)
+    files = sorted(f for f in os.listdir(imports_dir) if f.endswith('.zip'))
+    return {'files': files}, 200
+
+
+@views.route('/import', methods=['POST'])
+@login_required
+def start_import(current_user):
+
+    # Check if an import is already running for this user
+    if import_jobs.is_running(current_user.id):
+        return {'message': 'An import is already in progress.'}, 409
 
     body = request.get_json()
     if body is None:
         return {'message': 'Bad request'}, 400
-    
-    links = body.get('links')
-    if links is None:
-        return {'message': 'Bad request'}, 400
-    
-    submitImportEntriesTask(links, current_user.id)
 
-    return {'success': True}, 200
+    zip_path = body.get('path')
+    if not zip_path:
+        return {'message': 'No path provided.'}, 400
 
-@views.route('/import')
-def import_zip():
+    zip_path = os.path.join(os.path.expanduser('~/.innerly/imports'), zip_path)
 
-    current_user = 7
-    # import_entries("",current_user,"","")
-    thread = threading.Thread(target=import_entries_wrapper, args=(current_app.app_context(),"",current_user,"",""))
-    thread.daemon = True  # Ensures thread won't prevent app shutdown
+    if not os.path.isfile(zip_path):
+        return {'message': 'File not found at the specified path.'}, 400
+
+    if not zipfile.is_zipfile(zip_path):
+        return {'message': 'File is not a valid ZIP archive.'}, 400
+
+    valid, error = validate_zip(zip_path)
+    if not valid:
+        return {'message': error}, 400
+
+    # Extract to a temp directory
+    extract_path = tempfile.mkdtemp()
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        zf.extractall(extract_path)
+
+    passcode = body.get('passcode', '')
+    aes_key = body.get('secret_key', '')
+
+    app_context = current_app.app_context()
+    thread = threading.Thread(
+        target=_import_worker,
+        args=(app_context, extract_path, current_user.id, passcode, aes_key, current_user.email),
+        daemon=True,
+    )
+
+    job_state, _cancel_event = import_jobs.create(current_user.id, thread)
     thread.start()
 
-    return {"status": "submitted"}
+    return {'started': True}, 200
 
 
-def import_entries_wrapper(app_context, *args):
+@views.route('/import/status', methods=['GET'])
+@login_required
+def import_status(current_user):
+
+    job = import_jobs.get(current_user.id)
+    if job is None:
+        return {'message': 'No import job found.'}, 404
+
+    return job.json(), 200
+
+
+@views.route('/import', methods=['DELETE'])
+@login_required
+def cancel_import(current_user):
+
+    if import_jobs.cancel(current_user.id):
+        return {'message': 'Import cancellation requested.'}, 200
+
+    return {'message': 'No running import to cancel.'}, 404
+
+
+def _import_worker(app_context, extract_path, user_id, passcode, aes_key, email):
     app_context.push()
-    import_entries(*args)
+    job_state = import_jobs.get(user_id)
+    cancel_event = import_jobs.get_cancel_event(user_id)
+    import_entries(extract_path, user_id, passcode, aes_key, email, job_state, cancel_event)

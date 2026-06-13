@@ -1,6 +1,4 @@
 import os
-from imghdr import what as get_format
-import os
 from uuid import uuid4
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
@@ -14,7 +12,14 @@ PNG = 'png'
 GIF = 'gif'
 JPEG = 'jpeg'
 ALLOWED_EXTENSIONS = {JPG, PNG, GIF, JPEG}
-JPEG_MARK = b'\xff\xd8\xff\xe2\x02\x1cICC_PROFILE\x00\x01\x01\x00\x00\x02\x0clcms\x02\x10\x00\x00'
+
+# Magic byte signatures for image detection
+IMAGE_SIGNATURES = [
+    (b'\xff\xd8\xff', JPG),          # JPEG (all variants)
+    (b'\x89PNG\r\n\x1a\n', PNG),     # PNG
+    (b'GIF87a', GIF),                 # GIF87a
+    (b'GIF89a', GIF),                 # GIF89a
+]
 
 STATIC_DIRECTORY = 'static/'
 USER_DIRECTORY_PREFIX = 'user-'
@@ -59,35 +64,23 @@ def parse_file(file):
     if filename != '':
 
         file_ext_valid = validate_image(file.stream)
-        
-        if file_ext_valid not in ALLOWED_EXTENSIONS:
 
-            json_abort(400)
-        
+        if file_ext_valid not in ALLOWED_EXTENSIONS:
+            detected = file_ext_valid or "unknown"
+            json_abort(400, f"Unsupported image format: '{detected}' for file '{filename}'")
+
         return filename, file_ext_valid
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 def validate_image(stream):
-    
+
     header = stream.read(512)
     stream.seek(0)
 
-    file_format = get_format(None, header)
-    
-    if not file_format:
-        file_format = test_jpeg2(header)
-    
-    if file_format == JPEG:
-        return  JPG
-    
-    return file_format
+    for signature, fmt in IMAGE_SIGNATURES:
+        if header[:len(signature)] == signature:
+            return fmt
 
-def test_jpeg2(h):
-    if len(h) >= 32 and h[:32] == JPEG_MARK:
-        return JPG
     return None
 
 def get_user_directory(user_id):

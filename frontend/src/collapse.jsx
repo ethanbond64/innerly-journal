@@ -9,7 +9,6 @@ export const Collapse = ({ row, setImagePath }) => {
     const [rows, setRows] = React.useState([]);
 
     const onClick = () => {
-        console.log("clicked");
         setOpen(true);
     }
 

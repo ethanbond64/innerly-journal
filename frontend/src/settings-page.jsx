@@ -213,7 +213,7 @@ export const SettingsPage = () => {
                                 ) : (
                                     <p class="text-muted">No .zip files found in ~/.innerly/imports/</p>
                                 )}
-                                <p class="text-muted import-hint">Optional: supply passcode to decrypt locked entries. The secret key is read from secret.json in the archive.</p>
+                                <p class="text-muted import-hint">Optional: supply passcode (6 integers) to decrypt locked entries.</p>
                                 <input class="form-control import-path-input" type="password" placeholder="Passcode" value={importPasscode} onChange={(e) => setImportPasscode(e.target.value)} />
                                 <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || submitting}>
                                     {submitting ? "Starting..." : "Import"}

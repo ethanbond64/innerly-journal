@@ -18,7 +18,6 @@ export const SettingsPage = () => {
     const [importFiles, setImportFiles] = useState([]);
     const [importPath, setImportPath] = useState("");
     const [importPasscode, setImportPasscode] = useState("");
-    const [importSecretKey, setImportSecretKey] = useState("");
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
     const [submitting, setSubmitting] = useState(false);
 
@@ -62,11 +61,10 @@ export const SettingsPage = () => {
         if (!importPath.trim()) return;
         setSubmitting(true);
         setError(null);
-        importEntries(importPath.trim(), importPasscode, importSecretKey, () => {
+        importEntries(importPath.trim(), importPasscode, () => {
             setSubmitting(false);
             setImportPath("");
             setImportPasscode("");
-            setImportSecretKey("");
             // Start polling
             pollImportStatus();
         }, (e) => {
@@ -215,9 +213,8 @@ export const SettingsPage = () => {
                                 ) : (
                                     <p class="text-muted">No .zip files found in ~/.innerly/imports/</p>
                                 )}
-                                <p class="text-muted import-hint">Optional: supply passcode and secret key to decrypt locked entries.</p>
+                                <p class="text-muted import-hint">Optional: supply passcode to decrypt locked entries. The secret key is read from secret.json in the archive.</p>
                                 <input class="form-control import-path-input" type="password" placeholder="Passcode" value={importPasscode} onChange={(e) => setImportPasscode(e.target.value)} />
-                                <input class="form-control import-path-input" type="password" placeholder="Secret key (base64)" value={importSecretKey} onChange={(e) => setImportSecretKey(e.target.value)} />
                                 <button onClick={onStartImport} class="btn btn-md btn-info" type="button" disabled={!importPath.trim() || submitting}>
                                     {submitting ? "Starting..." : "Import"}
                                 </button>

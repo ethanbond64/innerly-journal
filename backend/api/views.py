@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import threading
@@ -486,7 +487,15 @@ def start_import(current_user):
         zf.extractall(extract_path)
 
     passcode = body.get('passcode', '')
-    aes_key = body.get('secret_key', '')
+
+    aes_key = ''
+    secret_path = os.path.join(extract_path, 'secret.json')
+    if os.path.isfile(secret_path):
+        try:
+            with open(secret_path, 'r', encoding='utf-8') as f:
+                aes_key = json.load(f).get('secret', '') or ''
+        except (json.JSONDecodeError, OSError) as e:
+            return {'message': f'Failed to read secret.json: {e}'}, 400
 
     app_context = current_app.app_context()
     thread = threading.Thread(

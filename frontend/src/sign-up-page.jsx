@@ -83,16 +83,6 @@ export const SignUpPage = () => {
                         </label>
                         <input class="form-control" id="password_confirm" maxlength="128" minlength="8" name="password_confirm" type="password" placeholder="" />
                     </div>
-                    <div class="form-group sm-margin-bottom">
-                        <label for="password_confirm">
-                            <strong>Share token</strong>
-                        </label>
-                        {
-                            share? 
-                            <input class="form-control" id="share_token" maxlength="128" minlength="8" name="share_token" type="text" value={share} disabled /> :
-                            <input class="form-control" id="share_token" maxlength="128" minlength="8" name="share_token" type="text" placeholder='Share token will look like 123-456-789-000'/>
-                        }
-                    </div>
                     <div class="row">
                         <div class="col-md-6">
                             <button type="submit" class="btn btn-info btn-block" onClick={onSubmit}>

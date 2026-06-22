@@ -1,22 +1,12 @@
 import os
 import json
 
-from cryptography.fernet import Fernet
-
 DEBUG = False
 
 INNERLY_DIRECTORY = os.path.join(os.path.expanduser("~"), '.innerly')
-os.makedirs(INNERLY_DIRECTORY, exist_ok=True)
 
-config_path = os.path.join(INNERLY_DIRECTORY, 'config.json')
-if not os.path.exists(config_path):
-    with open(config_path, 'w') as config:
-        json.dump({
-            "secret": Fernet.generate_key().decode("utf-8"),
-            "server": "localhost:8000",
-        }, config, indent=2)
-
-with open(config_path, 'r') as config:
+config_vars = {}
+with open(os.path.join(INNERLY_DIRECTORY, 'config.json'), 'r') as config:
     config_vars = json.load(config)
 
 # Flask

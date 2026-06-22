@@ -12,9 +12,9 @@ if [ ! -f "$ENV_EXAMPLE" ]; then
     exit 1
 fi
 
-# Generate secrets
-SIGNATURE_SECRET="$(python3 -c 'import os, base64; print(base64.b64encode(os.urandom(32)).decode())')"
-SECRET_KEY="$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+# Generate secrets (Fernet keys are 32 random bytes, url-safe base64 encoded)
+SIGNATURE_SECRET="$(openssl rand -base64 32)"
+SECRET_KEY="$(openssl rand 32 | base64 | tr '+/' '-_')"
 
 # Copy .env.example -> .env, populating the two secret fields
 if [ -f "$ENV_FILE" ]; then

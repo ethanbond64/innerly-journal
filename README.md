@@ -6,8 +6,9 @@ An open source multimedia journal that can be self hosted. Features include secu
 ![Innerly writing page](/innerly-write.png)
 
 ### Quickstart
-Requires docker-compose. Startup with:
+Requires docker-compose. First run the setup script, then docker-compose:
 ```
+./setup.sh
 docker-compose up --build
 ```
 

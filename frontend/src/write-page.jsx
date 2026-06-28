@@ -28,7 +28,7 @@ export const WritePage = () => {
     const heading = functionalDatetime ? (<> Write an entry for the date {moment(functionalDatetime).format("MMMM Do YYYY")}</>) :
         "Write about any thoughts, experiences, or ideas";
 
-    return <WritePageBase onSumbit={onSubmit} heading={heading} />;
+    return <WritePageBase onSumbit={onSubmit} heading={heading} functionalDatetime={functionalDatetime} />;
 };
 
 export const EditPage = () => {
@@ -71,7 +71,8 @@ export const EditPage = () => {
     return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };
 
-export const WritePageBase = ({  onSumbit, heading, initialId = null, text = '' }) => {
+export const WritePageBase = ({  onSumbit, heading, functionalDatetime = null,
+                                  initialId = null, text = '' }) => {
 
     const navigate = useNavigate();
     const [showHeader, setShowHeader] = useState(true);
@@ -109,7 +110,7 @@ export const WritePageBase = ({  onSumbit, heading, initialId = null, text = '' 
                     setUntrackedChanges(false);
                     let writeTo = document.getElementById('writeto');
                     if (writeTo) {
-                        insertTextEntry(writeTo.value, null, data => {
+                        insertTextEntry(writeTo.value, functionalDatetime, data => {
                             setEntryId(data.id);
                             setAsyncSaving(false);
                         }); // TODO need fn datetime

@@ -196,7 +196,13 @@ export const ViewPage = ({ entryInput = null }) => {
                         </div>
                         <div className="lg-margin-top text-center">
                             <div id="read-entry" className="text-left" style={{ fontSize: "18px", color: "var(--dm-text)" }}>
-                                {text}
+                                {/*{text}*/}
+                                {text.split('\n').map((line, index) => (
+                                    <span key={index}>
+                                      {line}
+                                      <br />
+                                    </span>
+                                ))}
                             </div>
                         </div>
                     </div>

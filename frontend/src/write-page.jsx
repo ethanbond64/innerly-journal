@@ -176,7 +176,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
         const positionArrow = () => {
             if (textareaRef.current && arrowRef.current) {
                 const left = textareaRef.current.getBoundingClientRect().left;
-                arrowRef.current.style.left = `${left - 22}px`;
+                arrowRef.current.style.left = `${left - 38}px`;
             }
         };
         positionArrow();
@@ -312,25 +312,33 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             {/* Fixed arrow marking the autoscroll line at 25% from top */}
             <div
                 ref={arrowRef}
-                className="typewriter-arrow"
                 onClick={handleArrowClick}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
                 style={{
                     position: 'fixed',
                     top: `${ARROW_LINE * 100}vh`,
                     transform: 'translateY(-50%)',
-                    opacity: showHeader ? 1 : 0,
-                    transition: 'opacity 0.5s',
+                    padding: '16px',
                     cursor: 'pointer',
-                    width: 0,
-                    height: 0,
-                    borderTop: '8px solid transparent',
-                    borderBottom: '8px solid transparent',
-                    borderLeftWidth: '14px',
-                    borderLeftStyle: 'solid',
                     zIndex: 1000,
                 }}
                 title="Return to typewriter mode"
-            />
+            >
+                <div
+                    className="typewriter-arrow"
+                    style={{
+                        opacity: showHeader ? 1 : 0,
+                        transition: 'opacity 0.5s',
+                        width: 0,
+                        height: 0,
+                        borderTop: '8px solid transparent',
+                        borderBottom: '8px solid transparent',
+                        borderLeftWidth: '14px',
+                        borderLeftStyle: 'solid',
+                    }}
+                />
+            </div>
 
             <div className="row text-center" style={{ height: '90%' }}>
                 <div className="col-md-2 hidden-sm hidden-xs text-left">

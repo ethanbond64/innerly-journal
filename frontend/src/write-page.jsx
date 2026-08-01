@@ -148,6 +148,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     const [asyncSaving, setAsyncSaving] = useState(false);
     const [entryId, setEntryId] = useState(initialId);
     const textareaRef = useRef(null);
+    const arrowRef = useRef(null);
     const modeRef = useRef('typewriter'); // 'typewriter' | 'free'
     const lastProgScrollRef = useRef(0); // timestamp of last programmatic scroll
 
@@ -169,6 +170,18 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
         return () => {
             clearTimeout(timeoutId);
         };
+    }, []);
+
+    useEffect(() => {
+        const positionArrow = () => {
+            if (textareaRef.current && arrowRef.current) {
+                const left = textareaRef.current.getBoundingClientRect().left;
+                arrowRef.current.style.left = `${left - 22}px`;
+            }
+        };
+        positionArrow();
+        window.addEventListener('resize', positionArrow);
+        return () => window.removeEventListener('resize', positionArrow);
     }, []);
 
 
@@ -298,12 +311,12 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             `}</style>
             {/* Fixed arrow marking the autoscroll line at 25% from top */}
             <div
+                ref={arrowRef}
                 className="typewriter-arrow"
                 onClick={handleArrowClick}
                 style={{
                     position: 'fixed',
                     top: `${ARROW_LINE * 100}vh`,
-                    left: '1rem',
                     transform: 'translateY(-50%)',
                     opacity: showHeader ? 1 : 0,
                     transition: 'opacity 0.5s',

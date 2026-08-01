@@ -52,17 +52,24 @@ function getCaretOffsetTop(textarea, selectionIndex) {
     return { top, height };
 }
 
-function smoothScrollTo(element, targetScrollTop, duration = 350) {
+function smoothScrollTo(element, targetScrollTop, duration = 350, onComplete) {
     const start = element.scrollTop;
     const diff = targetScrollTop - start;
-    if (Math.abs(diff) < 2) return;
+    if (Math.abs(diff) < 2) {
+        onComplete && onComplete();
+        return;
+    }
 
     const startTime = performance.now();
     const tick = (now) => {
         const t = Math.min((now - startTime) / duration, 1);
         const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // ease-in-out
         element.scrollTop = start + diff * ease;
-        if (t < 1) requestAnimationFrame(tick);
+        if (t < 1) {
+            requestAnimationFrame(tick);
+        } else {
+            onComplete && onComplete();
+        }
     };
     requestAnimationFrame(tick);
 }
@@ -170,6 +177,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     const isProgrammaticScroll = () => Date.now() - lastProgScrollRef.current < 500;
 
     // Scrolls the textarea so the caret sits at the arrow line.
+    // Hides the scrollbar for the duration so it only appears during manual scrolls.
     const scrollCaretToArrow = (textarea, animate = false) => {
         const arrowY = window.innerHeight * ARROW_LINE;
         const rect = textarea.getBoundingClientRect();
@@ -177,10 +185,15 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
         const targetScrollTop = caretTop + caretHeight - (arrowY - rect.top);
 
         lastProgScrollRef.current = Date.now();
+        textarea.style.overflowY = 'hidden';
+
         if (animate) {
-            smoothScrollTo(textarea, Math.max(0, targetScrollTop));
+            smoothScrollTo(textarea, Math.max(0, targetScrollTop), 350, () => {
+                textarea.style.overflowY = '';
+            });
         } else {
             textarea.scrollTop = Math.max(0, targetScrollTop);
+            requestAnimationFrame(() => { textarea.style.overflowY = ''; });
         }
     };
 

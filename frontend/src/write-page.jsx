@@ -147,7 +147,6 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     const [untrackedChanges, setUntrackedChanges] = useState(false);
     const [asyncSaving, setAsyncSaving] = useState(false);
     const [entryId, setEntryId] = useState(initialId);
-
     const textareaRef = useRef(null);
     const modeRef = useRef('typewriter'); // 'typewriter' | 'free'
     const lastProgScrollRef = useRef(0); // timestamp of last programmatic scroll
@@ -171,6 +170,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             clearTimeout(timeoutId);
         };
     }, []);
+
 
     // Any scroll within 500ms of a programmatic scroll is considered programmatic.
     // This covers the full 350ms smooth-scroll animation plus margin.
@@ -292,25 +292,32 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
 
     return (
         <main style={{ height: '90vh', padding: '0', marginBottom: '0' }} className="container">
+            <style>{`
+                .typewriter-arrow { border-left-color: black; }
+                html[data-theme='dark'] .typewriter-arrow { border-left-color: white; }
+            `}</style>
             {/* Fixed arrow marking the autoscroll line at 25% from top */}
             <div
+                className="typewriter-arrow"
                 onClick={handleArrowClick}
                 style={{
                     position: 'fixed',
                     top: `${ARROW_LINE * 100}vh`,
                     left: '1rem',
                     transform: 'translateY(-50%)',
-                    opacity: showHeader ? 0.5 : 0,
+                    opacity: showHeader ? 1 : 0,
                     transition: 'opacity 0.5s',
                     cursor: 'pointer',
-                    fontSize: '1.2rem',
-                    color: '#888',
+                    width: 0,
+                    height: 0,
+                    borderTop: '8px solid transparent',
+                    borderBottom: '8px solid transparent',
+                    borderLeftWidth: '14px',
+                    borderLeftStyle: 'solid',
                     zIndex: 1000,
                 }}
                 title="Return to typewriter mode"
-            >
-                <i className="fa fa-chevron-right" aria-hidden="true" />
-            </div>
+            />
 
             <div className="row text-center" style={{ height: '90%' }}>
                 <div className="col-md-2 hidden-sm hidden-xs text-left">

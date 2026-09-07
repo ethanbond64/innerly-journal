@@ -2,7 +2,10 @@ import random
 import time
 import traceback
 from io import BytesIO
-from urllib.request import Request, urlopen
+from urllib.parse import urlparse
+from urllib.request import (HTTPDefaultErrorHandler, HTTPErrorProcessor, HTTPHandler,
+                            HTTPRedirectHandler, HTTPSHandler, OpenerDirector, ProxyHandler,
+                            Request, UnknownHandler)
 from werkzeug.datastructures import FileStorage
 
 from api.security import json_abort
@@ -12,6 +15,20 @@ from api.processors.file_processor import save_file
 
 PAGE_TIMEOUT = 10
 DOWNLOAD_TIMEOUT = 20
+
+ALLOWED_SCHEMES = {'http', 'https'}
+
+# urlopen's default opener also handles file://, ftp:// and data://, which would
+# let a submitted link read local files. This is the stdlib's default handler set
+# with those three left out, so redirects and HTTP error codes behave normally.
+def build_url_opener():
+    opener = OpenerDirector()
+    for handler in (ProxyHandler(), UnknownHandler(), HTTPHandler(), HTTPSHandler(),
+                    HTTPDefaultErrorHandler(), HTTPRedirectHandler(), HTTPErrorProcessor()):
+        opener.add_handler(handler)
+    return opener
+
+url_opener = build_url_opener()
 
 user_agents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
@@ -46,12 +63,18 @@ def process_link_entry(user_id, link: str) -> tuple:
 
 def site_allowed(link):
     # TODO validate link
-    return True
+    return scheme_allowed(link)
+
+def scheme_allowed(url):
+    return isinstance(url, str) and urlparse(url).scheme.lower() in ALLOWED_SCHEMES
 
 # Fetches a URL, returning the body and its content type. Raises on HTTP errors.
 def fetch(url, timeout):
+    if not scheme_allowed(url):
+        raise ValueError(f"refusing to fetch non-HTTP(S) url: {url!r}")
+
     request = Request(url, headers={'User-Agent': random.choice(user_agents)})
-    with urlopen(request, timeout=timeout) as response:
+    with url_opener.open(request, timeout=timeout) as response:
         return response.read(), response.headers.get('Content-Type', '')
 
 def do_opengraph(link):

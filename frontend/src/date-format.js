@@ -46,6 +46,14 @@ export const formatShortOrdinalDate = (value) => {
     return `${monthShort.format(date)} ${ordinal(date.getDate())}`;
 };
 
+// "h A" -> "3 PM"
+export const formatHour = (value) => {
+    const date = toDate(value);
+    const hours = date.getHours();
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+    return `${hour12} ${hours < 12 ? 'AM' : 'PM'}`;
+};
+
 // "MMM Do ha" -> "Sep 7th 3pm"
 export const formatShortOrdinalDateTime = (value) => {
     const date = toDate(value);

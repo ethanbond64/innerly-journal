@@ -6,8 +6,8 @@ from functools import wraps
 from http import HTTPStatus
 from cryptography.fernet import Fernet
 
-from flask import abort, jsonify
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from flask import abort, jsonify, request
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from api.models import User
@@ -16,8 +16,11 @@ from api.settings import SECRET_KEY
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
 EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+TOKEN_MAX_AGE = datetime.timedelta(days=5)
+TOKEN_SALT = 'innerly-auth-token'
 
 cipher_suite = Fernet(SECRET_KEY)
+token_serializer = URLSafeTimedSerializer(SECRET_KEY, salt=TOKEN_SALT)
 
 def json_abort(status_code, data=None):
     response = jsonify(data)
@@ -26,9 +29,8 @@ def json_abort(status_code, data=None):
 
 def login_required(function):
     @wraps(function)
-    @jwt_required(locations=['headers'])
     def decorator(*args, **kwargs):
-        identity = get_jwt_identity()
+        identity = get_identity_from_header()
 
         if identity is None or not identity.endswith(IDENTITY_PADDING):
             json_abort(HTTPStatus.UNAUTHORIZED, UNAUTHORIZED)
@@ -61,7 +63,28 @@ def authenticated(user: User, password):
     return False
 
 def get_token(user: User):
-        return create_access_token(identity=get_user_identity(user.id), expires_delta=False)
+        return token_serializer.dumps(get_user_identity(user.id))
+
+# Reads the bearer token from the Authorization header, returning the identity it
+# was signed with, or None if the header is absent, malformed, tampered with, or
+# older than TOKEN_MAX_AGE.
+def get_identity_from_header():
+    scheme, _, token = request.headers.get('Authorization', '').partition(' ')
+
+    if scheme.lower() != 'bearer':
+        return None
+
+    token = token.strip()
+    if not token:
+        return None
+
+    try:
+        identity = token_serializer.loads(token, max_age=int(TOKEN_MAX_AGE.total_seconds()))
+    except BadSignature:
+        # Also covers SignatureExpired, which subclasses BadSignature.
+        return None
+
+    return identity if isinstance(identity, str) else None
 
 def get_user_identity(user_id):
     return str(user_id) + IDENTITY_PADDING

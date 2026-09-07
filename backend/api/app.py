@@ -3,8 +3,6 @@ import os
 from flask import Flask, send_from_directory
 from werkzeug.exceptions import NotFound
 
-from flask_jwt_extended import JWTManager
-
 from api.views import views
 from api.extensions import db
 from api.settings import FRONTEND_DIRECTORY
@@ -20,8 +18,6 @@ def create_app():
     with app.app_context():
         # db.drop_all();
         db.create_all()
-
-    JWTManager(app)
 
     app.register_blueprint(views, url_prefix='/api')
 

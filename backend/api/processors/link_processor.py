@@ -2,22 +2,25 @@ import random
 import time
 import traceback
 from io import BytesIO
-from opengraph_py3 import OpenGraph
-import requests
+from urllib.request import Request, urlopen
 from werkzeug.datastructures import FileStorage
 
 from api.security import json_abort
 from api.processors.entry_models import LinkEntryData
+from api.processors.opengraph import decode_html, parse_open_graph
 from api.processors.file_processor import save_file
 
+PAGE_TIMEOUT = 10
+DOWNLOAD_TIMEOUT = 20
+
 user_agents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15'
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
 ]
 
 def process_link_entry(user_id, link: str) -> tuple:
@@ -45,21 +48,23 @@ def site_allowed(link):
     # TODO validate link
     return True
 
+# Fetches a URL, returning the body and its content type. Raises on HTTP errors.
+def fetch(url, timeout):
+    request = Request(url, headers={'User-Agent': random.choice(user_agents)})
+    with urlopen(request, timeout=timeout) as response:
+        return response.read(), response.headers.get('Content-Type', '')
+
 def do_opengraph(link):
 
     if not site_allowed(link):
         return None
-    
-    try:
-        is_wikipedia = 'wikipedia.org' in link
 
-        if is_wikipedia:
+    try:
+        if 'wikipedia.org' in link:
             time.sleep(0.33)
-            response = requests.get(link, headers={'User-Agent': random.choice(user_agents)}, timeout=10)
-            response.raise_for_status()
-            data = OpenGraph(html=response.text)
-        else:
-            data = OpenGraph(url=link)
+
+        body, content_type = fetch(link, PAGE_TIMEOUT)
+        data = parse_open_graph(decode_html(body, content_type))
 
         title = data.get("title")
         image = data.get("image")
@@ -74,11 +79,10 @@ def do_opengraph(link):
 def download_file(url):
     try:
         # Send a GET request to the URL to download the image
-        response = requests.get(url, headers={'User-Agent': random.choice(user_agents)})
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        body, _content_type_ = fetch(url, DOWNLOAD_TIMEOUT)
 
         # Create a BytesIO object to hold the image data
-        image_data = BytesIO(response.content)
+        image_data = BytesIO(body)
 
         # Extract filename from URL
         filename = url.split('/')[-1]

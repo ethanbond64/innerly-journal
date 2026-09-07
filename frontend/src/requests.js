@@ -34,7 +34,7 @@ const handleResponse = async (response) => {
 };
 
 export const updatePassword = async (oldPassword, newPassword, callback, onError) => {
-    fetch('http://localhost:8000/api/update_password', {
+    fetch('/api/update_password', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ current_password: oldPassword, new_password: newPassword })
@@ -50,7 +50,7 @@ export const updatePassword = async (oldPassword, newPassword, callback, onError
 };
 
 export const updateUser = async (userId, data, callback, onError = (e) => {}) => {
-    fetch(`http://localhost:8000/api/update/users/${userId}`, {
+    fetch(`/api/update/users/${userId}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -63,7 +63,7 @@ export const updateUser = async (userId, data, callback, onError = (e) => {}) =>
 };
 
 export const fetchEntries = async (search, offset, limit, onError = (e) => {}) => {
-    return await fetch(`http://localhost:8000/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
+    return await fetch(`/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
         return response.data.data;
@@ -78,7 +78,7 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
 };
 
 export const insertTextEntry = async (text, functional_datetime, callback, onError = (e) => {}) => {
-    fetch('http://localhost:8000/api/insert/entries', {
+    fetch('/api/insert/entries', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -101,7 +101,7 @@ export const insertTextEntry = async (text, functional_datetime, callback, onErr
 };
 
 export const updateTextEntry = async (id, entry_data, tags, callback, onError = (e) => {}) => {
-    fetch(`http://localhost:8000/api/update/entries/${id}`, {
+    fetch(`/api/update/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ entry_data, tags })
@@ -120,7 +120,7 @@ export const updateTextEntry = async (id, entry_data, tags, callback, onError = 
 };
 
 export const insertLinkEntry = async (link, callback, functional_datetime = null, onError = (e) => {}) => {
-    fetch('http://localhost:8000/api/insert/entries', {
+    fetch('/api/insert/entries', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -151,7 +151,7 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
         formData.append('functional_datetime', functional_datetime);
     }
 
-    fetch('http://localhost:8000/api/insert/entries', {
+    fetch('/api/insert/entries', {
         method: 'POST',
         headers: {
             'Authorization': getAuthorizationHeader()
@@ -173,7 +173,7 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
 
 
 export const fetchEntry = async (id, callback, onError = (e) => {}) => {
-    return await fetch(`http://localhost:8000/api/fetch/entries/${id}`, {
+    return await fetch(`/api/fetch/entries/${id}`, {
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
         callback(response.data.data);
@@ -184,7 +184,7 @@ export const fetchEntry = async (id, callback, onError = (e) => {}) => {
 };
 
 export const fetchLockedEntry = async (id, password, callback, onError = (e) => {}) => {
-    return await fetch(`http://localhost:8000/api/fetch/entries/${id}`, {
+    return await fetch(`/api/fetch/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ password })
@@ -197,7 +197,7 @@ export const fetchLockedEntry = async (id, password, callback, onError = (e) => 
 };
 
 export const deleteEntry = async (id, callback, onError = (e) => {}) => {
-    return await fetch(`http://localhost:8000/api/delete/entries/${id}`, {
+    return await fetch(`/api/delete/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({})
@@ -210,7 +210,7 @@ export const deleteEntry = async (id, callback, onError = (e) => {}) => {
 };
 
 export const lockEntry = async (id, password, callback, onError = (e) => {}) => {
-    return await fetch(`http://localhost:8000/api/lock/entries/${id}`, {
+    return await fetch(`/api/lock/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ password })
@@ -223,7 +223,7 @@ export const lockEntry = async (id, password, callback, onError = (e) => {}) => 
 };
 
 export const unlockEntry = async (id, password, callback, onError = (e) => {}) => {
-    return await fetch(`http://localhost:8000/api/unlock/entries/${id}`, {
+    return await fetch(`/api/unlock/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ password })
@@ -239,7 +239,7 @@ export const importEntries = async (zipPath, passcode, callback, onError = (e) =
     const body = { path: zipPath };
     if (passcode) body.passcode = passcode;
 
-    fetch('http://localhost:8000/api/import', {
+    fetch('/api/import', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(body)
@@ -256,7 +256,7 @@ export const importEntries = async (zipPath, passcode, callback, onError = (e) =
 };
 
 export const cancelImport = async (callback, onError = (e) => {}) => {
-    fetch('http://localhost:8000/api/import', {
+    fetch('/api/import', {
         method: 'DELETE',
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
@@ -268,7 +268,7 @@ export const cancelImport = async (callback, onError = (e) => {}) => {
 };
 
 export const getImportFiles = async (callback, onError = (e) => {}) => {
-    return await fetch('http://localhost:8000/api/import/files', {
+    return await fetch('/api/import/files', {
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
         callback(response.data.files);
@@ -283,7 +283,7 @@ export const getImportFiles = async (callback, onError = (e) => {}) => {
 };
 
 export const getImportStatus = async (callback, onError = (e) => {}) => {
-    return await fetch('http://localhost:8000/api/import/status', {
+    return await fetch('/api/import/status', {
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
         callback(response.data);

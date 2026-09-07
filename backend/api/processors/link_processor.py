@@ -15,6 +15,7 @@ from api.processors.file_processor import save_file
 
 PAGE_TIMEOUT = 10
 DOWNLOAD_TIMEOUT = 20
+MAX_RESPONSE_BYTES = 30 * 1024 * 1024
 
 ALLOWED_SCHEMES = {'http', 'https'}
 
@@ -75,7 +76,18 @@ def fetch(url, timeout):
 
     request = Request(url, headers={'User-Agent': random.choice(user_agents)})
     with url_opener.open(request, timeout=timeout) as response:
-        return response.read(), response.headers.get('Content-Type', '')
+
+        declared_length = (response.headers.get('Content-Length') or '').strip()
+        if declared_length.isdigit() and int(declared_length) > MAX_RESPONSE_BYTES:
+            raise ValueError(f"declared size {declared_length} exceeds {MAX_RESPONSE_BYTES} byte cap: {url!r}")
+
+        # Read one byte past the cap so a missing or dishonest Content-Length is
+        # still caught, rather than trusting the header alone.
+        body = response.read(MAX_RESPONSE_BYTES + 1)
+        if len(body) > MAX_RESPONSE_BYTES:
+            raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} byte cap: {url!r}")
+
+        return body, response.headers.get('Content-Type', '')
 
 def do_opengraph(link):
 

@@ -1,5 +1,5 @@
 import React from "react";
-import moment from 'moment';
+import { formatHour } from '../date-format.js';
 import { useNavigate, Link } from "react-router-dom";
 import { equalsDate, getUserData } from "../utils.jsx";
 
@@ -16,7 +16,7 @@ export const TextCard = ({ entry }) => {
         let functionalDate = new Date(entry.functional_datetime);
         let memory = !equalsDate(functionalDate, new Date(entry.created_on));
 
-        title = memory && !sensitiveTitle ? "Untitled Memory" : moment(functionalDate).format("h A")
+        title = memory && !sensitiveTitle ? "Untitled Memory" : formatHour(functionalDate)
     }
 
     const color = getColor(entry.entry_data.sentiment);

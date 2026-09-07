@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import moment from 'moment';
+import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -93,7 +93,7 @@ export const WritePage = () => {
         });
     };
 
-    const heading = functionalDatetime ? (<> Write an entry for the date {moment(functionalDatetime).format("MMMM Do YYYY")}</>) :
+    const heading = functionalDatetime ? (<> Write an entry for the date {formatLongDateNoComma(functionalDatetime)}</>) :
         "Write about any thoughts, experiences, or ideas";
 
     return <WritePageBase onSumbit={onSubmit} heading={heading} functionalDatetime={functionalDatetime} />;
@@ -134,7 +134,7 @@ export const EditPage = () => {
         }
     };
 
-    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from {moment(functionalDatetime).format("MMMM Do YYYY")}</> : null}</>);
+    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from {formatLongDateNoComma(functionalDatetime)}</> : null}</>);
 
     return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };

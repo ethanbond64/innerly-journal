@@ -5,6 +5,12 @@ DEBUG = False
 
 INNERLY_DIRECTORY = os.path.join(os.path.expanduser("~"), '.innerly')
 
+# The built frontend Flask serves. The image copies it to /frontend-dist; outside
+# Docker this falls back to wherever `npm run build` puts it in the repo.
+BACKEND_DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIRECTORY = os.environ.get('FRONTEND_DIRECTORY') or \
+    os.path.join(os.path.dirname(BACKEND_DIRECTORY), 'frontend', 'dist')
+
 config_vars = {}
 with open(os.path.join(INNERLY_DIRECTORY, 'config.json'), 'r') as config:
     config_vars = json.load(config)

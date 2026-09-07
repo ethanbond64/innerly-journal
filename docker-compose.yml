@@ -3,7 +3,9 @@ version: '2'
 services:
 
   server:
-    build: backend/.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     command: gunicorn -b 0.0.0.0:8000 --access-logfile - "entrypoint:create_app()"
     env_file:
       - '.env'
@@ -12,19 +14,3 @@ services:
       - '~/.innerly:/root/.innerly'
     ports:
       - '8000:8000'
-
-  frontend:
-    build: './frontend'
-    command: npm run start
-    stdin_open: true
-    env_file:
-      - '.env'
-    ports:
-      - '3000:3000'
-    volumes:
-      - './frontend/:/frontend'
-      - '/frontend/node_modules'
-
-volumes:
-  postgres: null
-  redis: null

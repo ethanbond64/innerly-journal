@@ -1,0 +1,14 @@
+# Keep host build output and dependencies out of the build context, so the image
+# is built only from source. Without this, a stale host node_modules gets copied
+# over the one `npm ci` installs and can mask missing dependencies.
+**/node_modules
+**/dist
+**/build
+**/__pycache__
+**/*.pyc
+.git
+.idea
+.env
+venv
+*.png
+**/.venv

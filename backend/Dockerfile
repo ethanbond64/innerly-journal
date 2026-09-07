@@ -1,8 +1,5 @@
 FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -qq -y \
-    build-essential libpq-dev --no-install-recommends
-
 ENV SERVER_PATH /backend
 RUN mkdir -p $SERVER_PATH
 

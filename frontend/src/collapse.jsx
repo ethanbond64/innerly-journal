@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import moment from 'moment';
+import { formatShortDate } from './date-format.js';
 import { Row } from "./row.jsx";
 import { equalsDate } from "./utils.jsx";
 
@@ -46,9 +46,9 @@ export const Collapse = ({ row, setImagePath }) => {
                 <div className="col-sm-8">
                     <button className="c_button" onClick={onClick}>
                         <span id="day1">
-                            {moment(row.date).format("MMM D")}
+                            {formatShortDate(row.date)}
                             { row.endDate !== null ?
-                                <>&nbsp;...&nbsp;{moment(row.endDate).format("MMM D")}</>:
+                                <>&nbsp;...&nbsp;{formatShortDate(row.endDate)}</>:
                                 null
                             }
                         </span>

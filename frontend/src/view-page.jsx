@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import moment from 'moment';
+import { formatShortOrdinalDate, formatShortOrdinalDateTime } from './date-format.js';
 import { editRoute, homeRoute } from "./constants.js";
 import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.jsx";
@@ -178,7 +178,7 @@ export const ViewPage = ({ entryInput = null }) => {
                                 }
                                 <h3 className="text-muted" style={{ marginLeft: "3px", marginTop: "0px" }}>
                                     {entry && entry.functional_datetime ? 
-                                        moment(entry.functional_datetime).format(`MMM Do ${memory ? "" : "ha"}`) : null
+                                        (memory ? formatShortOrdinalDate : formatShortOrdinalDateTime)(entry.functional_datetime) : null
                                     }
                                 </h3>
                             </div>

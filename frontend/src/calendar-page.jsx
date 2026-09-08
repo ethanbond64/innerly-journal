@@ -31,7 +31,7 @@ export const CalendarPage = () => {
 
     return (
         <BasePage>
-            <div className="wrapper sm-margin-top">
+            <div className="wrapper lg-margin-top">
                 <div className="calendar-header">
                     <button className="btn btn-default nondrag" onClick={() => shiftMonth(-1)} aria-label="Previous month">
                         <i className="fa fa-chevron-left" aria-hidden="true"></i>

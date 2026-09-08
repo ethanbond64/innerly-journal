@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearLocalStorage } from "./utils.jsx";
-import { adminRoute, homeRoute, loginRoute } from "./constants.js";
+import { adminRoute, calendarRoute, homeRoute, loginRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const Navbar = ({ setSearch, user }) => {
@@ -115,6 +115,9 @@ export const Navbar = ({ setSearch, user }) => {
                             <span style={{ marginLeft: '10px', fontSize: '14px' }}>Dark</span>
                         </li>
                         <li role="separator" className="divider"></li>
+                        <li>
+                            <a href={calendarRoute} style={{ fontSize: '15px' }}>Calendar</a>
+                        </li>
                         <li>
                             <a href="/settings" style={{ fontSize: '15px' }}>Settings</a>
                         </li>

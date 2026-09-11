@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BasePage } from "./base-page.jsx";
-import { useMonthEntries } from "./use-month-entries.js";
+import { useEntryStream } from "./use-entry-stream.js";
 import { getEntryTitle, getSentimentColor } from "./entry-display.js";
 import { formatMonthYear } from "./date-format.js";
 import { dateToString, equalsDate, getUserData } from "./utils.jsx";
@@ -14,78 +14,88 @@ const stripesPerDay = 4;
 
 export const CalendarPage = () => {
 
-    const today = new Date();
-    const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
+    const { months, loading, allLoaded, error, loadMore } = useEntryStream();
     const [expandedDay, setExpandedDay] = useState(null);
+    const sentinel = useRef(null);
 
-    const { entries, loading, error } = useMonthEntries(cursor.year, cursor.month);
+    const today = new Date();
     const userData = getUserData();
 
-    const weeks = useMemo(() => buildWeeks(cursor.year, cursor.month, entries), [cursor, entries]);
+    // Reveals older months as the bottom of the stream comes into view, and
+    // fires once on mount to load the first one.
+    useEffect(() => {
+        const target = sentinel.current;
 
-    const shiftMonth = (offset) => {
-        const shifted = new Date(cursor.year, cursor.month + offset, 1);
-        setCursor({ year: shifted.getFullYear(), month: shifted.getMonth() });
-        setExpandedDay(null);
-    };
+        if (target === null) {
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                loadMore();
+            }
+        }, { rootMargin: "200px" });
+
+        observer.observe(target);
+
+        return () => observer.disconnect();
+    }, [loadMore]);
 
     return (
         <BasePage>
             <div className="wrapper lg-margin-top">
-                <div className="calendar-header">
-                    <button className="btn btn-default nondrag" onClick={() => shiftMonth(-1)} aria-label="Previous month">
-                        <i className="fa fa-chevron-left" aria-hidden="true"></i>
-                    </button>
-                    <h3 className="calendar-title">{formatMonthYear(new Date(cursor.year, cursor.month, 1))}</h3>
-                    <button className="btn btn-default nondrag" onClick={() => shiftMonth(1)} aria-label="Next month">
-                        <i className="fa fa-chevron-right" aria-hidden="true"></i>
-                    </button>
-                </div>
+                {months.map((month) => (
+                    <div key={`${month.year}-${month.month}`} className="calendar-month">
+                        <h3 className="calendar-title">{formatMonthYear(new Date(month.year, month.month, 1))}</h3>
+                        <div className="calendar-grid">
+                            {weekdays.map((weekday) => (
+                                <div key={weekday} className="calendar-weekday">{weekday}</div>
+                            ))}
+                            {buildWeeks(month.year, month.month, month.entries).map((week) => week.map((day) => {
+
+                                const key = dateToString(day.date);
+                                const expanded = expandedDay === key;
+                                const visible = expanded ? day.entries : day.entries.slice(0, stripesPerDay);
+                                const hidden = day.entries.length - visible.length;
+
+                                return (
+                                    <div key={key} className={`calendar-day${day.inMonth ? '' : ' calendar-day-muted'}${equalsDate(day.date, today) ? ' calendar-day-today' : ''}`}>
+                                        <Link to={`${writeRoute}/${key}`} className="calendar-day-number" title="Write an entry for this day">
+                                            {day.date.getDate()}
+                                        </Link>
+                                        {visible.map((entry) => (
+                                            <Link key={entry.id} to={viewRoute + entry.id} className="calendar-stripe"
+                                                style={{ backgroundColor: getSentimentColor(entry) }}
+                                                title={getEntryTitle(entry, userData)}>
+                                                {getEntryTitle(entry, userData)}
+                                            </Link>
+                                        ))}
+                                        {hidden > 0 ?
+                                            <button className="calendar-more" onClick={() => setExpandedDay(key)}>
+                                                +{hidden} more
+                                            </button> : null}
+                                        {expanded ?
+                                            <button className="calendar-more" onClick={() => setExpandedDay(null)}>
+                                                Show less
+                                            </button> : null}
+                                    </div>
+                                );
+                            }))}
+                        </div>
+                    </div>
+                ))}
 
                 {error ? <p className="calendar-message">{error}</p> : null}
                 {loading ? <p className="calendar-message">Loading...</p> : null}
+                {allLoaded && !loading ? <p className="calendar-message">That's the whole journal.</p> : null}
 
-                <div className="calendar-grid">
-                    {weekdays.map((weekday) => (
-                        <div key={weekday} className="calendar-weekday">{weekday}</div>
-                    ))}
-                    {weeks.map((week) => week.map((day) => {
-
-                        const key = dateToString(day.date);
-                        const expanded = expandedDay === key;
-                        const visible = expanded ? day.entries : day.entries.slice(0, stripesPerDay);
-                        const hidden = day.entries.length - visible.length;
-
-                        return (
-                            <div key={key} className={`calendar-day${day.inMonth ? '' : ' calendar-day-muted'}${equalsDate(day.date, today) ? ' calendar-day-today' : ''}`}>
-                                <Link to={`${writeRoute}/${key}`} className="calendar-day-number" title="Write an entry for this day">
-                                    {day.date.getDate()}
-                                </Link>
-                                {visible.map((entry) => (
-                                    <Link key={entry.id} to={viewRoute + entry.id} className="calendar-stripe"
-                                        style={{ backgroundColor: getSentimentColor(entry) }}
-                                        title={getEntryTitle(entry, userData)}>
-                                        {getEntryTitle(entry, userData)}
-                                    </Link>
-                                ))}
-                                {hidden > 0 ?
-                                    <button className="calendar-more" onClick={() => setExpandedDay(key)}>
-                                        +{hidden} more
-                                    </button> : null}
-                                {expanded ?
-                                    <button className="calendar-more" onClick={() => setExpandedDay(null)}>
-                                        Show less
-                                    </button> : null}
-                            </div>
-                        );
-                    }))}
-                </div>
+                <div ref={sentinel}></div>
             </div>
         </BasePage>
     );
 };
 
-// Lays the month out as whole weeks starting on Sunday, with each day carrying
+// Lays a month out as whole weeks starting on Sunday, with each day carrying
 // its own entries in chronological order.
 const buildWeeks = (year, month, entries) => {
 

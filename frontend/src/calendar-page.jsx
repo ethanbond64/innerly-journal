@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BasePage } from "./base-page.jsx";
 import { useEntryStream } from "./use-entry-stream.js";
 import { getEntryTitle, getSentimentColor } from "./entry-display.js";
-import { formatMonthYear } from "./date-format.js";
 import { dateToString, equalsDate, getUserData } from "./utils.jsx";
+import { buildWeeks } from "./calendar-weeks.js";
 import { viewRoute, writeRoute } from "./constants.js";
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short' });
 
 // Stripes shown before a day collapses into a "+N more" toggle.
 const stripesPerDay = 4;
@@ -17,12 +19,36 @@ export const CalendarPage = () => {
     const { months, loading, allLoaded, error, loadMore } = useEntryStream();
     const [expandedDay, setExpandedDay] = useState(null);
     const sentinel = useRef(null);
+    const height = useRef(0);
 
     const today = new Date();
     const userData = getUserData();
 
-    // Reveals older months as the bottom of the stream comes into view, and
-    // fires once on mount to load the first one.
+    const weeks = useMemo(() => buildWeeks(months), [months]);
+
+    // The newest week sits at the bottom and older ones are added above, so the
+    // page has to be pinned to the bottom on the first render and then nudged
+    // down by however much was prepended on every render after that. Browser
+    // scroll anchoring would fight this, and Safari has none at all, so it is
+    // turned off in CSS and done explicitly here.
+    useLayoutEffect(() => {
+        if (weeks.length === 0) {
+            return;
+        }
+
+        const scrollHeight = document.documentElement.scrollHeight;
+
+        if (height.current === 0) {
+            window.scrollTo(0, scrollHeight);
+        } else if (scrollHeight > height.current) {
+            window.scrollBy(0, scrollHeight - height.current);
+        }
+
+        height.current = scrollHeight;
+    }, [weeks]);
+
+    // Reveals older weeks as the top of the stream comes into view, and fires
+    // once on mount to load the first of them.
     useEffect(() => {
         const target = sentinel.current;
 
@@ -44,14 +70,28 @@ export const CalendarPage = () => {
     return (
         <BasePage>
             <div className="wrapper lg-margin-top">
-                {months.map((month) => (
-                    <div key={`${month.year}-${month.month}`} className="calendar-month">
-                        <h3 className="calendar-title">{formatMonthYear(new Date(month.year, month.month, 1))}</h3>
-                        <div className="calendar-grid">
-                            {weekdays.map((weekday) => (
-                                <div key={weekday} className="calendar-weekday">{weekday}</div>
-                            ))}
-                            {buildWeeks(month.year, month.month, month.entries).map((week) => week.map((day) => {
+                <div ref={sentinel}></div>
+
+                {error ? <p className="calendar-message">{error}</p> : null}
+                {loading ? <p className="calendar-message">Loading...</p> : null}
+                {allLoaded && !loading ? <p className="calendar-message">That's the whole journal.</p> : null}
+
+                <div className="calendar-grid">
+                    <div className="calendar-gutter calendar-sticky"></div>
+                    {weekdays.map((weekday) => (
+                        <div key={weekday} className="calendar-weekday calendar-sticky">{weekday}</div>
+                    ))}
+
+                    {weeks.map((week) => (
+                        <React.Fragment key={week.key}>
+                            <div className="calendar-gutter">
+                                {week.label ?
+                                    <>
+                                        <span className="calendar-gutter-month">{monthShort.format(week.label)}</span>
+                                        {week.showYear ? <span className="calendar-gutter-year">{week.label.getFullYear()}</span> : null}
+                                    </> : null}
+                            </div>
+                            {week.days.map((day) => {
 
                                 const key = dateToString(day.date);
                                 const expanded = expandedDay === key;
@@ -59,7 +99,7 @@ export const CalendarPage = () => {
                                 const hidden = day.entries.length - visible.length;
 
                                 return (
-                                    <div key={key} className={`calendar-day${day.inMonth ? '' : ' calendar-day-muted'}${equalsDate(day.date, today) ? ' calendar-day-today' : ''}`}>
+                                    <div key={key} className={`calendar-day${day.inRange ? '' : ' calendar-day-muted'}${day.date.getDate() === 1 ? ' calendar-day-first' : ''}${equalsDate(day.date, today) ? ' calendar-day-today' : ''}`}>
                                         <Link to={`${writeRoute}/${key}`} className="calendar-day-number" title="Write an entry for this day">
                                             {day.date.getDate()}
                                         </Link>
@@ -80,58 +120,11 @@ export const CalendarPage = () => {
                                             </button> : null}
                                     </div>
                                 );
-                            }))}
-                        </div>
-                    </div>
-                ))}
-
-                {error ? <p className="calendar-message">{error}</p> : null}
-                {loading ? <p className="calendar-message">Loading...</p> : null}
-                {allLoaded && !loading ? <p className="calendar-message">That's the whole journal.</p> : null}
-
-                <div ref={sentinel}></div>
+                            })}
+                        </React.Fragment>
+                    ))}
+                </div>
             </div>
         </BasePage>
     );
-};
-
-// Lays a month out as whole weeks starting on Sunday, with each day carrying
-// its own entries in chronological order.
-const buildWeeks = (year, month, entries) => {
-
-    const byDay = new Map();
-    entries.forEach((entry) => {
-        const key = dateToString(new Date(entry.functional_datetime));
-        const day = byDay.get(key);
-        if (day) {
-            day.push(entry);
-        } else {
-            byDay.set(key, [entry]);
-        }
-    });
-
-    const firstWeekday = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const weekCount = Math.ceil((firstWeekday + daysInMonth) / 7);
-    const gridStart = new Date(year, month, 1 - firstWeekday);
-
-    const weeks = [];
-
-    for (let week = 0; week < weekCount; week++) {
-
-        const days = [];
-
-        for (let weekday = 0; weekday < 7; weekday++) {
-            const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + week * 7 + weekday);
-            days.push({
-                date: date,
-                inMonth: date.getMonth() === month && date.getFullYear() === year,
-                entries: byDay.get(dateToString(date)) || []
-            });
-        }
-
-        weeks.push(days);
-    }
-
-    return weeks;
 };

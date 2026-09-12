@@ -907,15 +907,9 @@ a {
 }
 /* Calendar page
 -------------------------------------------------- */
-.calendar-month {
-  margin-bottom: 32px;
-}
-
-.calendar-title {
-  margin: 0 0 8px;
-  text-align: center;
-  font-weight: 400;
-  color: var(--dm-text);
+:root {
+  /* Clearance for the fixed navbar, so the weekday row sticks just below it. */
+  --calendar-sticky-top: 104px;
 }
 
 .calendar-message {
@@ -925,15 +919,43 @@ a {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: 52px repeat(7, 1fr);
   gap: 4px;
+  /* The scroll position is corrected by hand as older weeks are prepended. */
+  overflow-anchor: none;
+}
+
+.calendar-sticky {
+  position: sticky;
+  top: var(--calendar-sticky-top);
+  z-index: 5;
+  background-color: var(--bgeb);
 }
 
 .calendar-weekday {
+  padding: 6px 0;
   text-align: center;
-  padding-bottom: 4px;
   font-size: 12px;
   text-transform: uppercase;
+  color: var(--dm-muted);
+}
+
+.calendar-gutter {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 6px;
+  text-align: right;
+  line-height: 1.2;
+}
+
+.calendar-gutter-month {
+  font-size: 13px;
+  color: var(--dm-text);
+}
+
+.calendar-gutter-year {
+  font-size: 11px;
   color: var(--dm-muted);
 }
 
@@ -948,7 +970,12 @@ a {
 }
 
 .calendar-day-muted {
-  opacity: .45;
+  opacity: .3;
+}
+
+/* Marks where one month hands over to the next without breaking the columns. */
+.calendar-day-first {
+  border-top: 2px solid var(--dm-muted);
 }
 
 .calendar-day-today {
@@ -997,6 +1024,14 @@ a {
 }
 
 @media (max-width: 767px) {
+  :root {
+    --calendar-sticky-top: 92px;
+  }
+
+  .calendar-grid {
+    grid-template-columns: 34px repeat(7, 1fr);
+  }
+
   .calendar-day {
     min-height: 70px;
   }

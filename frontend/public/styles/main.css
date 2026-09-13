@@ -916,11 +916,6 @@ a {
   --activity-panel-text: rgba(255, 255, 255, .65);
 }
 
-.activity-message {
-  text-align: center;
-  color: var(--dm-muted);
-}
-
 /* Sits over the centred grid rather than spanning the full page width. */
 .activity-header {
   display: flex;
@@ -1082,10 +1077,6 @@ a.activity-cell:hover {
    so the weekday rows line up, but the day belongs to the year before. */
 .activity-cell-blank {
   background-color: transparent;
-}
-
-.activity-empty {
-  background-color: var(--activity-empty);
 }
 
 .activity-negative {

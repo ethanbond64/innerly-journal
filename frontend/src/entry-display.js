@@ -1,6 +1,6 @@
 // Presentation rules shared by every surface that renders an entry as a small
-// summary (the home page cards, the calendar stripes). Kept here so the
-// "sensitivity" setting is honoured consistently wherever titles are shown.
+// summary (the home page cards). Kept here so the "sensitivity" setting is
+// honoured consistently wherever titles are shown.
 
 import { formatHour } from './date-format.js';
 import { equalsDate, getUserData } from './utils.jsx';

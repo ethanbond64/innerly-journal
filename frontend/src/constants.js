@@ -7,7 +7,6 @@ export const writeRoute = '/write';
 export const viewRoute = '/view/';
 export const editRoute = '/edit/';
 export const settingsRoute = '/settings';
-export const calendarRoute = '/calendar';
 export const activityRoute = '/activity';
 export const adminRoute = '/admin';
 

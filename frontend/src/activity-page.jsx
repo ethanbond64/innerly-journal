@@ -91,7 +91,7 @@ export const ActivityPage = () => {
                     </div>
                 </div>
 
-                {error ? <p className="calendar-message">{error}</p> : null}
+                {error ? <p className="activity-message">{error}</p> : null}
 
                 <div className="activity-scroll" ref={scroller}>
                     <div className="activity-chart">

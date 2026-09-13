@@ -46,6 +46,12 @@ export const formatShortOrdinalDate = (value) => {
     return `${monthShort.format(date)} ${ordinal(date.getDate())}`;
 };
 
+// "MMMM YYYY" -> "September 2026"
+export const formatMonthYear = (value) => {
+    const date = toDate(value);
+    return `${monthLong.format(date)} ${date.getFullYear()}`;
+};
+
 // "h A" -> "3 PM"
 export const formatHour = (value) => {
     const date = toDate(value);

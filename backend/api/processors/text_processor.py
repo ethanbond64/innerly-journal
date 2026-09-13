@@ -22,7 +22,11 @@ def build_entry_data(title: str, text: str) -> dict:
     if text is not None and len(text) > 0:
         sentiment = getSentiment(text)
 
-    return TextEntryData(title, text, sentiment)
+    return TextEntryData(title, text, sentiment, count_words(text))
+
+def count_words(text: str) -> int:
+
+    return len(text.split()) if text else 0
 
 def getSentiment(text: str) -> str:
     

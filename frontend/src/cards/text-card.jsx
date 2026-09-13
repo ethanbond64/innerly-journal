@@ -1,7 +1,7 @@
 import React from "react";
-import { formatHour } from '../date-format.js';
 import { useNavigate, Link } from "react-router-dom";
-import { equalsDate, getUserData } from "../utils.jsx";
+import { getUserData } from "../utils.jsx";
+import { getEntryTitle, getSentimentColor } from "../entry-display.js";
 
 export const TextCard = ({ entry }) => {
 
@@ -9,17 +9,8 @@ export const TextCard = ({ entry }) => {
     const userData = getUserData();
 
     let sensitive = userData && userData.settings && (userData.settings.sensitivity === 'blur' ||userData.settings.sensitivity === 'both' );
-    let sensitiveTitle = userData && userData.settings && userData.settings.sensitivity === 'both';
-    let title = !sensitiveTitle && entry.entry_data && entry.entry_data.title ? entry.entry_data.title : null;
-        
-    if (title === null) {
-        let functionalDate = new Date(entry.functional_datetime);
-        let memory = !equalsDate(functionalDate, new Date(entry.created_on));
-
-        title = memory && !sensitiveTitle ? "Untitled Memory" : formatHour(functionalDate)
-    }
-
-    const color = getColor(entry.entry_data.sentiment);
+    const title = getEntryTitle(entry, userData);
+    const color = getSentimentColor(entry);
     const preview = entry.entry_data && entry.entry_data.text ? entry.entry_data.text : "";
     const locked = entry.entry_data && entry.entry_data.locked === true;
     const tags = entry.tags;
@@ -46,14 +37,4 @@ export const TextCard = ({ entry }) => {
             </div>
         </Link>
     );
-};
-
-const getColor = (sentiment) => {
-    if (sentiment === 'positive') {
-        return 'var(--well-green)';
-    } else if (sentiment === 'negative') {
-        return 'var(--well-red)';
-    } else {
-        return 'var(--well-grey)';
-    }
 };

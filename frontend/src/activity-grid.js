@@ -1,10 +1,8 @@
-// The shape behind the activity page: a fixed 7 x 53 block of days ending with
-// today, with each day carrying the totals the grid is coloured by. Kept free of
-// React so the bucketing rules can be reasoned about on their own.
+// The shape behind the activity page: one calendar year of days laid out in
+// Sunday-start columns, each day carrying the totals the grid is coloured by.
+// Kept free of React so the bucketing rules can be reasoned about on their own.
 
 import { dateToString } from './utils.jsx';
-
-export const weeksShown = 53;
 
 // Day colours. A day is as negative as its worst entry: any negative entry
 // makes the day negative, any positive one (with nothing negative) makes it
@@ -49,34 +47,47 @@ export const getDaySentiment = (day) => {
     return dayLevels.neutral;
 };
 
-// The weeks to draw, oldest first, each one a Sunday-start run of seven days.
-// The block ends with the week `anchor` falls in, so earlier years are drawn by
-// anchoring a whole grid's worth of days further back each time.
+// The weeks of one calendar year, oldest first. The grid opens on the week
+// January 1st falls in, so every year starts in the same column, and the days
+// of December that share that first week are marked `outside` — they keep their
+// cell so January 1st sits on its own weekday row, but nothing is drawn in them.
 //
-// Days after the real `today` still take up a cell so the columns stay square,
-// but they are marked so nothing is drawn in them. That is only ever the most
-// recent block: in an earlier one every day has already happened.
-export const buildActivityWeeks = (rows, anchor = new Date(), today = anchor) => {
+// The year runs to December 31st, except the current one, which stops at today:
+// the last column is simply cut short there rather than padded out.
+export const buildYearWeeks = (rows, year, today = new Date()) => {
 
     const byDay = bucketByDay(rows);
-    const start = addDays(startOfWeek(anchor), -7 * (weeksShown - 1));
+
+    const opening = new Date(year, 0, 1);
+    const closing = new Date(year, 11, 31);
+    const last = year === today.getFullYear() && today < closing ? today : closing;
 
     const weeks = [];
 
-    for (let week = 0; week < weeksShown; week++) {
+    for (let cursor = startOfWeek(opening); cursor <= last; cursor = addDays(cursor, 7)) {
 
         const days = [];
 
         for (let weekday = 0; weekday < 7; weekday++) {
 
-            const date = addDays(start, week * 7 + weekday);
+            const date = addDays(cursor, weekday);
+
+            if (date > last) {
+                break;
+            }
+
             const key = dateToString(date);
-            const totals = byDay.get(key) || { entries: 0, words: 0, negative: 0, positive: 0 };
+            const outside = date < opening;
+
+            // An outside day is drawn blank and belongs to the block before, so
+            // it carries no totals here: they would otherwise be counted twice
+            // when both years are on the page.
+            const totals = (outside ? null : byDay.get(key)) || { entries: 0, words: 0, negative: 0, positive: 0 };
 
             days.push({
                 key: key,
                 date: date,
-                future: date > today,
+                outside: outside,
                 entries: totals.entries,
                 words: totals.words,
                 sentiment: getDaySentiment(totals)
@@ -87,6 +98,19 @@ export const buildActivityWeeks = (rows, anchor = new Date(), today = anchor) =>
     }
 
     return weeks;
+};
+
+// The first and last day a block actually covers, which is the window its
+// entries are fetched for. The leading `outside` days belong to the year before
+// and are never drawn, so they are left out.
+export const yearRange = (year, today = new Date()) => {
+
+    const closing = new Date(year, 11, 31);
+
+    return {
+        from: new Date(year, 0, 1),
+        to: year === today.getFullYear() && today < closing ? today : closing
+    };
 };
 
 // One label per month, sitting above the first column that month begins in.

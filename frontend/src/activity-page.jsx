@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom";
 import { BasePage } from "./base-page.jsx";
 import { fetchActivity } from "./requests.js";
-import { buildActivityWeeks, buildMonthLabels, buildWordScale, lightestMix, weeksShown, wordCountMix } from "./activity-grid.js";
+import { buildMonthLabels, buildWordScale, buildYearWeeks, lightestMix, wordCountMix, yearRange } from "./activity-grid.js";
 import { writeRoute } from "./constants.js";
 import { dateToString } from "./utils.jsx";
 
@@ -12,15 +12,9 @@ const weekdayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
 const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short' });
 
-const monthAndYear = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
-
 const longDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
 const sentimentModes = { sentiment: 'sentiment', words: 'words' };
-
-// One block is a whole grid's worth of days, so anchoring that much further
-// back each time gives blocks that abut without overlapping.
-const blockDays = weeksShown * 7;
 
 // Shades are mixed per day rather than picked from a handful of classes, so the
 // scale is as fine-grained as the year's own spread of entry lengths.
@@ -33,9 +27,11 @@ const words = (count) => `${count.toLocaleString()} word${count === 1 ? '' : 's'
 
 const entries = (count) => `${count.toLocaleString()} ${count === 1 ? 'entry' : 'entries'}`;
 
-const shiftBack = (date, blocks) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - blocks * blockDays);
+const newBlock = (year) => ({ key: String(year), year: year, rows: null, error: null });
 
-const newBlock = (anchor) => ({ key: dateToString(anchor), anchor: anchor, rows: null, error: null });
+// Days between two dates, inclusive of both, which is the window a year's
+// entries are fetched for.
+const daysBetween = (from, to) => Math.round((to - from) / 86400000) + 1;
 
 const dayTitle = (day, mode) => {
 
@@ -52,36 +48,37 @@ const dayTitle = (day, mode) => {
     return `${entries(day.entries)} (${day.sentiment}) on ${date}`;
 };
 
-// One year of the grid: its own black panel, captioned with the span it covers
+// One calendar year of the grid: its own black panel, captioned with the year
 // and what was written in it.
-const ActivityYear = ({ block, mode, scale }) => {
+const ActivityYear = ({ block, mode, scale, current }) => {
 
     const scroller = useRef(null);
 
     const months = useMemo(() => buildMonthLabels(block.weeks), [block.weeks]);
 
-    // A year does not fit on a narrow screen, so each grid scrolls and starts
-    // parked on its most recent week.
+    // A year does not fit on a narrow screen, so each grid scrolls. The year in
+    // progress opens parked on today; a finished one opens on January.
     useEffect(() => {
-        if (scroller.current !== null) {
+        if (scroller.current !== null && current) {
             scroller.current.scrollLeft = scroller.current.scrollWidth;
         }
-    }, [block.weeks]);
+    }, [block.weeks, current]);
 
-    const first = block.weeks[0].days[0].date;
-    const last = block.weeks[block.weeks.length - 1].days[6].date;
-    const written = block.rows === null ? [] : block.rows;
-    const total = written.reduce((sum, row) => sum + (row.words || 0), 0);
+    // Counted from the days actually drawn, so the caption always agrees with
+    // the grid rather than with whatever the fetch happened to return.
+    const drawn = block.weeks.flatMap((week) => week.days).filter((day) => !day.outside);
+    const written = drawn.reduce((sum, day) => sum + day.entries, 0);
+    const total = drawn.reduce((sum, day) => sum + day.words, 0);
 
     return (
         <div className="activity-panel">
 
             <div className="activity-caption">
-                <span className="activity-span">{monthAndYear.format(first)} &ndash; {monthAndYear.format(last)}</span>
+                <span className="activity-span">{block.year}</span>
                 <span className="activity-totals">
                     {block.error !== null ? block.error : null}
                     {block.error === null && block.rows === null ? "Loading..." : null}
-                    {block.error === null && block.rows !== null ? `${entries(written.length)}, ${words(total)}` : null}
+                    {block.error === null && block.rows !== null ? `${entries(written)}, ${words(total)}` : null}
                 </span>
             </div>
 
@@ -97,7 +94,8 @@ const ActivityYear = ({ block, mode, scale }) => {
 
                     <div className="activity-columns">
 
-                        <div className="activity-months">
+                        <div className="activity-months"
+                            style={{ gridTemplateColumns: `repeat(${block.weeks.length}, var(--activity-cell))` }}>
                             {months.map((label) => (
                                 <span key={label.column} className="activity-month" style={{ gridColumn: label.column + 1 }}>
                                     {monthShort.format(label.date)}
@@ -108,8 +106,8 @@ const ActivityYear = ({ block, mode, scale }) => {
                         <div className="activity-grid">
                             {block.weeks.map((week) => week.days.map((day) => {
 
-                                if (day.future) {
-                                    return <div key={day.key} className="activity-cell activity-cell-future"></div>;
+                                if (day.outside) {
+                                    return <div key={day.key} className="activity-cell activity-cell-blank"></div>;
                                 }
 
                                 const mix = mode === sentimentModes.words ? wordCountMix(day.words, scale) : null;
@@ -133,21 +131,21 @@ const ActivityYear = ({ block, mode, scale }) => {
 
 export const ActivityPage = () => {
 
-    // Fixed for the life of the page, so that every block is anchored to the
-    // same day and the grids stay aligned with each other.
+    // Fixed for the life of the page, so the year in progress does not grow a
+    // column underneath the user at midnight.
     const today = useMemo(() => new Date(), []);
 
     const [mode, setMode] = useState(sentimentModes.sentiment);
-    const [blocks, setBlocks] = useState(() => [newBlock(today)]);
+    const [blocks, setBlocks] = useState(() => [newBlock(today.getFullYear())]);
     const requested = useRef(new Set());
 
     const setBlock = useCallback((key, patch) => {
         setBlocks((current) => current.map((block) => block.key === key ? { ...block, ...patch } : block));
     }, []);
 
-    // Each block fetches its own window once, the year it covers ending on its
-    // anchor. Blocks already asked for are remembered so a re-render (or a
-    // second pass in strict mode) does not fetch them again.
+    // Each block fetches its own calendar year once, ending at December 31st or
+    // at today for the year in progress. Blocks already asked for are remembered
+    // so a re-render (or a second pass in strict mode) does not fetch them again.
     useEffect(() => {
         blocks.forEach((block) => {
 
@@ -157,18 +155,20 @@ export const ActivityPage = () => {
 
             requested.current.add(block.key);
 
-            fetchActivity(blockDays, block.key, () => setBlock(block.key, { error: "Unable to load activity." }))
+            const { from, to } = yearRange(block.year, today);
+
+            fetchActivity(daysBetween(from, to), dateToString(to), () => setBlock(block.key, { error: "Unable to load activity." }))
                 .then((data) => {
                     if (data !== undefined) {
                         setBlock(block.key, { rows: data });
                     }
                 });
         });
-    }, [blocks, setBlock]);
+    }, [blocks, setBlock, today]);
 
     const years = useMemo(() => blocks.map((block) => ({
         ...block,
-        weeks: buildActivityWeeks(block.rows === null ? [] : block.rows, block.anchor, today)
+        weeks: buildYearWeeks(block.rows === null ? [] : block.rows, block.year, today)
     })), [blocks, today]);
 
     // One scale across every year on the page, so the same shade means the same
@@ -177,7 +177,7 @@ export const ActivityPage = () => {
 
     const loading = blocks.some((block) => block.rows === null && block.error === null);
 
-    const loadPrevious = () => setBlocks((current) => [...current, newBlock(shiftBack(today, current.length))]);
+    const loadPrevious = () => setBlocks((current) => [...current, newBlock(current[current.length - 1].year - 1)]);
 
     return (
         <BasePage>
@@ -194,7 +194,8 @@ export const ActivityPage = () => {
                 </div>
 
                 {years.map((year) => (
-                    <ActivityYear key={year.key} block={year} mode={mode} scale={scale} />
+                    <ActivityYear key={year.key} block={year} mode={mode} scale={scale}
+                        current={year.year === today.getFullYear()} />
                 ))}
 
                 <div className="activity-panel activity-legend-panel">

@@ -1044,9 +1044,9 @@ a {
   gap: var(--activity-gap);
 }
 
+/* The column count varies with the year, so it is set on the element itself. */
 .activity-months {
   display: grid;
-  grid-template-columns: repeat(53, var(--activity-cell));
   gap: var(--activity-gap);
   height: 14px;
 }
@@ -1078,8 +1078,9 @@ a.activity-cell:hover {
   outline: 1px solid rgba(255, 255, 255, .85);
 }
 
-/* Days that have not happened yet keep their place in the column. */
-.activity-cell-future {
+/* The tail of December that shares a column with January 1st: the cell is kept
+   so the weekday rows line up, but the day belongs to the year before. */
+.activity-cell-blank {
   background-color: transparent;
 }
 

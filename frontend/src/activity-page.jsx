@@ -93,67 +93,69 @@ export const ActivityPage = () => {
 
                 {error ? <p className="activity-message">{error}</p> : null}
 
-                <div className="activity-scroll" ref={scroller}>
-                    <div className="activity-chart">
+                <div className="activity-panel">
+                    <div className="activity-scroll" ref={scroller}>
+                        <div className="activity-chart">
 
-                        <div className="activity-weekdays">
-                            <div className="activity-months-spacer"></div>
-                            {weekdayLabels.map((label, weekday) => (
-                                <div key={weekday} className="activity-weekday">{label}</div>
-                            ))}
-                        </div>
-
-                        <div className="activity-columns">
-
-                            <div className="activity-months">
-                                {months.map((label) => (
-                                    <span key={label.column} className="activity-month" style={{ gridColumn: label.column + 1 }}>
-                                        {monthShort.format(label.date)}
-                                    </span>
+                            <div className="activity-weekdays">
+                                <div className="activity-months-spacer"></div>
+                                {weekdayLabels.map((label, weekday) => (
+                                    <div key={weekday} className="activity-weekday">{label}</div>
                                 ))}
                             </div>
 
-                            <div className="activity-grid">
-                                {weeks.map((week) => week.days.map((day) => {
+                            <div className="activity-columns">
 
-                                    if (day.future) {
-                                        return <div key={day.key} className="activity-cell activity-cell-future"></div>;
-                                    }
+                                <div className="activity-months">
+                                    {months.map((label) => (
+                                        <span key={label.column} className="activity-month" style={{ gridColumn: label.column + 1 }}>
+                                            {monthShort.format(label.date)}
+                                        </span>
+                                    ))}
+                                </div>
 
-                                    const level = mode === sentimentModes.words ? wordCountLevel(day.words, busiest) : null;
-                                    const className = mode === sentimentModes.words
-                                        ? `activity-cell activity-words-${level}`
-                                        : `activity-cell activity-${day.entries === 0 ? 'empty' : day.sentiment}`;
+                                <div className="activity-grid">
+                                    {weeks.map((week) => week.days.map((day) => {
 
-                                    return (
-                                        <Link key={day.key} to={`${writeRoute}/${day.key}`} className={className}
-                                            title={dayTitle(day, mode)}></Link>
-                                    );
-                                }))}
+                                        if (day.future) {
+                                            return <div key={day.key} className="activity-cell activity-cell-future"></div>;
+                                        }
+
+                                        const level = mode === sentimentModes.words ? wordCountLevel(day.words, busiest) : null;
+                                        const className = mode === sentimentModes.words
+                                            ? `activity-cell activity-words-${level}`
+                                            : `activity-cell activity-${day.entries === 0 ? 'empty' : day.sentiment}`;
+
+                                        return (
+                                            <Link key={day.key} to={`${writeRoute}/${day.key}`} className={className}
+                                                title={dayTitle(day, mode)}></Link>
+                                        );
+                                    }))}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="activity-legend">
-                    {mode === sentimentModes.words ?
-                        <>
-                            <span className="activity-legend-label">Less</span>
-                            {[0, 1, 2, 3, 4].map((level) => (
-                                <span key={level} className={`activity-cell activity-words-${level}`}></span>
-                            ))}
-                            <span className="activity-legend-label">More</span>
-                        </> :
-                        <>
-                            <span className="activity-cell activity-negative"></span>
-                            <span className="activity-legend-label">Negative</span>
-                            <span className="activity-cell activity-positive"></span>
-                            <span className="activity-legend-label">Positive</span>
-                            <span className="activity-cell activity-neutral"></span>
-                            <span className="activity-legend-label">Neutral</span>
-                            <span className="activity-cell activity-empty"></span>
-                            <span className="activity-legend-label">Nothing written</span>
-                        </>}
+                    <div className="activity-legend">
+                        {mode === sentimentModes.words ?
+                            <>
+                                <span className="activity-legend-label">Less</span>
+                                {[0, 1, 2, 3, 4].map((level) => (
+                                    <span key={level} className={`activity-cell activity-words-${level}`}></span>
+                                ))}
+                                <span className="activity-legend-label">More</span>
+                            </> :
+                            <>
+                                <span className="activity-cell activity-negative"></span>
+                                <span className="activity-legend-label">Negative</span>
+                                <span className="activity-cell activity-positive"></span>
+                                <span className="activity-legend-label">Positive</span>
+                                <span className="activity-cell activity-neutral"></span>
+                                <span className="activity-legend-label">Neutral</span>
+                                <span className="activity-cell activity-empty"></span>
+                                <span className="activity-legend-label">Nothing written</span>
+                            </>}
+                    </div>
                 </div>
             </div>
         </BasePage>

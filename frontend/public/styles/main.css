@@ -910,7 +910,10 @@ a {
 :root {
   --activity-cell: 12px;
   --activity-gap: 3px;
-  --activity-empty: rgba(128, 128, 128, .18);
+  /* The grid sits on black in both themes, so its own greys are light. */
+  --activity-panel: #000;
+  --activity-empty: rgba(255, 255, 255, .13);
+  --activity-panel-text: rgba(255, 255, 255, .65);
 }
 
 .activity-message {
@@ -918,12 +921,13 @@ a {
   color: var(--dm-muted);
 }
 
+/* Sits over the centred grid rather than spanning the full page width. */
 .activity-header {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 10px 24px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-bottom: 12px;
 }
 
@@ -958,6 +962,16 @@ a {
   color: var(--dm-text);
 }
 
+/* The black backdrop the cells are read against, only as wide as the grid. */
+.activity-panel {
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 16px 18px;
+  border-radius: 8px;
+  background-color: var(--activity-panel);
+}
+
 /* A year of 12px cells is wider than a phone, so the grid scrolls sideways. */
 .activity-scroll {
   overflow-x: auto;
@@ -981,7 +995,7 @@ a {
   line-height: var(--activity-cell);
   text-align: right;
   padding-right: 4px;
-  color: var(--dm-muted);
+  color: var(--activity-panel-text);
 }
 
 .activity-columns {
@@ -1000,7 +1014,7 @@ a {
 .activity-month {
   font-size: 10px;
   white-space: nowrap;
-  color: var(--dm-muted);
+  color: var(--activity-panel-text);
 }
 
 .activity-grid {
@@ -1021,7 +1035,7 @@ a {
 
 a.activity-cell:focus,
 a.activity-cell:hover {
-  outline: 1px solid var(--dm-muted);
+  outline: 1px solid rgba(255, 255, 255, .85);
 }
 
 /* Days that have not happened yet keep their place in the column. */
@@ -1068,11 +1082,13 @@ a.activity-cell:hover {
 
 .activity-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 5px;
-  margin-top: 10px;
+  margin-top: 12px;
   font-size: 11px;
-  color: var(--dm-muted);
+  color: var(--activity-panel-text);
 }
 
 .activity-legend-label {

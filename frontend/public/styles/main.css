@@ -1059,25 +1059,12 @@ a.activity-cell:hover {
   background-color: var(--well-blue);
 }
 
-/* Four steps of green over the empty colour, spread across the year's range. */
-.activity-words-0 {
-  background-color: var(--activity-empty);
-}
-
-.activity-words-1 {
-  background-color: color-mix(in srgb, var(--well-green) 25%, transparent);
-}
-
-.activity-words-2 {
-  background-color: color-mix(in srgb, var(--well-green) 50%, transparent);
-}
-
-.activity-words-3 {
-  background-color: color-mix(in srgb, var(--well-green) 75%, transparent);
-}
-
-.activity-words-4 {
-  background-color: var(--well-green);
+/* The word-count ramp itself is mixed per cell in the page, since its steps
+   come from the year's own spread of entry lengths. */
+.activity-legend-ramp {
+  width: 120px;
+  height: var(--activity-cell);
+  border-radius: 2px;
 }
 
 .activity-legend {

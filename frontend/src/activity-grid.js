@@ -111,20 +111,61 @@ export const buildMonthLabels = (weeks) => {
     return labels;
 };
 
-// GitHub-style discrete shading: four steps spread over the range of the year,
-// so a quiet year still fills out the scale.
-export const wordCountLevel = (words, busiest) => {
+// Word-count shading is ranked rather than scaled: a day is shaded by how many
+// of the year's other written-on days it outwrites, so the colour spreads over
+// whatever lengths this particular year actually contains. A handful of very
+// long days would otherwise flatten everything else into the same faint green.
+//
+// The shade is the share of the mixture that is green, so the quietest written
+// day still shows (`lightestMix`) and the busiest is full strength.
+export const lightestMix = 12;
 
-    if (words <= 0) {
-        return 0;
-    }
+export const buildWordScale = (weeks) => {
 
-    if (busiest <= 0) {
-        return 1;
-    }
+    const written = [];
 
-    return Math.min(4, Math.ceil((words / busiest) * 4));
+    weeks.forEach((week) => week.days.forEach((day) => {
+        if (day.words > 0) {
+            written.push(day.words);
+        }
+    }));
+
+    written.sort((a, b) => a - b);
+
+    return written;
 };
 
-export const busiestDay = (weeks) => weeks.reduce(
-    (busiest, week) => week.days.reduce((most, day) => Math.max(most, day.words), busiest), 0);
+// How many values in the sorted scale are at or below `words`.
+const rankOf = (scale, words) => {
+
+    let low = 0;
+    let high = scale.length;
+
+    while (low < high) {
+        const middle = (low + high) >> 1;
+        if (scale[middle] <= words) {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+
+    return low;
+};
+
+// The percentage of green to mix in for a day, or null for a day with no words
+// at all, which is drawn as an empty cell instead.
+export const wordCountMix = (words, scale) => {
+
+    if (words <= 0) {
+        return null;
+    }
+
+    if (scale.length === 0) {
+        return 100;
+    }
+
+    const rank = rankOf(scale, words) / scale.length;
+
+    return Math.round(lightestMix + (100 - lightestMix) * rank);
+};

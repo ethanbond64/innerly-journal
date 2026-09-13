@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BasePage } from "./base-page.jsx";
 import { fetchActivity } from "./requests.js";
-import { busiestDay, buildActivityWeeks, buildMonthLabels, weeksShown, wordCountLevel } from "./activity-grid.js";
+import { buildActivityWeeks, buildMonthLabels, buildWordScale, lightestMix, weeksShown, wordCountMix } from "./activity-grid.js";
 import { writeRoute } from "./constants.js";
 
 // Only every other weekday is labelled, the way GitHub does it, so the labels
@@ -14,6 +14,13 @@ const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short' });
 const longDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
 const sentimentModes = { sentiment: 'sentiment', words: 'words' };
+
+// Shades are mixed per day rather than picked from a handful of classes, so the
+// scale is as fine-grained as the year's own spread of entry lengths.
+const greenMix = (percent) => `color-mix(in srgb, var(--well-green) ${percent}%, transparent)`;
+
+// The legend shows the same span the cells are mixed across.
+const ramp = `linear-gradient(to right, ${greenMix(lightestMix)}, ${greenMix(100)})`;
 
 const words = (count) => `${count} word${count === 1 ? '' : 's'}`;
 
@@ -63,7 +70,7 @@ export const ActivityPage = () => {
 
     const weeks = useMemo(() => buildActivityWeeks(rows), [rows]);
     const months = useMemo(() => buildMonthLabels(weeks), [weeks]);
-    const busiest = useMemo(() => busiestDay(weeks), [weeks]);
+    const wordScale = useMemo(() => buildWordScale(weeks), [weeks]);
 
     // A year does not fit on a narrow screen, so the grid scrolls and starts
     // parked on the most recent week.
@@ -121,13 +128,14 @@ export const ActivityPage = () => {
                                             return <div key={day.key} className="activity-cell activity-cell-future"></div>;
                                         }
 
-                                        const level = mode === sentimentModes.words ? wordCountLevel(day.words, busiest) : null;
+                                        const mix = mode === sentimentModes.words ? wordCountMix(day.words, wordScale) : null;
                                         const className = mode === sentimentModes.words
-                                            ? `activity-cell activity-words-${level}`
+                                            ? `activity-cell${mix === null ? ' activity-empty' : ''}`
                                             : `activity-cell activity-${day.entries === 0 ? 'empty' : day.sentiment}`;
 
                                         return (
                                             <Link key={day.key} to={`${writeRoute}/${day.key}`} className={className}
+                                                style={mix === null ? undefined : { backgroundColor: greenMix(mix) }}
                                                 title={dayTitle(day, mode)}></Link>
                                         );
                                     }))}
@@ -139,11 +147,13 @@ export const ActivityPage = () => {
                     <div className="activity-legend">
                         {mode === sentimentModes.words ?
                             <>
-                                <span className="activity-legend-label">Less</span>
-                                {[0, 1, 2, 3, 4].map((level) => (
-                                    <span key={level} className={`activity-cell activity-words-${level}`}></span>
-                                ))}
-                                <span className="activity-legend-label">More</span>
+                                <span className="activity-cell activity-empty"></span>
+                                <span className="activity-legend-label">Nothing written</span>
+                                <span className="activity-legend-label">{wordScale.length > 0 ? wordScale[0] : 0}</span>
+                                <span className="activity-legend-ramp" style={{ backgroundImage: ramp }}></span>
+                                <span className="activity-legend-label">
+                                    {words(wordScale.length > 0 ? wordScale[wordScale.length - 1] : 0)}
+                                </span>
                             </> :
                             <>
                                 <span className="activity-cell activity-negative"></span>

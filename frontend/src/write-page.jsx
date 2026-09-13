@@ -4,8 +4,7 @@ import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getDateNoTime } from "./utils.jsx";
-
-const ARROW_LINE = 0.25; // 25% from top of viewport
+import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
 
 // Measures the pixel offset of the caret within the textarea's scroll area
 // using a hidden mirror div to account for word-wrap accurately.
@@ -149,8 +148,14 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     const [entryId, setEntryId] = useState(initialId);
     const textareaRef = useRef(null);
     const arrowRef = useRef(null);
-    const modeRef = useRef('typewriter'); // 'typewriter' | 'free'
     const lastProgScrollRef = useRef(0); // timestamp of last programmatic scroll
+
+    const [typewriter, setTypewriter] = useState(() => getTypewriterSettings());
+    const modeRef = useRef(typewriter.enabled ? 'typewriter' : 'free'); // 'typewriter' | 'free'
+    const enabledRef = useRef(typewriter.enabled);
+    const arrowLineRef = useRef(typewriter.line);
+    const [dragging, setDragging] = useState(false);
+    const dragStateRef = useRef(null);
 
     let timeoutId;
 
@@ -192,7 +197,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     // Scrolls the textarea so the caret sits at the arrow line.
     // Hides the scrollbar for the duration so it only appears during manual scrolls.
     const scrollCaretToArrow = (textarea, animate = false) => {
-        const arrowY = window.innerHeight * ARROW_LINE;
+        const arrowY = window.innerHeight * arrowLineRef.current;
         const rect = textarea.getBoundingClientRect();
         const { top: caretTop, height: caretHeight } = getCaretOffsetTop(textarea);
         const targetScrollTop = caretTop + caretHeight - (arrowY - rect.top);
@@ -219,11 +224,11 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
 
     // User scrolled manually. If the caret is now below the arrow line, enter FREE mode.
     const handleTextareaScroll = () => {
-        if (isProgrammaticScroll()) return;
+        if (!enabledRef.current || isProgrammaticScroll()) return;
         const textarea = textareaRef.current;
         if (!textarea || modeRef.current === 'free') return;
 
-        const arrowY = window.innerHeight * ARROW_LINE;
+        const arrowY = window.innerHeight * arrowLineRef.current;
         if (getCaretViewportBottom(textarea) > arrowY) {
             modeRef.current = 'free';
         }
@@ -261,9 +266,9 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
 
         // Typewriter autoscroll
         const textarea = textareaRef.current;
-        if (!textarea) return;
+        if (!textarea || !enabledRef.current || dragStateRef.current) return;
 
-        const arrowY = window.innerHeight * ARROW_LINE;
+        const arrowY = window.innerHeight * arrowLineRef.current;
         const caretViewportBottom = getCaretViewportBottom(textarea);
 
         if (modeRef.current === 'typewriter') {
@@ -280,6 +285,56 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             }
         }
     };
+
+    // Arrow drag: pick up the arrow and drop it on a new line. A press that never
+    // moves is treated as a click (see the mouseup handler below).
+    const handleArrowMouseDown = (e) => {
+        e.preventDefault();
+        dragStateRef.current = { startY: e.clientY, moved: false };
+        setDragging(true);
+    };
+
+    useEffect(() => {
+        if (!dragging) return;
+
+        const onMove = (e) => {
+            const dragState = dragStateRef.current;
+            if (!dragState) return;
+            if (Math.abs(e.clientY - dragState.startY) > 3) dragState.moved = true;
+
+            const line = clampTypewriterLine(e.clientY / window.innerHeight);
+            arrowLineRef.current = line;
+            setTypewriter((prev) => ({ ...prev, line }));
+        };
+
+        const onUp = () => {
+            const dragState = dragStateRef.current;
+            dragStateRef.current = null;
+            setDragging(false);
+            if (!dragState) return;
+
+            if (!dragState.moved) {
+                handleArrowClick();
+                return;
+            }
+
+            saveTypewriterSettings({ line: arrowLineRef.current });
+
+            // Bring the caret back to the arrow's new home.
+            const textarea = textareaRef.current;
+            if (textarea && modeRef.current === 'typewriter') {
+                scrollCaretToArrow(textarea, true);
+            }
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        return () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+        };
+    // eslint-disable-next-line
+    }, [dragging]);
 
     // Arrow click: move cursor to end, animate scroll to arrow line, re-enter typewriter mode.
     const handleArrowClick = () => {
@@ -308,37 +363,52 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             <style>{`
                 .typewriter-arrow { border-left-color: black; }
                 html[data-theme='dark'] .typewriter-arrow { border-left-color: white; }
+                .typewriter-guide { border-top: 1px dashed rgba(0, 0, 0, 0.35); }
+                html[data-theme='dark'] .typewriter-guide { border-top-color: rgba(255, 255, 255, 0.35); }
             `}</style>
-            {/* Fixed arrow marking the autoscroll line at 25% from top */}
-            <div
-                ref={arrowRef}
-                onClick={handleArrowClick}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                style={{
-                    position: 'fixed',
-                    top: `${ARROW_LINE * 100}vh`,
-                    transform: 'translateY(-50%)',
-                    padding: '16px',
-                    cursor: 'pointer',
-                    zIndex: 1000,
-                }}
-                title="Return to typewriter mode"
-            >
-                <div
-                    className="typewriter-arrow"
+            {/* Fixed arrow marking the autoscroll line, draggable to move the line */}
+            {typewriter.enabled && <>
+                {dragging && <div
+                    className="typewriter-guide"
                     style={{
-                        opacity: showHeader ? 1 : 0,
-                        transition: 'opacity 0.5s',
-                        width: 0,
-                        height: 0,
-                        borderTop: '8px solid transparent',
-                        borderBottom: '8px solid transparent',
-                        borderLeftWidth: '14px',
-                        borderLeftStyle: 'solid',
+                        position: 'fixed',
+                        left: 0,
+                        right: 0,
+                        top: `${typewriter.line * 100}vh`,
+                        pointerEvents: 'none',
+                        zIndex: 999,
                     }}
-                />
-            </div>
+                />}
+                <div
+                    ref={arrowRef}
+                    onMouseDown={handleArrowMouseDown}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    style={{
+                        position: 'fixed',
+                        top: `${typewriter.line * 100}vh`,
+                        transform: 'translateY(-50%)',
+                        padding: '16px',
+                        cursor: dragging ? 'grabbing' : 'pointer',
+                        zIndex: 1000,
+                    }}
+                    title="Click to return to typewriter mode, drag to move the line"
+                >
+                    <div
+                        className="typewriter-arrow"
+                        style={{
+                            opacity: showHeader || dragging ? 1 : 0,
+                            transition: 'opacity 0.5s',
+                            width: 0,
+                            height: 0,
+                            borderTop: '8px solid transparent',
+                            borderBottom: '8px solid transparent',
+                            borderLeftWidth: '14px',
+                            borderLeftStyle: 'solid',
+                        }}
+                    />
+                </div>
+            </>}
 
             <div className="row text-center" style={{ height: '90%' }}>
                 <div className="col-md-2 hidden-sm hidden-xs text-left">

@@ -788,7 +788,7 @@ label {
   color: var(--dm-text);
 }
 
-#swtichlabel {
+.switch-label {
   cursor: pointer;
   text-indent: -9999px;
   width: 52px;
@@ -799,7 +799,7 @@ label {
   position: relative;
 }
 
-#swtichlabel:after {
+.switch-label:after {
   content: '';
   position: absolute;
   top: 3px;
@@ -811,17 +811,22 @@ label {
   transition: 0.3s;
 }
 
-#switch:checked+label {
+input[type=checkbox]:checked + .switch-label {
   background: var(--color-headings);
 }
 
-#switch:checked+label:after {
+input[type=checkbox]:checked + .switch-label:after {
   left: calc(100% - 5px);
   transform: translateX(-100%);
 }
 
-#swtichlabel:active:after {
+.switch-label:active:after {
   width: 45px;
+}
+
+.typewriter-range {
+  width: 100%;
+  margin-top: 6px;
 }
 
 .radioLabel {

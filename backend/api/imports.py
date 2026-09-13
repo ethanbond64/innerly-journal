@@ -20,7 +20,7 @@ from api.models import Entry, EntryTagXref, upsert_tags
 from api.processors.entry_models import TextEntryData
 from api.processors.file_processor import process_file_entry
 from api.processors.link_processor import process_link_entry
-from api.processors.text_processor import sentiment_index_to_value
+from api.processors.text_processor import count_words, sentiment_index_to_value
 from api.security import lock_text
 
 
@@ -211,17 +211,20 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
                         cipher_text = parse_bytes_repr(row.get("cipher_text", ""))
                         tag = parse_bytes_repr(row.get("tag", ""))
                         text = unlockText(aes_key, iv, cipher_text, tag, passcode)
+                        word_count = count_words(text)
                         # Re-encrypt using this project's Fernet format with user email
                         text = lock_text(email, text)
                     elif locked:
                         # No credentials supplied, import ciphertext as-is
                         print(f"  Skipping decryption for locked entry {entry_id} (no passcode/key supplied)")
                         text = row.get("text", "")
+                        word_count = 0
                     else:
                         text = row.get("text", "")
+                        word_count = count_words(text)
 
                     entry_type = "text"
-                    entry_data = TextEntryData(title, text, sentiment).json()
+                    entry_data = TextEntryData(title, text, sentiment, word_count).json()
                     if locked:
                         entry_data["locked"] = True
                 else:

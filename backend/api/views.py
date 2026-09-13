@@ -11,7 +11,7 @@ from sqlalchemy import Boolean, String, and_, cast, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
-from api.processors.text_processor import process_text_entry
+from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.imports import import_entries, import_jobs, validate_zip
@@ -254,6 +254,7 @@ def update_entry(current_user, id):
         if 'text' in entry_data:
             
             text = entry_data['text']
+            original_entry_data['word_count'] = count_words(text)
 
             # NOTE we haven't re-asked for the password here, but since the entry was originally locked, we're locking it again.
             if original_entry_data.get('locked', False):
@@ -335,21 +336,25 @@ def fetch_activity(current_user):
     return {'data': [{
         'functional_datetime': getattr_typed(entry, 'functional_datetime'),
         'sentiment': (entry.entry_data or {}).get('sentiment'),
-        'words': count_words(entry)
+        'words': entry_word_count(entry)
     } for entry in entries]}, 200
 
-# Locked entries hold ciphertext, which would count as nonsense, so they are
-# only counted as having happened.
-def count_words(entry):
+# Text entries carry their own length, taken before any encryption. Entries
+# written before that field existed are counted from their text, which is only
+# possible while they are unlocked.
+def entry_word_count(entry):
 
     entry_data = entry.entry_data or {}
+
+    word_count = entry_data.get('word_count')
+
+    if isinstance(word_count, int):
+        return word_count
 
     if entry_data.get('locked', False):
         return 0
 
-    text = entry_data.get('text')
-
-    return len(text.split()) if text else 0
+    return count_words(entry_data.get('text'))
 
 @views.route('/fetch/tags', methods=['GET'])
 @login_required
@@ -435,6 +440,13 @@ def lock_entry(current_user, id):
     #     return {'message': 'Unauthorized'}, 401
     
     entry_data = entry.entry_data
+
+    # The last point the plaintext is visible, so an entry written before
+    # word_count existed picks one up here. Never recount an already-locked
+    # entry, whose text is ciphertext.
+    if not entry_data.get('locked', False):
+        entry_data['word_count'] = count_words(entry_data.get('text', ''))
+
     locked_text = lock_text(current_user.email, entry_data.get('text', ''))
     
     entry_data['locked'] = True
@@ -469,6 +481,7 @@ def unlock_entry(current_user, id):
     
     entry_data['locked'] = False
     entry_data['text'] = unlocked_text
+    entry_data['word_count'] = count_words(unlocked_text)
     entry.update(entry_data=entry_data)
     
     entry.save()

@@ -48,46 +48,44 @@ export const getDaySentiment = (day) => {
 };
 
 // The weeks of one calendar year, oldest first. The grid opens on the week
-// January 1st falls in, so every year starts in the same column, and the days
-// of December that share that first week are marked `outside` — they keep their
-// cell so January 1st sits on its own weekday row, but nothing is drawn in them.
+// January 1st falls in and runs to the week December 31st falls in, so every
+// year is the same width and its week columns line up with every other year's.
 //
-// The year runs to December 31st, except the current one, which stops at today:
-// the last column is simply cut short there rather than padded out.
+// Days outside the year — the tail of December in the first column, the start
+// of January in the last — keep their cell so the weekday rows stay true, but
+// nothing is drawn in them. The year in progress marks every day after today
+// the same way, which leaves its boxes ending at today inside a grid that is
+// still a full year wide.
 export const buildYearWeeks = (rows, year, today = new Date()) => {
 
     const byDay = bucketByDay(rows);
 
     const opening = new Date(year, 0, 1);
     const closing = new Date(year, 11, 31);
-    const last = year === today.getFullYear() && today < closing ? today : closing;
 
     const weeks = [];
 
-    for (let cursor = startOfWeek(opening); cursor <= last; cursor = addDays(cursor, 7)) {
+    for (let cursor = startOfWeek(opening); cursor <= closing; cursor = addDays(cursor, 7)) {
 
         const days = [];
 
         for (let weekday = 0; weekday < 7; weekday++) {
 
             const date = addDays(cursor, weekday);
-
-            if (date > last) {
-                break;
-            }
-
             const key = dateToString(date);
-            const outside = date < opening;
+            const outside = date < opening || date > closing;
+            const future = date > today;
 
-            // An outside day is drawn blank and belongs to the block before, so
-            // it carries no totals here: they would otherwise be counted twice
+            // A day that is not drawn carries no totals: an outside day belongs
+            // to the neighbouring block, which would otherwise count it twice
             // when both years are on the page.
-            const totals = (outside ? null : byDay.get(key)) || { entries: 0, words: 0, negative: 0, positive: 0 };
+            const totals = (outside || future ? null : byDay.get(key)) || { entries: 0, words: 0, negative: 0, positive: 0 };
 
             days.push({
                 key: key,
                 date: date,
                 outside: outside,
+                future: future,
                 entries: totals.entries,
                 words: totals.words,
                 sentiment: getDaySentiment(totals)
@@ -99,6 +97,9 @@ export const buildYearWeeks = (rows, year, today = new Date()) => {
 
     return weeks;
 };
+
+// Whether a day has a box drawn in it at all.
+export const isDrawn = (day) => !day.outside && !day.future;
 
 // The first and last day a block actually covers, which is the window its
 // entries are fetched for. The leading `outside` days belong to the year before
@@ -114,7 +115,9 @@ export const yearRange = (year, today = new Date()) => {
 };
 
 // One label per month, sitting above the first column that month begins in.
-export const buildMonthLabels = (weeks) => {
+// Months the year has not reached yet are left unlabelled, so the year in
+// progress reads as far as it has got.
+export const buildMonthLabels = (weeks, today = new Date()) => {
 
     const labels = [];
 
@@ -122,7 +125,7 @@ export const buildMonthLabels = (weeks) => {
 
         const opener = week.days.find((day) => day.date.getDate() <= 7);
 
-        if (opener === undefined) {
+        if (opener === undefined || opener.date > today) {
             return;
         }
 

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom";
 import { BasePage } from "./base-page.jsx";
 import { fetchActivity } from "./requests.js";
-import { buildMonthLabels, buildWordScale, buildYearWeeks, lightestMix, wordCountMix, yearRange } from "./activity-grid.js";
+import { buildMonthLabels, buildWordScale, buildYearWeeks, isDrawn, lightestMix, wordCountMix, yearRange } from "./activity-grid.js";
 import { writeRoute } from "./constants.js";
 import { dateToString } from "./utils.jsx";
 
@@ -50,23 +50,35 @@ const dayTitle = (day, mode) => {
 
 // One calendar year of the grid: its own black panel, captioned with the year
 // and what was written in it.
-const ActivityYear = ({ block, mode, scale, current }) => {
+const ActivityYear = ({ block, mode, scale, today, current }) => {
 
     const scroller = useRef(null);
 
-    const months = useMemo(() => buildMonthLabels(block.weeks), [block.weeks]);
+    const months = useMemo(() => buildMonthLabels(block.weeks, today), [block.weeks, today]);
 
-    // A year does not fit on a narrow screen, so each grid scrolls. The year in
-    // progress opens parked on today; a finished one opens on January.
+    const todayKey = dateToString(today);
+
+    // A year does not fit on a narrow screen, so each grid scrolls. A finished
+    // year opens on January; the year in progress opens with today at the right
+    // edge, since everything past it is empty.
     useEffect(() => {
-        if (scroller.current !== null && current) {
-            scroller.current.scrollLeft = scroller.current.scrollWidth;
+
+        const target = scroller.current;
+
+        if (target === null || !current) {
+            return;
+        }
+
+        const cell = target.querySelector('.activity-cell-today');
+
+        if (cell !== null) {
+            target.scrollLeft = cell.offsetLeft + cell.offsetWidth - target.clientWidth;
         }
     }, [block.weeks, current]);
 
     // Counted from the days actually drawn, so the caption always agrees with
     // the grid rather than with whatever the fetch happened to return.
-    const drawn = block.weeks.flatMap((week) => week.days).filter((day) => !day.outside);
+    const drawn = block.weeks.flatMap((week) => week.days).filter(isDrawn);
     const written = drawn.reduce((sum, day) => sum + day.entries, 0);
     const total = drawn.reduce((sum, day) => sum + day.words, 0);
 
@@ -106,14 +118,15 @@ const ActivityYear = ({ block, mode, scale, current }) => {
                         <div className="activity-grid">
                             {block.weeks.map((week) => week.days.map((day) => {
 
-                                if (day.outside) {
+                                if (!isDrawn(day)) {
                                     return <div key={day.key} className="activity-cell activity-cell-blank"></div>;
                                 }
 
                                 const mix = mode === sentimentModes.words ? wordCountMix(day.words, scale) : null;
-                                const className = mode === sentimentModes.words
-                                    ? `activity-cell${mix === null ? ' activity-empty' : ''}`
-                                    : `activity-cell activity-${day.entries === 0 ? 'empty' : day.sentiment}`;
+                                const shade = mode === sentimentModes.words
+                                    ? (mix === null ? ' activity-empty' : '')
+                                    : ` activity-${day.entries === 0 ? 'empty' : day.sentiment}`;
+                                const className = `activity-cell${shade}${day.key === todayKey ? ' activity-cell-today' : ''}`;
 
                                 return (
                                     <Link key={day.key} to={`${writeRoute}/${day.key}`} className={className}
@@ -194,7 +207,7 @@ export const ActivityPage = () => {
                 </div>
 
                 {years.map((year) => (
-                    <ActivityYear key={year.key} block={year} mode={mode} scale={scale}
+                    <ActivityYear key={year.key} block={year} mode={mode} scale={scale} today={today}
                         current={year.year === today.getFullYear()} />
                 ))}
 

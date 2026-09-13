@@ -962,14 +962,54 @@ a {
   color: var(--dm-text);
 }
 
-/* The black backdrop the cells are read against, only as wide as the grid. */
+/* The black backdrop the cells are read against, only as wide as the grid. One
+   per year on the page, stacked newest first. */
 .activity-panel {
   width: max-content;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0 auto 12px;
   padding: 16px 18px;
   border-radius: 8px;
   background-color: var(--activity-panel);
+}
+
+.activity-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--activity-panel-text);
+}
+
+.activity-span {
+  color: #fff;
+}
+
+.activity-legend-panel {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.activity-actions {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 24px;
+}
+
+.activity-more {
+  padding: 7px 16px;
+  border: 1px solid rgba(128, 128, 128, .35);
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: var(--dm-text);
+}
+
+.activity-more:disabled {
+  color: var(--dm-muted);
 }
 
 /* A year of 12px cells is wider than a phone, so the grid scrolls sideways. */

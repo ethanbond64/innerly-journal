@@ -50,12 +50,16 @@ export const getDaySentiment = (day) => {
 };
 
 // The weeks to draw, oldest first, each one a Sunday-start run of seven days.
-// Days after today still take up a cell so the columns stay square, but they are
-// marked so nothing is drawn in them.
-export const buildActivityWeeks = (rows, today = new Date()) => {
+// The block ends with the week `anchor` falls in, so earlier years are drawn by
+// anchoring a whole grid's worth of days further back each time.
+//
+// Days after the real `today` still take up a cell so the columns stay square,
+// but they are marked so nothing is drawn in them. That is only ever the most
+// recent block: in an earlier one every day has already happened.
+export const buildActivityWeeks = (rows, anchor = new Date(), today = anchor) => {
 
     const byDay = bucketByDay(rows);
-    const start = addDays(startOfWeek(today), -7 * (weeksShown - 1));
+    const start = addDays(startOfWeek(anchor), -7 * (weeksShown - 1));
 
     const weeks = [];
 

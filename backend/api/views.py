@@ -324,14 +324,33 @@ def fetch_activity(current_user):
 
     days = max(1, min(days, ACTIVITY_DAYS_MAX))
 
-    # A day extra on either end, because the client buckets these into days in
-    # its own timezone and the stored datetimes are UTC.
-    since = datetime.utcnow() - timedelta(days=days + 1)
+    # The window ends today unless the client asks for an earlier one, which is
+    # how it pages back a year at a time.
+    before = request.args.get('before')
 
-    entries = Entry.query.filter(
+    if before is None:
+        anchor = datetime.utcnow()
+        until = None
+    else:
+        try:
+            anchor = datetime.strptime(before, '%Y-%m-%d')
+        except ValueError:
+            return {'message': 'Bad request. Expected before as YYYY-MM-DD.'}, 400
+        until = anchor + timedelta(days=2)
+
+    # A day of slack on either end, because the client buckets these into days
+    # in its own timezone and the stored datetimes are UTC.
+    since = anchor - timedelta(days=days + 1)
+
+    query = Entry.query.filter(
         Entry.user_id == current_user.id,
         Entry.functional_datetime >= since
-    ).order_by(Entry.functional_datetime.asc()).all()
+    )
+
+    if until is not None:
+        query = query.filter(Entry.functional_datetime <= until)
+
+    entries = query.order_by(Entry.functional_datetime.asc()).all()
 
     return {'data': [{
         'functional_datetime': getattr_typed(entry, 'functional_datetime'),

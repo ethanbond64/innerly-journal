@@ -77,8 +77,8 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
     });
 };
 
-export const fetchActivity = async (days, onError = (e) => {}) => {
-    return await fetch(`/api/fetch/activity?days=${days}`, {
+export const fetchActivity = async (days, before, onError = (e) => {}) => {
+    return await fetch(`/api/fetch/activity?days=${days}&before=${before}`, {
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
         return response.data.data;

@@ -4,10 +4,11 @@ class BaseEntryData:
 
 
 class TextEntryData(BaseEntryData):
-    def __init__(self, title: str, text: str, sentiment: str):
+    def __init__(self, title: str, text: str, sentiment: str, word_count: int):
         self.title = title
         self.text = text
         self.sentiment = sentiment
+        self.word_count = word_count
 
 
 class FileEntryData(BaseEntryData):

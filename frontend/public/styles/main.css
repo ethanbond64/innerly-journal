@@ -910,3 +910,211 @@ a {
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
+/* Activity page
+-------------------------------------------------- */
+:root {
+  --activity-cell: 12px;
+  --activity-gap: 3px;
+  /* The grid sits on black in both themes, so its own greys are light. */
+  --activity-panel: #000;
+  --activity-empty: rgba(255, 255, 255, .13);
+  --activity-panel-text: rgba(255, 255, 255, .65);
+}
+
+/* Sits over the centred grid rather than spanning the full page width. */
+.activity-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.activity-title {
+  margin: 0;
+  color: var(--dm-text);
+}
+
+.activity-modes {
+  display: flex;
+}
+
+.activity-mode {
+  padding: 5px 12px;
+  border: 1px solid rgba(128, 128, 128, .35);
+  background: none;
+  font-size: 13px;
+  color: var(--dm-muted);
+}
+
+.activity-mode:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.activity-mode:last-child {
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+
+.activity-mode-on {
+  background-color: var(--well-grey);
+  color: var(--dm-text);
+}
+
+/* The black backdrop the cells are read against, only as wide as the grid. One
+   per year on the page, stacked newest first. */
+.activity-panel {
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto 12px;
+  padding: 16px 18px;
+  border-radius: 8px;
+  background-color: var(--activity-panel);
+}
+
+.activity-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--activity-panel-text);
+}
+
+.activity-span {
+  color: #fff;
+}
+
+.activity-legend-panel {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.activity-actions {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 24px;
+}
+
+.activity-more {
+  padding: 7px 16px;
+  border: 1px solid rgba(128, 128, 128, .35);
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: var(--dm-text);
+}
+
+.activity-more:disabled {
+  color: var(--dm-muted);
+}
+
+/* A year of 12px cells is wider than a phone, so the grid scrolls sideways. */
+.activity-scroll {
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.activity-chart {
+  display: flex;
+  gap: var(--activity-gap);
+  width: max-content;
+}
+
+.activity-weekdays {
+  display: grid;
+  grid-template-rows: 14px repeat(7, var(--activity-cell));
+  gap: var(--activity-gap);
+}
+
+.activity-weekday {
+  font-size: 10px;
+  line-height: var(--activity-cell);
+  text-align: right;
+  padding-right: 4px;
+  color: var(--activity-panel-text);
+}
+
+.activity-columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--activity-gap);
+}
+
+/* The column count varies with the year, so it is set on the element itself. */
+.activity-months {
+  display: grid;
+  gap: var(--activity-gap);
+  height: 14px;
+}
+
+.activity-month {
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--activity-panel-text);
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-rows: repeat(7, var(--activity-cell));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--activity-cell);
+  gap: var(--activity-gap);
+}
+
+.activity-cell {
+  display: block;
+  width: var(--activity-cell);
+  height: var(--activity-cell);
+  border-radius: 2px;
+  background-color: var(--activity-empty);
+}
+
+a.activity-cell:focus,
+a.activity-cell:hover {
+  outline: 1px solid rgba(255, 255, 255, .85);
+}
+
+/* The tail of December that shares a column with January 1st: the cell is kept
+   so the weekday rows line up, but the day belongs to the year before. */
+.activity-cell-blank {
+  background-color: transparent;
+}
+
+.activity-negative {
+  background-color: var(--well-red);
+}
+
+.activity-positive {
+  background-color: var(--well-green);
+}
+
+.activity-neutral {
+  background-color: var(--well-blue);
+}
+
+/* The word-count ramp itself is mixed per cell in the page, since its steps
+   come from the year's own spread of entry lengths. */
+.activity-legend-ramp {
+  width: 120px;
+  height: var(--activity-cell);
+  border-radius: 2px;
+}
+
+.activity-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--activity-panel-text);
+}
+
+.activity-legend-label {
+  margin-right: 8px;
+}

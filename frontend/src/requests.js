@@ -77,6 +77,21 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
     });
 };
 
+export const fetchActivity = async (days, onError = (e) => {}) => {
+    return await fetch(`/api/fetch/activity?days=${days}`, {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        return response.data.data;
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
+
 export const insertTextEntry = async (text, functional_datetime, callback, onError = (e) => {}) => {
     fetch('/api/insert/entries', {
         method: 'POST',

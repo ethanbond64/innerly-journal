@@ -6,10 +6,11 @@ import { SignUpPage } from "./sign-up-page.jsx";
 import { HomePage } from "./home-page.jsx";
 import { AuthenticationGuard } from "./authentication-guard.jsx";
 import { EditPage, WritePage } from "./write-page.jsx";
-import { calendarRoute, editRoute, homeRoute, loginRoute, settingsRoute, signupRoute, viewRoute, writeRoute } from "./constants.js";
+import { activityRoute, calendarRoute, editRoute, homeRoute, loginRoute, settingsRoute, signupRoute, viewRoute, writeRoute } from "./constants.js";
 import { ViewPage } from "./view-page.jsx";
 import { SettingsPage } from "./settings-page.jsx";
 import { CalendarPage } from "./calendar-page.jsx";
+import { ActivityPage } from "./activity-page.jsx";
 
 export const App = () => {
   return (
@@ -23,6 +24,7 @@ export const App = () => {
       <Route path={editRoute+":entryId"} element={<AuthenticationGuard component={EditPage} />} />
       <Route path={settingsRoute} element={<AuthenticationGuard component={SettingsPage} />} />
       <Route path={calendarRoute} element={<AuthenticationGuard component={CalendarPage} />} />
+      <Route path={activityRoute} element={<AuthenticationGuard component={ActivityPage} />} />
     </Routes>
   );
 };

@@ -4,13 +4,13 @@ import tempfile
 import threading
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, request, send_from_directory, current_app
 
 from sqlalchemy import Boolean, String, and_, cast, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
-from api.models import User, Entry, Tag, upsert_tags
+from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
@@ -21,6 +21,10 @@ views = Blueprint('views', __name__)
 
 SHARE_INIIAL = "todo"
 TAG_LIMIT = 32
+
+# 53 weeks, the width of the activity grid.
+ACTIVITY_DAYS = 371
+ACTIVITY_DAYS_MAX = 731
 
 share_transient = SHARE_INIIAL
 
@@ -303,6 +307,49 @@ def fetch_entries(current_user):
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200
+
+# The activity page needs a whole year of entries at once, but only the three
+# things it draws with: when the entry is for, how it felt and how long it was.
+# Full entries would be far too much to ship (and the list endpoint truncates
+# text anyway, so word counts have to be taken here).
+@views.route('/fetch/activity', methods=['GET'])
+@login_required
+def fetch_activity(current_user):
+
+    try:
+        days = int(request.args.get('days', ACTIVITY_DAYS))
+    except (TypeError, ValueError):
+        days = ACTIVITY_DAYS
+
+    days = max(1, min(days, ACTIVITY_DAYS_MAX))
+
+    # A day extra on either end, because the client buckets these into days in
+    # its own timezone and the stored datetimes are UTC.
+    since = datetime.utcnow() - timedelta(days=days + 1)
+
+    entries = Entry.query.filter(
+        Entry.user_id == current_user.id,
+        Entry.functional_datetime >= since
+    ).order_by(Entry.functional_datetime.asc()).all()
+
+    return {'data': [{
+        'functional_datetime': getattr_typed(entry, 'functional_datetime'),
+        'sentiment': (entry.entry_data or {}).get('sentiment'),
+        'words': count_words(entry)
+    } for entry in entries]}, 200
+
+# Locked entries hold ciphertext, which would count as nonsense, so they are
+# only counted as having happened.
+def count_words(entry):
+
+    entry_data = entry.entry_data or {}
+
+    if entry_data.get('locked', False):
+        return 0
+
+    text = entry_data.get('text')
+
+    return len(text.split()) if text else 0
 
 @views.route('/fetch/tags', methods=['GET'])
 @login_required

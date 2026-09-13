@@ -440,13 +440,6 @@ def lock_entry(current_user, id):
     #     return {'message': 'Unauthorized'}, 401
     
     entry_data = entry.entry_data
-
-    # The last point the plaintext is visible, so an entry written before
-    # word_count existed picks one up here. Never recount an already-locked
-    # entry, whose text is ciphertext.
-    if not entry_data.get('locked', False):
-        entry_data['word_count'] = count_words(entry_data.get('text', ''))
-
     locked_text = lock_text(current_user.email, entry_data.get('text', ''))
     
     entry_data['locked'] = True
@@ -481,7 +474,6 @@ def unlock_entry(current_user, id):
     
     entry_data['locked'] = False
     entry_data['text'] = unlocked_text
-    entry_data['word_count'] = count_words(unlocked_text)
     entry.update(entry_data=entry_data)
     
     entry.save()

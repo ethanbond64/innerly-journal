@@ -7,6 +7,8 @@ import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
 import { updatePassword, updateUser, importEntries, getImportStatus, getImportFiles, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
+import { getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
+import { TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX } from "./constants.js";
 
 export const SettingsPage = () => {
 
@@ -20,6 +22,7 @@ export const SettingsPage = () => {
     const [importPasscode, setImportPasscode] = useState("");
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
     const [submitting, setSubmitting] = useState(false);
+    const [typewriter, setTypewriter] = useState(() => getTypewriterSettings());
 
     const { isDarkMode, setDarkMode } = useDarkMode();
 
@@ -47,6 +50,19 @@ export const SettingsPage = () => {
         }, (e) => {
             setError(e);
         });
+    };
+
+    const onToggleTypewriter = (e) => {
+        setTypewriter(saveTypewriterSettings({ enabled: e.target.checked }));
+    };
+
+    // Slide freely, only persist once the user lets go.
+    const onChangeTypewriterLine = (e) => {
+        setTypewriter((prev) => ({ ...prev, line: Number(e.target.value) }));
+    };
+
+    const onCommitTypewriterLine = () => {
+        setTypewriter(saveTypewriterSettings({ line: typewriter.line }));
     };
 
     const onSelectSensitivity = (e) => {
@@ -126,8 +142,38 @@ export const SettingsPage = () => {
                         <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Dark Mode</h4>
                         <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
                             <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={isDarkMode}/>
-                            <label id="swtichlabel" for="switch">Toggle</label>
+                            <label className="switch-label" for="switch">Toggle</label>
                         </div>
+                    </div>
+                    <div class="well">
+                        <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Typewriter Mode</h4>
+                        <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
+                            <input type="checkbox" id="typewriterSwitch" name="typewriter" onChange={onToggleTypewriter} checked={typewriter.enabled}/>
+                            <label className="switch-label" for="typewriterSwitch">Toggle</label>
+                        </div>
+                        <div style={{ clear: 'both' }}></div>
+                        <p class="text-muted" style={{ marginTop: '10px' }}>
+                            Keeps the line you are writing on fixed while the text scrolls underneath it.
+                        </p>
+                        {typewriter.enabled && (
+                            <>
+                                <label for="typewriterLine">Line position: {Math.round(typewriter.line * 100)}% from top</label>
+                                <input
+                                    class="typewriter-range"
+                                    type="range"
+                                    id="typewriterLine"
+                                    min={TYPEWRITER_LINE_MIN}
+                                    max={TYPEWRITER_LINE_MAX}
+                                    step="0.01"
+                                    value={typewriter.line}
+                                    onChange={onChangeTypewriterLine}
+                                    onMouseUp={onCommitTypewriterLine}
+                                    onTouchEnd={onCommitTypewriterLine}
+                                    onKeyUp={onCommitTypewriterLine}
+                                />
+                                <p class="text-muted">You can also drag the arrow on the writing page.</p>
+                            </>
+                        )}
                     </div>
                     <div class="list-group well">
                         <h4>Credentials</h4>

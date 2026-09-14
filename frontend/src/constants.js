@@ -13,3 +13,9 @@ export const adminRoute = '/admin';
 // Local Storage
 export const innerlyUser = 'innerly-user';
 export const innerlyToken = 'innerly-token';
+export const innerlyTypewriter = 'innerly-typewriter';
+
+// Typewriter mode
+export const TYPEWRITER_LINE_DEFAULT = 0.25; // 25% from top of viewport
+export const TYPEWRITER_LINE_MIN = 0.1;
+export const TYPEWRITER_LINE_MAX = 0.85;

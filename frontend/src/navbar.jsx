@@ -110,7 +110,7 @@ export const Navbar = ({ setSearch, user }) => {
                             <span style={{ marginRight: '10px', fontSize: '14px' }}>Light</span>
                             <div className="toggle-container" style={{ display: 'inline-block', marginTop: '3px' }}>
                                 <input type="checkbox" id="switch" name="theme" onChange={onChangeTheme} defaultChecked={isDarkMode}/>
-                                <label id="swtichlabel" for="switch">Toggle</label>
+                                <label className="switch-label" for="switch">Toggle</label>
                             </div>
                             <span style={{ marginLeft: '10px', fontSize: '14px' }}>Dark</span>
                         </li>

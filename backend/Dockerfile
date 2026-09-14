@@ -33,4 +33,4 @@ RUN uv sync --frozen --no-dev
 
 COPY --from=frontend /frontend/dist $FRONTEND_DIRECTORY
 
-CMD gunicorn -b 0.0.0.0:8000 --access-logfile - "entrypoint:create_app()"
+CMD gunicorn -b 0.0.0.0:8000 --access-logfile - --worker-class gthread --workers 1 --threads 8 "entrypoint:create_app()"

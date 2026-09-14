@@ -26,10 +26,6 @@ TAG_LIMIT = 32
 ACTIVITY_DAYS = 371
 ACTIVITY_DAYS_MAX = 731
 
-# Bounds for the typewriter scroll line, as a fraction of viewport height.
-TYPEWRITER_LINE_MIN = 0.1
-TYPEWRITER_LINE_MAX = 0.85
-
 share_transient = SHARE_INIIAL
 
 @views.route('/version', methods=['GET'])
@@ -145,26 +141,14 @@ def update_user(current_user, id):
     # Only thing to update is user settings
     input_settings = body.get('settings')
     if input_settings is not None:
-        # Copy so SQLAlchemy sees a new value on the JSON column (in-place
-        # mutations of the loaded dict are not tracked).
-        update_settings = dict(user.settings) if isinstance(user.settings, dict) else {}
+        update_settings = user.settings
+
+        # Sqlite treats initial empty json object as a string.
+        if update_settings == '{}':
+            update_settings = {}
 
         if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'both']:
             update_settings['sensitivity'] = input_settings['sensitivity']
-
-        if 'typewriter' in input_settings and isinstance(input_settings['typewriter'], dict):
-            input_typewriter = input_settings['typewriter']
-            existing_typewriter = update_settings.get('typewriter')
-            typewriter = dict(existing_typewriter) if isinstance(existing_typewriter, dict) else {}
-
-            if isinstance(input_typewriter.get('enabled'), bool):
-                typewriter['enabled'] = input_typewriter['enabled']
-
-            line = input_typewriter.get('line')
-            if isinstance(line, (int, float)) and not isinstance(line, bool):
-                typewriter['line'] = min(max(float(line), TYPEWRITER_LINE_MIN), TYPEWRITER_LINE_MAX)
-
-            update_settings['typewriter'] = typewriter
         # TODO passcode
             
         user.update(settings=update_settings)

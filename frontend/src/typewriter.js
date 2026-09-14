@@ -1,35 +1,38 @@
-import { getUserData, setUserData } from "./utils.jsx";
-import { updateUser } from "./requests.js";
-import { TYPEWRITER_LINE_DEFAULT, TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX } from "./constants.js";
+import { innerlyTypewriter, TYPEWRITER_LINE_DEFAULT, TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX } from "./constants.js";
 
 export const clampTypewriterLine = (line) => {
     if (typeof line !== 'number' || isNaN(line)) return TYPEWRITER_LINE_DEFAULT;
     return Math.min(Math.max(line, TYPEWRITER_LINE_MIN), TYPEWRITER_LINE_MAX);
 };
 
-// Reads the typewriter settings off the locally cached user, falling back to defaults.
-export const getTypewriterSettings = (userData = getUserData()) => {
-    const settings = userData && userData.settings ? userData.settings : {};
-    const typewriter = settings.typewriter && typeof settings.typewriter === 'object' ? settings.typewriter : {};
+// Typewriter settings are client-side only, kept in local storage per device.
+export const getTypewriterSettings = () => {
+    let stored = {};
+    try {
+        const raw = localStorage.getItem(innerlyTypewriter);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed && typeof parsed === 'object') stored = parsed;
+    } catch (e) {
+        // Unreadable or unavailable storage falls back to the defaults below.
+    }
+
     return {
-        enabled: typewriter.enabled === undefined ? true : !!typewriter.enabled,
-        line: clampTypewriterLine(typewriter.line),
+        enabled: stored.enabled === undefined ? true : !!stored.enabled,
+        line: clampTypewriterLine(stored.line),
     };
 };
 
-// Persists a partial typewriter settings update and refreshes the cached user.
-export const saveTypewriterSettings = (update, callback = () => {}, onError = () => {}) => {
-    const userData = getUserData();
-    if (!userData) return;
-
-    const typewriter = { ...getTypewriterSettings(userData), ...update };
+// Merges a partial update into the stored settings and returns the result.
+export const saveTypewriterSettings = (update) => {
+    const typewriter = { ...getTypewriterSettings(), ...update };
+    typewriter.enabled = !!typewriter.enabled;
     typewriter.line = clampTypewriterLine(typewriter.line);
 
-    // Update the cache optimistically so the setting applies without a round trip.
-    setUserData({ ...userData, settings: { ...(userData.settings || {}), typewriter } });
+    try {
+        localStorage.setItem(innerlyTypewriter, JSON.stringify(typewriter));
+    } catch (e) {
+        // Storage full or blocked: the setting still applies for this session.
+    }
 
-    updateUser(userData.id, { settings: { typewriter } }, (data) => {
-        setUserData(data);
-        callback(data);
-    }, onError);
+    return typewriter;
 };

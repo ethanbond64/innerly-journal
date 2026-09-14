@@ -53,9 +53,7 @@ export const SettingsPage = () => {
     };
 
     const onToggleTypewriter = (e) => {
-        const enabled = e.target.checked;
-        setTypewriter((prev) => ({ ...prev, enabled }));
-        saveTypewriterSettings({ enabled }, (data) => setUserDataComponent(data), () => setError("Unable to save typewriter settings."));
+        setTypewriter(saveTypewriterSettings({ enabled: e.target.checked }));
     };
 
     // Slide freely, only persist once the user lets go.
@@ -64,7 +62,7 @@ export const SettingsPage = () => {
     };
 
     const onCommitTypewriterLine = () => {
-        saveTypewriterSettings({ line: typewriter.line }, (data) => setUserDataComponent(data), () => setError("Unable to save typewriter settings."));
+        setTypewriter(saveTypewriterSettings({ line: typewriter.line }));
     };
 
     const onSelectSensitivity = (e) => {
@@ -101,7 +99,6 @@ export const SettingsPage = () => {
         let localUserData = getUserData();
         if (localUserData) {
             setUserDataComponent(localUserData);
-            setTypewriter(getTypewriterSettings(localUserData));
         } else {
             clearLocalStorage();
             navigate(loginRoute);

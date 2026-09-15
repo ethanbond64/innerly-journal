@@ -34,7 +34,8 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
         let group = []
         let groups = [];
         let blanksRequired = true;
-        let localEntries = [...row.entries];
+        // Text entries always come first
+        let localEntries = [...row.entries].sort((a, b) => textFirst(a) - textFirst(b));
 
         for (let i = 0; i < localEntries.length; i++) {
 
@@ -113,6 +114,8 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
         </div>
     ));
 }
+
+const textFirst = (entry) => entry.entry_type === 'text' ? 0 : 1;
 
 const blankGroup = () => {
     let group = [];

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../router.jsx";
 import { insertLinkEntry, insertFileEntry } from "../requests.js";
 import { writeRoute } from "../constants.js";
 import { dateToString, equalsDate, getTodaysDate } from "../utils.jsx";

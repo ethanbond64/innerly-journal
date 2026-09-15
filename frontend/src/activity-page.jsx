@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
 import { fetchActivity } from "./requests.js";
 import { buildMonthLabels, buildWordScale, buildYearWeeks, isDrawn, lightestMix, wordCountMix, yearWindow } from "./activity-grid.js";

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
 import { ImageModal } from "./image-modal.jsx";
 import { Row } from "./row.jsx";

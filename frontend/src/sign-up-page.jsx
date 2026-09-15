@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from './router.jsx';
 import { setToken, setUserData } from './utils.jsx';
 import { homeRoute, loginRoute } from './constants.js';
 import { Notification } from './notification.jsx';
@@ -59,9 +59,9 @@ export const SignUpPage = () => {
 
     return (
         <main class="container drag">
-            <a href={homeRoute}>
+            <Link to={homeRoute}>
                 <img src="/images/innerly_wordmark_200616_02.png" class="img-responsive center-block md-margin-bottom" width="178" height="176" title="Innerly" alt="Innerly" />
-            </a>
+            </Link>
             <Notification message={error} clear={() => setError(null)} />
             <div class="row">
                 <div class="col-md-3"></div>
@@ -91,9 +91,9 @@ export const SignUpPage = () => {
                         </div>
                         <div class="col-md-6">
                             <div class="visible-xs visible-sm sm-margin-top"></div>
-                            <a href={loginRoute} class="btn btn-default btn-block">
+                            <Link to={loginRoute} class="btn btn-default btn-block">
                                 Looking to log in?
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 import { clearLocalStorage, getToken } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
+import { replace } from "./history.js";
 
 const dayLimit = 200;
 
@@ -7,7 +8,7 @@ const getAuthorizationHeader = () => {
     let token = getToken();
 
     if (!token || token.length === 0) {
-        window.location.href = loginRoute;
+        replace(loginRoute);
     }
 
     return `Bearer ${token}`;
@@ -22,7 +23,7 @@ const getHeaders = (contentType = "application/json") => {
 
 const handleUnauthorized = () => {
     clearLocalStorage();
-    window.location.href = loginRoute;
+    replace(loginRoute);
 };
 
 const handleResponse = async (response) => {

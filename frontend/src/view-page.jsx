@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "./router.jsx";
 import { formatShortOrdinalDate, formatShortOrdinalDateTime } from './date-format.js';
 import { editRoute, homeRoute } from "./constants.js";
+import { Icon } from "./icon.jsx";
 import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.jsx";
 import { ClickOutsideTracker, equalsDate } from "./utils.jsx";
@@ -210,7 +211,7 @@ export const ViewPage = ({ entryInput = null }) => {
                         <div className="well">
                             <div style={{ textAlign: "right" }} >
                                 <span style={{ float: "left" }} >
-                                    <i className={locked ? "fa fa-lock" : "fa fa-unlock"} aria-hidden="true" style={{ color: "var(--dm-text)", fontSize: "xx-large" }}></i>
+                                    <Icon name={locked ? "lock" : "unlock"} style={{ color: "var(--dm-text)", fontSize: "xx-large" }} />
                                 </span>
                                 <div className="wrapper toggleFormOn" style={{ padding: "0px", margin: "0px", backgroundColor: "transparent", border: "none" }}>
                                     <span id="cancelButton" style={{ cursor: "pointer", color: "#263859", backgroundColor: "#fcfcfc" }}
@@ -311,8 +312,7 @@ export const ViewPage = ({ entryInput = null }) => {
             </div>
             <div className="row text-center">
                 <button className="btn btn-lg btn-danger"
-                    onClick={onClickDelete}><i className="fa fa-trash-o"
-                        aria-hidden="true"></i>
+                    onClick={onClickDelete}><Icon name="trash-o" />
                     &nbsp; <b>Delete this Entry</b>
                 </button>
             </div>

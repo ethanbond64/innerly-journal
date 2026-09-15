@@ -14,18 +14,20 @@ export const MemoriesModal = ({ date, years, clear }) => {
     const monthDay = dateToString(date).slice(5);
 
     return (
-        <div className="modal" id="memoriesModal" style={{ display: 'block', zIndex: '1006', padding: '30px' }}>
-            <div className="modal-dialog" role="document" style={{ padding: '30px' }}>
+        <div className="modal" id="memoriesModal">
+            <div className="modal-dialog" role="document">
                 <ClickOutsideTracker callback={clear}>
                     <div className="modal-content">
-                        <span className={`closemodal`} onClick={clear} style={{ color: 'var(--dm-text)' }}>&times;</span>
-                        <div className="modal-header" style={{ padding: '8px' }}>
-                            <h3 className="modal-title" id="memoriesModalLabel">Memories from {formatLongDate(date)}</h3>
+                        <span className="closemodal" onClick={clear}>&times;</span>
+                        <div className="modal-header">
+                            <h3 className="modal-title" id="memoriesModalLabel">Memories</h3>
+                            <p className="modal-subtitle">{formatLongDate(date)}</p>
                         </div>
-                        <div className="modal-body" style={{ textAlign: "center", margin: "0 auto", padding: '10px' }}>
+                        <div className="modal-body">
                             {years.map((year) => (
                                 <Link key={year} className="memory-year" to={`${dayRoute}${year}-${monthDay}`}>
-                                    {year}
+                                    <span>{year}</span>
+                                    <span className="memory-year-go">&rsaquo;</span>
                                 </Link>
                             ))}
                         </div>

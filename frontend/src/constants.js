@@ -9,7 +9,6 @@ export const dayRoute = '/day/';
 export const editRoute = '/edit/';
 export const settingsRoute = '/settings';
 export const activityRoute = '/activity';
-export const adminRoute = '/admin';
 
 // Local Storage
 export const innerlyUser = 'innerly-user';

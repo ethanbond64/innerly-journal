@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "./router.jsx";
 import { clearLocalStorage } from "./utils.jsx";
-import { activityRoute, adminRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
+import { activityRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const Navbar = ({ setSearch, user }) => {
@@ -98,14 +98,6 @@ export const Navbar = ({ setSearch, user }) => {
                 </button>
                 { menuOpen ?
                     (<ul ref={dropdownRef}  className={`dropdown-menu pull-right show`} style={{ float: 'right' }}>
-                        {
-                            user.admin ? 
-                            <>
-                                <li>
-                                    <Link to={adminRoute}>Admin</Link>
-                                </li>
-                                <li role="separator" className="divider"></li>
-                            </> : null}
                         <li style={{ padding: '3px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ marginRight: '10px', fontSize: '14px' }}>Light</span>
                             <div className="toggle-container" style={{ display: 'inline-block', marginTop: '3px' }}>

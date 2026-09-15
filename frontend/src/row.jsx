@@ -5,7 +5,7 @@ import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 
-export const Row = ({ row, setImagePath }) =>  {
+export const Row = ({ row, setImagePath, label = null }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
 
@@ -80,7 +80,7 @@ export const Row = ({ row, setImagePath }) =>  {
                     { i > 0 ? 
                         null :
                         <h3 id="title" className="datelabel" >
-                            {formatLongDate(row.date)}
+                            {label === null ? formatLongDate(row.date) : label}
                         </h3>
                     }
                 </div>

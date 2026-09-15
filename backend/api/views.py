@@ -284,8 +284,21 @@ def fetch_entries(current_user):
     offset = request.args.get('offset', 0)
     search = request.args.get('search', None)
     tag = request.args.get('tag', None)
+    date = request.args.get('date', None)
 
     query = Entry.query.filter(Entry.user_id == current_user.id)
+
+    # A single day +/- 1 for timexone offset.
+    if date:
+        try:
+            anchor = datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+            return {'message': 'Bad request. Expected date as YYYY-MM-DD.'}, 400
+
+        query = query.filter(
+            Entry.functional_datetime >= anchor - timedelta(days=1),
+            Entry.functional_datetime <= anchor + timedelta(days=2)
+        )
 
     if search:
         # Search titles and tags

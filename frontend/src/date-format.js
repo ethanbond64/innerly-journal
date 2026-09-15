@@ -6,6 +6,7 @@
 
 const monthLong = new Intl.DateTimeFormat('en-US', { month: 'long' });
 const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short' });
+const weekdayLong = new Intl.DateTimeFormat('en-US', { weekday: 'long' });
 
 const ordinal = (day) => {
     const teens = day % 100;
@@ -66,4 +67,10 @@ export const formatShortOrdinalDateTime = (value) => {
     const hours = date.getHours();
     const hour12 = hours % 12 === 0 ? 12 : hours % 12;
     return `${formatShortOrdinalDate(date)} ${hour12}${hours < 12 ? 'am' : 'pm'}`;
+};
+
+// "dddd, MMMM Do, YYYY" -> "Monday, September 7th, 2026"
+export const formatWeekdayLongDate = (value) => {
+    const date = toDate(value);
+    return `${weekdayLong.format(date)}, ${formatLongDate(date)}`;
 };

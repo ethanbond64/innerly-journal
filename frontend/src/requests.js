@@ -1,6 +1,8 @@
 import { clearLocalStorage, getToken } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 
+const dayLimit = 200;
+
 const getAuthorizationHeader = () => {
     let token = getToken();
 
@@ -64,6 +66,21 @@ export const updateUser = async (userId, data, callback, onError = (e) => {}) =>
 
 export const fetchEntries = async (search, offset, limit, onError = (e) => {}) => {
     return await fetch(`/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        return response.data.data;
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
+
+export const fetchDay = async (date, onError = (e) => {}) => {
+    return await fetch(`/api/fetch/entries?date=${date}&limit=${dayLimit}&offset=0`, {
         headers: getHeaders()
     }).then(handleResponse).then((response) => {
         return response.data.data;

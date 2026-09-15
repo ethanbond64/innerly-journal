@@ -5,7 +5,7 @@ import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 
-export const Row = ({ row, setImagePath, label = null }) =>  {
+export const Row = ({ row, setImagePath, label = null, minGroups = 0 }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
 
@@ -20,7 +20,7 @@ export const Row = ({ row, setImagePath, label = null }) =>  {
             newGroup[innerIndex] = entry;
             newGroups[outerIndex] = newGroup;
 
-            return padGroups(newGroups);
+            return padGroups(newGroups, minGroups);
         });
     };
 
@@ -55,10 +55,10 @@ export const Row = ({ row, setImagePath, label = null }) =>  {
             groups.push(group);
         }
 
-        groups = padGroups(groups);
+        groups = padGroups(groups, minGroups);
 
         setEntryGroups(groups);
-    }, [row.entries]);
+    }, [row.entries, minGroups]);
 
     const createCard = (entry, replace) => {
         switch (entry.entry_type) {
@@ -94,14 +94,26 @@ export const Row = ({ row, setImagePath, label = null }) =>  {
     ));
 }
 
-const padGroups = (groups) => {
+const blankGroup = () => {
+    let group = [];
+    for (let i = 0; i < 3; i++) {
+        group.push({ entry_type: 'blank' });
+    }
+    return group;
+}
+
+//
+// There is always somewhere to add to: one group of blanks if every card is
+// taken. minGroups then holds the row open to a minimum height, which the day
+// page uses so a sparse day still fills the page.
+//
+const padGroups = (groups, minGroups = 0) => {
     let containsBlanks = groups.some((group) => group.some((entry) => entry.entry_type === 'blank'));
     if (!containsBlanks) {
-        let newGroup = [];
-        for (let i = 0; i < 3; i++) {
-            newGroup.push({ entry_type: 'blank' });
-        }
-        groups.push(newGroup);
+        groups.push(blankGroup());
+    }
+    while (groups.length < minGroups) {
+        groups.push(blankGroup());
     }
     return groups;
 }

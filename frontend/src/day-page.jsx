@@ -8,6 +8,10 @@ import { formatWeekdayLongDate } from "./date-format.js";
 import { homeRoute } from "./constants.js";
 import { equalsDate, getDateNoTime } from "./utils.jsx";
 
+// The page keeps three rows of cards even on an empty day, so it does not open
+// as a single lonely strip.
+const minGroups = 3;
+
 // The route carries the day the same way the write route does: /day/2026-09-07.
 const parseDate = (value) => {
 
@@ -77,7 +81,8 @@ export const DayPage = () => {
                         <p>Loading...</p> :
                         <>
                             {error && <p>{error}</p>}
-                            <Row row={row} setImagePath={setImagePath} label={formatWeekdayLongDate(date)} />
+                            <Row row={row} setImagePath={setImagePath} label={formatWeekdayLongDate(date)}
+                                minGroups={minGroups} />
                         </>}
                 </div>
             </div>

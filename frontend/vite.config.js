@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  //Flask serves this build under routes of varying depth, and relative asset paths resolve
+  // against the route rather than the root.
+  base: '/',
   server: {
     port: 3000,
     host: true,

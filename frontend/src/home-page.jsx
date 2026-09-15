@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useFetch } from "./use-fetch.js";
+import { fetchMemories } from "./requests.js";
+import { dateToString, equalsDate, getTodaysDate } from "./utils.jsx";
 import { Collapse } from "./collapse.jsx";
 import { Row } from "./row.jsx";
 import { ImageModal } from "./image-modal.jsx";
@@ -12,6 +14,10 @@ export const HomePage = () => {
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [imagePath, setImagePath] = useState(null);
+  const [memories, setMemories] = useState([]);
+
+  // Fixed for the life of the page, so the badge does not move rows at midnight.
+  const today = useMemo(() => getTodaysDate(), []);
 
   const { loading, list } = useFetch(search, offset, limit);  
   const loader = useRef(null);
@@ -19,6 +25,11 @@ export const HomePage = () => {
   useEffect(() => {
     setOffset(0);
   }, [search]);
+
+  // The other years today has been written on, for the badge on today's row.
+  useEffect(() => {
+    fetchMemories(dateToString(today)).then((years) => years === undefined || setMemories(years));
+  }, [today]);
 
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
@@ -50,7 +61,8 @@ export const HomePage = () => {
           <div id="scroller" className="mb-3">
             {list.map((row,i) => row.collapse ? 
                 <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} /> :
-                <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} />
+                <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath}
+                    memories={equalsDate(row.date, today) ? memories : []} />
             )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>

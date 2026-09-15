@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatLongDate } from './date-format.js';
+import { dayRoute } from './constants.js';
+import { MemoriesModal } from './memories-modal.jsx';
+import { dateToString } from './utils.jsx';
 import { TextCard } from './cards/text-card.jsx';
 import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 
-export const Row = ({ row, setImagePath }) =>  {
+export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [] }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
+    const [showMemories, setShowMemories] = useState(false);
 
     const replace = (entry, index) => {
         setEntryGroups((prev) => {
@@ -20,7 +25,7 @@ export const Row = ({ row, setImagePath }) =>  {
             newGroup[innerIndex] = entry;
             newGroups[outerIndex] = newGroup;
 
-            return padGroups(newGroups);
+            return padGroups(newGroups, minGroups);
         });
     };
 
@@ -29,7 +34,8 @@ export const Row = ({ row, setImagePath }) =>  {
         let group = []
         let groups = [];
         let blanksRequired = true;
-        let localEntries = [...row.entries];
+        // Text entries always come first
+        let localEntries = [...row.entries].sort((a, b) => textFirst(a) - textFirst(b));
 
         for (let i = 0; i < localEntries.length; i++) {
 
@@ -55,10 +61,10 @@ export const Row = ({ row, setImagePath }) =>  {
             groups.push(group);
         }
 
-        groups = padGroups(groups);
+        groups = padGroups(groups, minGroups);
 
         setEntryGroups(groups);
-    }, [row.entries]);
+    }, [row.entries, minGroups]);
 
     const createCard = (entry, replace) => {
         switch (entry.entry_type) {
@@ -75,12 +81,27 @@ export const Row = ({ row, setImagePath }) =>  {
 
     return entryGroups.map((entries, i) => (
         <div className={`well owell`} style={{ marginBottom: "0px" }}>
+            { i === 0 && showMemories ?
+                <MemoriesModal date={row.date} years={memories}
+                    clear={() => setShowMemories(false)} /> :
+                null
+            }
             <div className={`row animated fadeIn shadow-sm`}>
                 <div className="col-sm-3">
                     { i > 0 ? 
                         null :
                         <h3 id="title" className="datelabel" >
-                            {formatLongDate(row.date)}
+                            { linkDay ?
+                                <Link className="datelabel-link" to={dayRoute + dateToString(row.date)}>
+                                    {label === null ? formatLongDate(row.date) : label}
+                                </Link> :
+                                (label === null ? formatLongDate(row.date) : label)
+                            }
+                            { memories.length > 0 ?
+                                <button type="button" className="memory-badge"
+                                    onClick={() => setShowMemories(true)}>Memories</button> :
+                                null
+                            }
                         </h3>
                     }
                 </div>
@@ -94,14 +115,28 @@ export const Row = ({ row, setImagePath }) =>  {
     ));
 }
 
-const padGroups = (groups) => {
+const textFirst = (entry) => entry.entry_type === 'text' ? 0 : 1;
+
+const blankGroup = () => {
+    let group = [];
+    for (let i = 0; i < 3; i++) {
+        group.push({ entry_type: 'blank' });
+    }
+    return group;
+}
+
+//
+// There is always somewhere to add to: one group of blanks if every card is
+// taken. minGroups then holds the row open to a minimum height, which the day
+// page uses so a sparse day still fills the page.
+//
+const padGroups = (groups, minGroups = 0) => {
     let containsBlanks = groups.some((group) => group.some((entry) => entry.entry_type === 'blank'));
     if (!containsBlanks) {
-        let newGroup = [];
-        for (let i = 0; i < 3; i++) {
-            newGroup.push({ entry_type: 'blank' });
-        }
-        groups.push(newGroup);
+        groups.push(blankGroup());
+    }
+    while (groups.length < minGroups) {
+        groups.push(blankGroup());
     }
     return groups;
 }

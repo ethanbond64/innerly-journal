@@ -1167,8 +1167,8 @@ a.activity-cell:hover {
    anything under it. */
 .memory-badge:hover,
 .memory-badge:focus {
-  border-width: 6px;
-  padding: 1px 10px;
+  border-width: 4px;
+  padding: 3px 12px;
 }
 
 /* The memories modal. Everything here is scoped to its id, because the older
@@ -1176,9 +1176,9 @@ a.activity-cell:hover {
    own content. */
 #memoriesModal {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
+  padding: 8vh 24px 24px;
   background-color: rgba(0, 0, 0, .55);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);

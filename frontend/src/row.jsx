@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatLongDate } from './date-format.js';
+import { dayRoute } from './constants.js';
+import { dateToString } from './utils.jsx';
 import { TextCard } from './cards/text-card.jsx';
 import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 
-export const Row = ({ row, setImagePath, label = null, minGroups = 0 }) =>  {
+export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
 
@@ -80,7 +83,12 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0 }) =>  {
                     { i > 0 ? 
                         null :
                         <h3 id="title" className="datelabel" >
-                            {label === null ? formatLongDate(row.date) : label}
+                            { linkDay ?
+                                <Link className="datelabel-link" to={dayRoute + dateToString(row.date)}>
+                                    {label === null ? formatLongDate(row.date) : label}
+                                </Link> :
+                                (label === null ? formatLongDate(row.date) : label)
+                            }
                         </h3>
                     }
                 </div>

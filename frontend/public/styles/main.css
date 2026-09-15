@@ -1118,3 +1118,20 @@ a.activity-cell:hover {
 .activity-legend-label {
   margin-right: 8px;
 }
+
+/* The home rows' date is a link to that day's page. It has to look exactly like
+   the plain heading it replaced, so it takes the heading's own colour and only
+   picks up an underline on hover. */
+.datelabel-link,
+.datelabel-link:hover,
+.datelabel-link:focus {
+  color: inherit;
+  text-decoration: none;
+}
+
+.datelabel-link:hover,
+.datelabel-link:focus {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #fff;
+}

@@ -81,7 +81,7 @@ export const DayPage = () => {
                         <p>Loading...</p> :
                         <>
                             {error && <p>{error}</p>}
-                            <Row row={row} setImagePath={setImagePath} minGroups={minGroups}
+                            <Row row={row} setImagePath={setImagePath} minGroups={minGroups} linkDay={false}
                                 label={<>{formatWeekday(date)}<br />{formatLongDate(date)}</>} />
                         </>}
                 </div>

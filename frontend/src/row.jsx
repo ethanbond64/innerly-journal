@@ -90,9 +90,7 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                                 (label === null ? formatLongDate(row.date) : label)
                             }
                             { memories > 0 ?
-                                <span className="memory-badge">
-                                    {memories} {memories === 1 ? 'year' : 'years'} of memories
-                                </span> :
+                                <span className="memory-badge">Memories</span> :
                                 null
                             }
                         </h3>

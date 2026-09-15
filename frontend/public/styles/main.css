@@ -1138,16 +1138,18 @@ a.activity-cell:hover {
 
 /* How many years today has been written on, under the home page's date. It
    sits inside the date heading so it keeps the heading's own alignment in
-   every breakpoint, and is gold in both themes. */
+   every breakpoint, and is boxed like the cards are, in the same gold the
+   day's own blank card is outlined in. */
 .memory-badge {
   display: block;
   width: fit-content;
-  margin-top: 6px;
-  padding: 2px 10px;
-  border-radius: 12px;
-  background-color: #ffcf40;
-  color: #4a3600;
-  font-size: 12px;
+  margin-top: 8px;
+  padding: 3px 12px;
+  background-color: transparent;
+  border: 2px solid #ffd942;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }

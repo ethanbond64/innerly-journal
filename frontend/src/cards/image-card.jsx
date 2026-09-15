@@ -1,5 +1,6 @@
 import React from "react";
 import { deleteEntry } from "../requests.js";
+import { Icon } from "../icon.jsx";
 
 
 export const ImageCard = ({ entry, setPath, replace, heading = null, footer = null }) => {
@@ -31,13 +32,13 @@ export const ImageCard = ({ entry, setPath, replace, heading = null, footer = nu
                 backgroundImage: `url(${url})`, padding: '0px', backgroundPosition: 'center', backgroundSize: 'cover'
             }} className={`well swell entryLoaded`} id="unit" >
                 <button className="delButton" onClick={onClickDelete} style={{ 'color': 'transparent' }}>
-                    <i className={`fa fa-trash-o`} style={{ color: 'white' }} aria-hidden="true"></i>
+                    <Icon name="trash-o" style={{ color: 'white' }} />
                     delete
                 </button>
                 {heading && <div id="media-title" className="mediaLabel">{heading}</div>}
                 {footer && <div className={`mediaLabel mediaBottom`} >
                     <span>{footer}</span>
-                    <i className={`fa fa-chevron-right hidden-xs`} aria-hidden="true" style={{ float: 'right', paddingTop: '4px' }}></i>
+                    <Icon name="chevron-right" className="hidden-xs" style={{ float: 'right', marginTop: '4px' }} />
                 </div>}
             </div>
         </div>

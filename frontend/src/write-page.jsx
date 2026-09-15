@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
+import { Icon } from "./icon.jsx";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { Link, useLocation, useNavigate, useParams } from "./router.jsx";
 import { getDateNoTime } from "./utils.jsx";
@@ -420,13 +421,13 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
                     <div id="session-details" className="writeto-display" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{ textAlign: 'left', border: 'none', overflow: 'visible', paddingTop: '50px' }}>
                         <div>
                             <Link to={homeRoute} className="btn btn-warning btn-block hidden-xl hidden-lg hidden-md hidden-sm" style={{ width: 'auto', float: 'left' }}>
-                                <b><i className="fa fa-chevron-left" aria-hidden="true"></i></b>
+                                <b><Icon name="chevron-left" /></b>
                                 <span>Back</span>
                             </Link>
                             <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>{heading}</span>
                             <button id="submitbtn" type="submit" onClick={onSubmitInner} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
                                 <span className="nremove hidden-xs">{showHeader ? 'Save ' : null}</span>
-                                <b><i className="fa fa-chevron-right" aria-hidden="true"></i></b>
+                                <b><Icon name="chevron-right" /></b>
                             </button>
                             <span style={{ float: 'right', marginRight: '8px', fontSize: 'xx-large', textAlign: 'center', marginTop: '-6px', color: (untrackedChanges ? '#ffcc00' : '#00ff00') }}>•</span>
                         </div>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "../router.jsx";
+import { Icon } from "../icon.jsx";
 import { getUserData } from "../utils.jsx";
 import { getEntryTitle, getSentimentColor } from "../entry-display.js";
 
@@ -20,7 +21,7 @@ export const TextCard = ({ entry }) => {
             <div className={`col-xs-4 itemactive`}>
                 <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }}>
                     <h3 id="unitTitle">{title}</h3>
-                    {locked && <span className="fa fa-lock" style={{ color: "var(--dm-text)", fontSize: "20px"}}></span>}
+                    {locked && <Icon name="lock" style={{ color: "var(--dm-text)", fontSize: "20px" }} />}
                     <p id="unitSnip" className="hidden-xs"
                         style={sensitive ? { 'color': 'transparent', 'textShadow': '0 0 6px var(--dm-text)', 'padding': '2px' } : {}} >
                         {preview}

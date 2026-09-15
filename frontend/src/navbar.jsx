@@ -3,6 +3,7 @@ import { Link, useNavigate } from "./router.jsx";
 import { clearLocalStorage } from "./utils.jsx";
 import { activityRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
+import { Icon } from "./icon.jsx";
 
 export const Navbar = ({ setSearch, user }) => {
 
@@ -91,7 +92,7 @@ export const Navbar = ({ setSearch, user }) => {
                 </Link>
             </div>
             <div style={{ float: 'right' }}>
-                <button type="button" onClick={toggleMenu} className={`custom-letter-box dropdown-toggle`} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
+                <button type="button" onClick={toggleMenu} className={`custom-letter-box dropdown-toggle`} aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
                     <div className={`avatar-circle`}>
                         <span className={`initials`}>{initial}</span>
                     </div>
@@ -131,7 +132,7 @@ export const Navbar = ({ setSearch, user }) => {
                             <span className="input-group-addon" style={{ backgroundColor: 'var(--well-grey)', borderLeft: '1px solid rgb(181, 181, 181)' }}>
                                 <button type="submit" id="cardSearchButton" onClick={submit}
                                     style={{ backgroundColor: 'Transparent', backgroundRepeat: 'no-repeat', outline: 'none', border: 'none', color: 'var(--dm-text)' }}>
-                                        <i style={{fontFamily: 'FontAwesome !important'}} className={`fa fa-fw fa-search`}></i></button>
+                                        <Icon name="search" fixedWidth /></button>
                             </span>
                         </div>
                     </div> : null}

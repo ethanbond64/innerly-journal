@@ -4,7 +4,7 @@ import { BasePage } from "./base-page.jsx";
 import { ImageModal } from "./image-modal.jsx";
 import { Row } from "./row.jsx";
 import { fetchDay } from "./requests.js";
-import { formatWeekdayLongDate } from "./date-format.js";
+import { formatLongDate, formatWeekday } from "./date-format.js";
 import { homeRoute } from "./constants.js";
 import { equalsDate, getDateNoTime } from "./utils.jsx";
 
@@ -81,8 +81,8 @@ export const DayPage = () => {
                         <p>Loading...</p> :
                         <>
                             {error && <p>{error}</p>}
-                            <Row row={row} setImagePath={setImagePath} label={formatWeekdayLongDate(date)}
-                                minGroups={minGroups} />
+                            <Row row={row} setImagePath={setImagePath} minGroups={minGroups}
+                                label={<>{formatWeekday(date)}<br />{formatLongDate(date)}</>} />
                         </>}
                 </div>
             </div>

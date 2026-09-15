@@ -69,8 +69,5 @@ export const formatShortOrdinalDateTime = (value) => {
     return `${formatShortOrdinalDate(date)} ${hour12}${hours < 12 ? 'am' : 'pm'}`;
 };
 
-// "dddd, MMMM Do, YYYY" -> "Monday, September 7th, 2026"
-export const formatWeekdayLongDate = (value) => {
-    const date = toDate(value);
-    return `${weekdayLong.format(date)}, ${formatLongDate(date)}`;
-};
+// "dddd" -> "Monday"
+export const formatWeekday = (value) => weekdayLong.format(toDate(value));

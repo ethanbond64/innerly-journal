@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "./router.jsx";
 import { formatShortOrdinalDate, formatShortOrdinalDateTime } from './date-format.js';
 import { editRoute, homeRoute } from "./constants.js";
 import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from './router.jsx';
 import { formatLongDate } from './date-format.js';
 import { dayRoute } from './constants.js';
 import { MemoriesModal } from './memories-modal.jsx';

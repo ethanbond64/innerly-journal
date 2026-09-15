@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
 import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
 import { loginRoute } from "./constants.js";

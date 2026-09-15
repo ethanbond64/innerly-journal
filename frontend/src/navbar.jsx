@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "./router.jsx";
 import { clearLocalStorage } from "./utils.jsx";
-import { activityRoute, adminRoute, homeRoute, loginRoute } from "./constants.js";
+import { activityRoute, adminRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
 
 export const Navbar = ({ setSearch, user }) => {
@@ -80,15 +80,15 @@ export const Navbar = ({ setSearch, user }) => {
     return (
         <nav className={`navbar navbar-default navbar-fixed-top`} style={{zIndex:1000}}>
             <div className={``} style={{float:'left'}}>
-                <a href={homeRoute} className={`hidden-sm hidden-xs`} >
+                <Link to={homeRoute} className={`hidden-sm hidden-xs`} >
                     <img src="/images/innerly_wordmark_200616_02.png" style={{ marginTop: '0px', marginLeft: '30px' }}
                             className={`img-responsive sm-margin-top`} width="150" height="73" title="Innerly" alt="Innerly" />
-                </a>
-                <a href={homeRoute} className={`hidden-xl hidden-lg hidden-md`} >
+                </Link>
+                <Link to={homeRoute} className={`hidden-xl hidden-lg hidden-md`} >
                         <img src="/images/apple-touch-icon128.png"
                             className={`img-responsive sm-margin-top`} width="40" height="40" title="Innerly" alt="Innerly"
                             style={{ marginTop: '20px', marginLeft: '15px', borderRadius: '5px' }} />
-                </a>
+                </Link>
             </div>
             <div style={{ float: 'right' }}>
                 <button type="button" onClick={toggleMenu} className={`custom-letter-box dropdown-toggle`} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{ marginTop: '25px', borderColor: 'transparent', backgroundColor: 'transparent' }}>
@@ -102,7 +102,7 @@ export const Navbar = ({ setSearch, user }) => {
                             user.admin ? 
                             <>
                                 <li>
-                                    <a href={adminRoute}>Admin</a>
+                                    <Link to={adminRoute}>Admin</Link>
                                 </li>
                                 <li role="separator" className="divider"></li>
                             </> : null}
@@ -116,15 +116,15 @@ export const Navbar = ({ setSearch, user }) => {
                         </li>
                         <li role="separator" className="divider"></li>
                         <li>
-                            <a href={activityRoute} style={{ fontSize: '15px' }}>Activity</a>
+                            <Link to={activityRoute} style={{ fontSize: '15px' }}>Activity</Link>
                         </li>
                         <li role="separator" className="divider"></li>
                         <li>
-                            <a href="/settings" style={{ fontSize: '15px' }}>Settings</a>
+                            <Link to={settingsRoute} style={{ fontSize: '15px' }}>Settings</Link>
                         </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
-                            <a href="/login"  style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</a>
+                            <Link to={loginRoute} style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</Link>
                         </li>
                     </ul>)
                     : null

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "./router.jsx";
 import { getDateNoTime } from "./utils.jsx";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
 
@@ -412,17 +412,17 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
 
             <div className="row text-center" style={{ height: '90%' }}>
                 <div className="col-md-2 hidden-sm hidden-xs text-left">
-                    <a href={homeRoute} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+                    <Link to={homeRoute} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                         <img src="/images/innerly_wordmark_200616_03.png" style={{ opacity: showHeader ? 1 : 0, marginTop: '30px' }} className="img-responsive md-margin-right" width="170" height="80" id="innerlyImage" title="Innerly" alt="Innerly" />
-                    </a>
+                    </Link>
                 </div>
                 <div className="col-lg-8 col-md-10" style={{ height: '97%' }}>
                     <div id="session-details" className="writeto-display" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{ textAlign: 'left', border: 'none', overflow: 'visible', paddingTop: '50px' }}>
                         <div>
-                            <a href={homeRoute} className="btn btn-warning btn-block hidden-xl hidden-lg hidden-md hidden-sm" style={{ width: 'auto', float: 'left' }}>
+                            <Link to={homeRoute} className="btn btn-warning btn-block hidden-xl hidden-lg hidden-md hidden-sm" style={{ width: 'auto', float: 'left' }}>
                                 <b><i className="fa fa-chevron-left" aria-hidden="true"></i></b>
                                 <span>Back</span>
-                            </a>
+                            </Link>
                             <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>{heading}</span>
                             <button id="submitbtn" type="submit" onClick={onSubmitInner} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
                                 <span className="nremove hidden-xs">{showHeader ? 'Save ' : null}</span>

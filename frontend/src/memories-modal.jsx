@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "./router.jsx";
 import { dayRoute } from "./constants.js";
 import { formatLongDate } from "./date-format.js";
 import { ClickOutsideTracker, dateToString } from "./utils.jsx";

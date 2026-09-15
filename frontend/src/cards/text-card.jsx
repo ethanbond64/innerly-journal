@@ -1,11 +1,10 @@
 import React from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "../router.jsx";
 import { getUserData } from "../utils.jsx";
 import { getEntryTitle, getSentimentColor } from "../entry-display.js";
 
 export const TextCard = ({ entry }) => {
 
-    const navigate = useNavigate();
     const userData = getUserData();
 
     let sensitive = userData && userData.settings && (userData.settings.sensitivity === 'blur' ||userData.settings.sensitivity === 'both' );
@@ -16,14 +15,10 @@ export const TextCard = ({ entry }) => {
     const tags = entry.tags;
 
 
-    const onClick = () => {
-        navigate(`/view/${entry.id}`);
-    }
-
     return (
         <Link to={`/view/${entry.id}`}>
             <div className={`col-xs-4 itemactive`}>
-                <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }} onClick={onClick}>
+                <div className={`well swell entryLoaded`} id="unit" style={{ cursor: 'pointer', backgroundColor: color }}>
                     <h3 id="unitTitle">{title}</h3>
                     {locked && <span className="fa fa-lock" style={{ color: "var(--dm-text)", fontSize: "20px"}}></span>}
                     <p id="unitSnip" className="hidden-xs"

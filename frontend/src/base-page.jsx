@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "./router.jsx";
 import { loginRoute } from "./constants.js";
 import { Navbar } from "./navbar.jsx";
 import { getUserData } from "./utils.jsx";

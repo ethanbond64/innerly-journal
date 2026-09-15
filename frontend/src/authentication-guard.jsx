@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from './router.jsx';
 import { getToken, getUserData } from './utils.jsx';
 
 export const AuthenticationGuard = ({ component }) => {

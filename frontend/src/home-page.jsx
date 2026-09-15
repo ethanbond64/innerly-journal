@@ -14,7 +14,7 @@ export const HomePage = () => {
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [imagePath, setImagePath] = useState(null);
-  const [memories, setMemories] = useState(0);
+  const [memories, setMemories] = useState([]);
 
   // Fixed for the life of the page, so the badge does not move rows at midnight.
   const today = useMemo(() => getTodaysDate(), []);
@@ -26,7 +26,7 @@ export const HomePage = () => {
     setOffset(0);
   }, [search]);
 
-  // How many years today has been written on, for the badge on today's row.
+  // The other years today has been written on, for the badge on today's row.
   useEffect(() => {
     fetchMemories(dateToString(today)).then((years) => years === undefined || setMemories(years));
   }, [today]);
@@ -62,7 +62,7 @@ export const HomePage = () => {
             {list.map((row,i) => row.collapse ? 
                 <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} /> :
                 <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath}
-                    memories={equalsDate(row.date, today) ? memories : 0} />
+                    memories={equalsDate(row.date, today) ? memories : []} />
             )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>

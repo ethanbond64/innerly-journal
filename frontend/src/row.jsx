@@ -2,15 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatLongDate } from './date-format.js';
 import { dayRoute } from './constants.js';
+import { MemoriesModal } from './memories-modal.jsx';
 import { dateToString } from './utils.jsx';
 import { TextCard } from './cards/text-card.jsx';
 import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 
-export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = 0 }) =>  {
+export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [] }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
+    const [showMemories, setShowMemories] = useState(false);
 
     const replace = (entry, index) => {
         setEntryGroups((prev) => {
@@ -78,6 +80,11 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
 
     return entryGroups.map((entries, i) => (
         <div className={`well owell`} style={{ marginBottom: "0px" }}>
+            { i === 0 && showMemories ?
+                <MemoriesModal date={row.date} years={memories}
+                    clear={() => setShowMemories(false)} /> :
+                null
+            }
             <div className={`row animated fadeIn shadow-sm`}>
                 <div className="col-sm-3">
                     { i > 0 ? 
@@ -89,8 +96,9 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                                 </Link> :
                                 (label === null ? formatLongDate(row.date) : label)
                             }
-                            { memories > 0 ?
-                                <span className="memory-badge">Memories</span> :
+                            { memories.length > 0 ?
+                                <button type="button" className="memory-badge"
+                                    onClick={() => setShowMemories(true)}>Memories</button> :
                                 null
                             }
                         </h3>

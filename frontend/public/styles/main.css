@@ -1149,7 +1149,27 @@ a.activity-cell:hover {
   border: 2px solid #ffd942;
   border-radius: 6px;
   color: #fff;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+/* One year per line in the memories modal, each a link to that day's page. */
+.memory-year,
+.memory-year:hover,
+.memory-year:focus {
+  display: block;
+  padding: 6px;
+  font-size: 18px;
+  color: var(--dm-text);
+  text-decoration: none;
+}
+
+.memory-year:hover,
+.memory-year:focus {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #ffd942;
 }

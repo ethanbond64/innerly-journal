@@ -1121,7 +1121,8 @@ a.activity-cell:hover {
 
 /* The home rows' date is a link to that day's page. It has to look exactly like
    the plain heading it replaced, so it takes the heading's own colour and only
-   picks up an underline on hover. */
+   picks up an underline on hover, underlined in that same colour so it reads in
+   both themes. */
 .datelabel-link,
 .datelabel-link:hover,
 .datelabel-link:focus {
@@ -1133,7 +1134,7 @@ a.activity-cell:hover {
 .datelabel-link:focus {
   cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: #fff;
+  text-decoration-color: currentColor;
 }
 
 /* How many years today has been written on, under the home page's date. It
@@ -1148,12 +1149,28 @@ a.activity-cell:hover {
   background-color: transparent;
   border: 2px solid #ffd942;
   border-radius: 6px;
-  color: #fff;
+  color: var(--dm-text);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: all .1s ease-in-out;
+  -webkit-transition: all .1s ease-in-out;
+  -moz-transition: all .1s ease-in-out;
+  -o-transition: all .1s ease-in-out;
+  -ms-transition: all .1s ease-in-out;
+}
+
+/* The same swell the cards do on hover. It grows from its left edge so it stays
+   lined up under the date rather than drifting out from the centre. */
+.memory-badge:hover,
+.memory-badge:focus {
+  transform-origin: left center;
+  -webkit-transform: scale(1.05);
+  -moz-transform: scale(1.05);
+  -o-transform: scale(1.05);
+  transform: scale(1.05);
 }
 
 /* One year per line in the memories modal, each a link to that day's page. */

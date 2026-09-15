@@ -372,8 +372,9 @@ def fetch_activity(current_user):
     } for entry in entries]}, 200
 
 # The home page badges today with the other years it has been written on, newest
-# first. Only the years themselves are needed, so they are picked out in the
-# database rather than the entries being shipped.
+# first. The date's own year is not one of its memories, so it is left out. Only
+# the years themselves are needed, so they are picked out in the database rather
+# than the entries being shipped.
 @views.route('/fetch/memories', methods=['GET'])
 @login_required
 def fetch_memories(current_user):
@@ -389,7 +390,8 @@ def fetch_memories(current_user):
 
     rows = Entry.query.with_entities(years).filter(
         Entry.user_id == current_user.id,
-        func.strftime('%m-%d', Entry.functional_datetime) == anchor.strftime('%m-%d')
+        func.strftime('%m-%d', Entry.functional_datetime) == anchor.strftime('%m-%d'),
+        years != anchor.strftime('%Y')
     ).distinct().order_by(years.desc()).all()
 
     return {'data': {'years': [row[0] for row in rows]}}, 200

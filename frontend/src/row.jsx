@@ -8,7 +8,7 @@ import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 
-export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true }) =>  {
+export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = 0 }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
 
@@ -88,6 +88,12 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                                     {label === null ? formatLongDate(row.date) : label}
                                 </Link> :
                                 (label === null ? formatLongDate(row.date) : label)
+                            }
+                            { memories > 0 ?
+                                <span className="memory-badge">
+                                    {memories} {memories === 1 ? 'year' : 'years'} of memories
+                                </span> :
+                                null
                             }
                         </h3>
                     }

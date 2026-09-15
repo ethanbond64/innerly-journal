@@ -7,7 +7,7 @@ import zipfile
 from datetime import datetime, timedelta
 from flask import Blueprint, request, send_from_directory, current_app
 
-from sqlalchemy import Boolean, String, and_, cast, or_
+from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
@@ -370,6 +370,28 @@ def fetch_activity(current_user):
         'sentiment': (entry.entry_data or {}).get('sentiment'),
         'words': entry_word_count(entry)
     } for entry in entries]}, 200
+
+# The home page badges today with how many years it has been written on. Only
+# the count is needed, so it is counted in the database rather than shipped.
+@views.route('/fetch/memories', methods=['GET'])
+@login_required
+def fetch_memories(current_user):
+
+    date = request.args.get('date')
+
+    try:
+        anchor = datetime.strptime(date, '%Y-%m-%d')
+    except (TypeError, ValueError):
+        return {'message': 'Bad request. Expected date as YYYY-MM-DD.'}, 400
+
+    years = func.strftime('%Y', Entry.functional_datetime)
+
+    count = Entry.query.with_entities(years).filter(
+        Entry.user_id == current_user.id,
+        func.strftime('%m-%d', Entry.functional_datetime) == anchor.strftime('%m-%d')
+    ).distinct().count()
+
+    return {'data': {'years': count}}, 200
 
 # Text entries carry their own length, taken before any encryption. Entries
 # written before that field existed are counted from their text, which is only

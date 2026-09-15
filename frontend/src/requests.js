@@ -94,6 +94,21 @@ export const fetchDay = async (date, onError = (e) => {}) => {
     });
 };
 
+export const fetchMemories = async (date, onError = (e) => {}) => {
+    return await fetch(`/api/fetch/memories?date=${date}`, {
+        headers: getHeaders()
+    }).then(handleResponse).then((response) => {
+        return response.data.data.years;
+    }).catch((error) => {
+        console.error(error);
+        if (error.response && error.response.status === 401) {
+            handleUnauthorized();
+        } else {
+            onError(error);
+        }
+    });
+};
+
 export const fetchActivity = async (days, before, onError = (e) => {}) => {
     return await fetch(`/api/fetch/activity?days=${days}&before=${before}`, {
         headers: getHeaders()

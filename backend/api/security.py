@@ -187,6 +187,9 @@ def unlock_entry_data(user: User, password, entry: Entry):
     locked_text = copied_entry_data.get('text', '')
     lock_version = copied_entry_data.get('lock_version', 0)
 
+    # TODO temp placement until todo uncommented below - so user can populate scrypt key in mem on any unlock.
+    scrypt_key = get_scrypt_key(user, password)
+
     if lock_version == 0:
 
         copied_entry_data['text'] = unlock_text(user.email, locked_text)
@@ -197,7 +200,6 @@ def unlock_entry_data(user: User, password, entry: Entry):
         # entry.save()
 
     elif lock_version == 1:
-        scrypt_key = get_scrypt_key(user, password)
         copied_entry_data['text'] = unlock_text(scrypt_key, locked_text)
 
     else:

@@ -144,7 +144,8 @@ def get_scrypt_key(user: User, password: str):
     scrypt_key, expiry = LOCK_HASHTABLE.get(user.id, (None, None))
     if scrypt_key is None or (expiry is not None and expiry < datetime.datetime.now()):
 
-        del LOCK_HASHTABLE[user.id]
+        if user.id in LOCK_HASHTABLE:
+            del LOCK_HASHTABLE[user.id]
 
         if not authenticated(user, password):
             raise RuntimeError('Authentication failed for lock.')

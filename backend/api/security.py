@@ -129,6 +129,8 @@ def create_32_byte_key(key_base):
 
     return base64.urlsafe_b64encode(bytes(key[:32], 'utf-8'))
 
+
+# TODO needs to be different if key_input is scrypt key...
 def lock_text(key_input, text):
 
     key = create_32_byte_key(key_input)
@@ -151,7 +153,8 @@ def get_scrypt_key(user: User, password: str):
             raise RuntimeError('Authentication failed for lock.')
 
         scrypt_salt = SECRET_KEY + TOKEN_SALT
-        scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
+        scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),
+                                     n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
                               maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
 
         LOCK_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + SCRYPT_KEY_MEMORY_TTL)

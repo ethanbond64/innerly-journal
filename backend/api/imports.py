@@ -213,7 +213,7 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
                         text = unlockText(aes_key, iv, cipher_text, tag, passcode)
                         word_count = count_words(text)
                         # Re-encrypt using this project's Fernet format with user email
-                        text = lock_text(email, text)
+                        text = lock_text(email, text) # TODO migrate to new format with user + password as scrypt key
                     elif locked:
                         # No credentials supplied, import ciphertext as-is
                         print(f"  Skipping decryption for locked entry {entry_id} (no passcode/key supplied)")

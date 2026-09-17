@@ -1,16 +1,19 @@
 import base64
+import hashlib
 import os
 import re
 import datetime
 from functools import wraps
 from http import HTTPStatus
+from typing import Any, Dict, Tuple, Optional
+
 from cryptography.fernet import Fernet
 
 from flask import abort, jsonify, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from api.models import User
+from api.models import User, Entry
 from api.settings import SECRET_KEY
 
 IDENTITY_PADDING = '-innerly-auth'
@@ -18,9 +21,18 @@ UNAUTHORIZED = {'message': 'Requires authentication'}
 EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 TOKEN_MAX_AGE = datetime.timedelta(days=5)
 TOKEN_SALT = 'innerly-auth-token'
+CURRENT_LOCK_VERSION = 1
+
+SCRYPT_KEY_MEMORY_TTL = datetime.timedelta(minutes=15)
+SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
+SCRYPT_KEY_LEN = 32
+SCRYPT_SALT_LEN = 16
 
 cipher_suite = Fernet(SECRET_KEY)
 token_serializer = URLSafeTimedSerializer(SECRET_KEY, salt=TOKEN_SALT)
+
+# Global dict of user id to tuple (entry lock key, expiry) # TODO spawn a thread that clears expired tuples every minute
+LOCK_HASHTABLE: Dict[int, Tuple[str, datetime.datetime]] = {}
 
 def json_abort(status_code, data=None):
     response = jsonify(data)
@@ -124,6 +136,41 @@ def lock_text(key_input, text):
     
     return str(fernet.encrypt(text.encode()))
 
+
+def get_scrypt_key(user: User, password: str):
+
+    global LOCK_HASHTABLE
+
+    scrypt_key, expiry = LOCK_HASHTABLE.get(user.id, (None, None))
+    if scrypt_key is None or (expiry is not None and expiry < datetime.datetime.now()):
+
+        del LOCK_HASHTABLE[user.id]
+
+        if not authenticated(user, password):
+            raise RuntimeError('Authentication failed for lock.')
+
+        scrypt_salt = SECRET_KEY + TOKEN_SALT
+        scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
+                              maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
+
+        LOCK_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + SCRYPT_KEY_MEMORY_TTL)
+
+    return scrypt_key
+
+
+def lock_entry_data(user: User, password: Optional[str], entry_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    copied_entry_data = dict(entry_data)
+
+    scrypt_key = get_scrypt_key(user, password)
+    text = entry_data.get('text', '')
+
+    copied_entry_data['text'] = lock_text(scrypt_key, text)
+    copied_entry_data['locked'] = True
+    copied_entry_data['lock_version'] = CURRENT_LOCK_VERSION
+
+    return copied_entry_data
+
 def unlock_text(key_input, text):
 
         key = create_32_byte_key(key_input)
@@ -131,3 +178,28 @@ def unlock_text(key_input, text):
         
         text_as_bytes = text[2:-1].encode()
         return fernet.decrypt(text_as_bytes).decode()
+
+def unlock_entry_data(user: User, password, entry: Entry):
+
+    copied_entry_data = dict(entry.entry_data)
+
+    locked_text = copied_entry_data.get('text', '')
+    lock_version = copied_entry_data.get('lock_version', 0)
+
+    if lock_version == 0:
+
+        copied_entry_data['text'] = unlock_text(user.email, locked_text)
+
+        # TODO migrate to version 1 behind the scenes, require password + save
+        # new_locked_entry_data = lock_entry_data(user, password, copied_entry_data)
+        # entry.update(entry_data=new_locked_entry_data)
+        # entry.save()
+
+    elif lock_version == 1:
+        scrypt_key = get_scrypt_key(user, password)
+        copied_entry_data['text'] = unlock_text(scrypt_key, locked_text)
+
+    else:
+        raise RuntimeError('Lock version not supported')
+
+    return copied_entry_data

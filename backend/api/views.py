@@ -9,7 +9,8 @@ from flask import Blueprint, request, send_from_directory, current_app
 
 from sqlalchemy import Boolean, String, and_, cast, func, or_
 
-from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
+from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
+    sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -258,9 +259,8 @@ def update_entry(current_user, id):
 
             # NOTE we haven't re-asked for the password here, but since the entry was originally locked, we're locking it again.
             if original_entry_data.get('locked', False):
-                text = lock_text(current_user.email, text)
+                original_entry_data = lock_entry_data(current_user, None, original_entry_data)
 
-            original_entry_data['text'] = text
             changes = True
 
         entry.update(entry_data=original_entry_data)
@@ -453,9 +453,7 @@ def fetch_entry(current_user, id):
         if not authenticated(current_user, password):
             return {'message': 'Unauthorized'}, 401
         
-        entry_data = entry.entry_data
-        unlocked_text = unlock_text(current_user.email, entry_data.get('text', ''))
-        entry_data['text'] = unlocked_text
+        entry_data = unlock_entry_data(current_user, password, entry)
         entry.update(entry_data=entry_data)
 
     return {'data': entry.json()}, 200
@@ -495,14 +493,9 @@ def lock_entry(current_user, id):
     #
     # if not authenticated(current_user, password):
     #     return {'message': 'Unauthorized'}, 401
-    
-    entry_data = entry.entry_data
-    locked_text = lock_text(current_user.email, entry_data.get('text', ''))
-    
-    entry_data['locked'] = True
-    entry_data['text'] = locked_text
+
+    entry_data = lock_entry_data(current_user, None, entry.entry_data)
     entry.update(entry_data=entry_data)
-    
     entry.save()
 
     return {'data': entry.json()}, 200
@@ -526,13 +519,10 @@ def unlock_entry(current_user, id):
     if not authenticated(current_user, password):
         return {'message': 'Unauthorized'}, 401
     
-    entry_data = entry.entry_data
-    unlocked_text = unlock_text(current_user.email, entry_data.get('text', ''))
-    
+    entry_data = unlock_entry_data(current_user, password, entry.entry_data)
     entry_data['locked'] = False
-    entry_data['text'] = unlocked_text
+
     entry.update(entry_data=entry_data)
-    
     entry.save()
 
     return {'data': entry.json()}, 200

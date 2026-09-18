@@ -32,7 +32,7 @@ cipher_suite = Fernet(SECRET_KEY)
 token_serializer = URLSafeTimedSerializer(SECRET_KEY, salt=TOKEN_SALT)
 
 # Global dict of user id to tuple (entry lock key, expiry) # TODO spawn a thread that clears expired tuples every minute
-LOCK_HASHTABLE: Dict[int, Tuple[str, datetime.datetime]] = {}
+WRITE_LOCK_KEY_HASHTABLE: Dict[int, Tuple[str, datetime.datetime]] = {}
 
 def json_abort(status_code, data=None):
     response = jsonify(data)
@@ -122,7 +122,8 @@ def get_user_from_signature(signature):
     return user
 
 def create_32_byte_key(key_base):
-    
+
+    # TODO if key is already encoded, trim to size
     key = key_base
     while len(key) < 32:
         key += key_base
@@ -130,24 +131,34 @@ def create_32_byte_key(key_base):
     return base64.urlsafe_b64encode(bytes(key[:32], 'utf-8'))
 
 
-# TODO needs to be different if key_input is scrypt key...
 def lock_text(key_input, text):
 
-    key = create_32_byte_key(key_input)
+    if type(key_input) == str:
+        key = create_32_byte_key(key_input)
+    elif type(key_input) == bytes:
+        key = key_input
+    else:
+        raise TypeError('key_input must be str or bytes')
+
     fernet = Fernet(key)
     
     return str(fernet.encrypt(text.encode()))
 
 
-def get_scrypt_key(user: User, password: str):
+def get_scrypt_key(user: User, password: str, writing=False):
 
-    global LOCK_HASHTABLE
+    global WRITE_LOCK_KEY_HASHTABLE
 
-    scrypt_key, expiry = LOCK_HASHTABLE.get(user.id, (None, None))
+    scrypt_key, expiry = None, None
+
+    # Cache lookup is only allowed when writing. Reading something locked validates current password, but caches it.
+    if writing:
+        scrypt_key, expiry = WRITE_LOCK_KEY_HASHTABLE.get(user.id, (None, None))
+
     if scrypt_key is None or (expiry is not None and expiry < datetime.datetime.now()):
 
-        if user.id in LOCK_HASHTABLE:
-            del LOCK_HASHTABLE[user.id]
+        if user.id in WRITE_LOCK_KEY_HASHTABLE:
+            del WRITE_LOCK_KEY_HASHTABLE[user.id]
 
         if not authenticated(user, password):
             raise RuntimeError('Authentication failed for lock.')
@@ -157,7 +168,7 @@ def get_scrypt_key(user: User, password: str):
                                      n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
                               maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
 
-        LOCK_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + SCRYPT_KEY_MEMORY_TTL)
+        WRITE_LOCK_KEY_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + SCRYPT_KEY_MEMORY_TTL)
 
     return scrypt_key
 
@@ -166,7 +177,7 @@ def lock_entry_data(user: User, password: Optional[str], entry_data: Dict[str, A
 
     copied_entry_data = dict(entry_data)
 
-    scrypt_key = get_scrypt_key(user, password)
+    scrypt_key = get_scrypt_key(user, password, writing=True)
     text = entry_data.get('text', '')
 
     copied_entry_data['text'] = lock_text(scrypt_key, text)
@@ -190,8 +201,8 @@ def unlock_entry_data(user: User, password, entry: Entry):
     locked_text = copied_entry_data.get('text', '')
     lock_version = copied_entry_data.get('lock_version', 0)
 
-    # TODO temp placement until todo uncommented below - so user can populate scrypt key in mem on any unlock.
-    scrypt_key = get_scrypt_key(user, password)
+    # Scrypt key on unlock must come from the request, not the in-memory cache, which is write-only.
+    scrypt_key = get_scrypt_key(user, password, writing=False)
 
     if lock_version == 0:
 

@@ -136,7 +136,7 @@ def lock_text(key_input, text):
     if type(key_input) == str:
         key = create_32_byte_key(key_input)
     elif type(key_input) == bytes:
-        key = key_input
+        key = base64.urlsafe_b64encode(key_input)
     else:
         raise TypeError('key_input must be str or bytes')
 
@@ -187,7 +187,13 @@ def lock_entry_data(user: User, password: Optional[str], entry_data: Dict[str, A
 
 def unlock_text(key_input, text):
 
-        key = create_32_byte_key(key_input)
+        if type(key_input) == str:
+            key = create_32_byte_key(key_input)
+        elif type(key_input) == bytes:
+            key = base64.urlsafe_b64encode(key_input)
+        else:
+            raise TypeError('key_input must be str or bytes')
+
         fernet = Fernet(key)
         
         text_as_bytes = text[2:-1].encode()

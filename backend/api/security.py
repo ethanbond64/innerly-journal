@@ -123,7 +123,6 @@ def get_user_from_signature(signature):
 
 def create_32_byte_key(key_base):
 
-    # TODO if key is already encoded, trim to size
     key = key_base
     while len(key) < 32:
         key += key_base

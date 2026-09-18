@@ -10,7 +10,8 @@ from flask import Blueprint, request, send_from_directory, current_app
 from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
-    sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data
+    sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
+    LOCK_AUTH_KEY_NAME
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -486,19 +487,29 @@ def lock_entry(current_user, id):
     if body is None:
         return {'message': 'Bad request'}, 400
 
-    # Try no-longer requiring password to lock entries
-    # password = body.get('password')
-    # if password is None:
-    #     return {'message': 'Password required to lock entries.'}, 400
-    #
-    # if not authenticated(current_user, password):
-    #     return {'message': 'Unauthorized'}, 401
+    # Password optional on lock due to lock key cache.
+    password = body.get('password')
 
-    entry_data = lock_entry_data(current_user, None, entry.entry_data)
+    entry_data = lock_entry_data(current_user, password, entry.entry_data)
     entry.update(entry_data=entry_data)
     entry.save()
 
     return {'data': entry.json()}, 200
+
+
+@views.route('/lock/auth', methods=['POST'])
+@login_required
+def auth_lock_key_cache(current_user):
+
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+
+    password = body.get('password')
+    failed_to_cache = (get_scrypt_key(current_user, password, read_cache=False) == None)
+
+    return {LOCK_AUTH_EXPIRED: failed_to_cache}, 200
+
 
 @views.route('/unlock/entries/<int:id>', methods=['POST'])
 @login_required

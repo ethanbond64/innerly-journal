@@ -18,7 +18,7 @@ from api.settings import SECRET_KEY
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
-LOCK_AUTH_EXPIRED = {'lock-auth-expired': True}
+LOCK_AUTH_EXPIRED = 'lock-auth-expired'
 EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 TOKEN_MAX_AGE = datetime.timedelta(days=5)
 TOKEN_SALT = 'innerly-auth-token'
@@ -160,7 +160,7 @@ def get_scrypt_key(user: User, password: str, read_cache=False):
             del WRITE_LOCK_KEY_HASHTABLE[user.id]
 
         if not authenticated(user, password):
-            json_abort(HTTPStatus.UNAUTHORIZED, LOCK_AUTH_EXPIRED)
+            json_abort(HTTPStatus.UNAUTHORIZED, {LOCK_AUTH_EXPIRED: True})
 
         scrypt_salt = SECRET_KEY + TOKEN_SALT
         scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),

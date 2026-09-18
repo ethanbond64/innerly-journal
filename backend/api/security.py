@@ -18,6 +18,7 @@ from api.settings import SECRET_KEY
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
+LOCK_AUTH_EXPIRED = {'lock-auth-expired': True}
 EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 TOKEN_MAX_AGE = datetime.timedelta(days=5)
 TOKEN_SALT = 'innerly-auth-token'
@@ -144,14 +145,13 @@ def lock_text(key_input, text):
     return str(fernet.encrypt(text.encode()))
 
 
-def get_scrypt_key(user: User, password: str, writing=False):
+def get_scrypt_key(user: User, password: str, read_cache=False):
 
     global WRITE_LOCK_KEY_HASHTABLE
 
     scrypt_key, expiry = None, None
 
-    # Cache lookup is only allowed when writing. Reading something locked validates current password, but caches it.
-    if writing:
+    if read_cache:
         scrypt_key, expiry = WRITE_LOCK_KEY_HASHTABLE.get(user.id, (None, None))
 
     if scrypt_key is None or (expiry is not None and expiry < datetime.datetime.now()):
@@ -160,7 +160,7 @@ def get_scrypt_key(user: User, password: str, writing=False):
             del WRITE_LOCK_KEY_HASHTABLE[user.id]
 
         if not authenticated(user, password):
-            raise RuntimeError('Authentication failed for lock.')
+            json_abort(HTTPStatus.UNAUTHORIZED, LOCK_AUTH_EXPIRED)
 
         scrypt_salt = SECRET_KEY + TOKEN_SALT
         scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),
@@ -176,7 +176,7 @@ def lock_entry_data(user: User, password: Optional[str], entry_data: Dict[str, A
 
     copied_entry_data = dict(entry_data)
 
-    scrypt_key = get_scrypt_key(user, password, writing=True)
+    scrypt_key = get_scrypt_key(user, password, read_cache=True)
     text = entry_data.get('text', '')
 
     copied_entry_data['text'] = lock_text(scrypt_key, text)
@@ -201,7 +201,7 @@ def unlock_entry_data(user: User, password, entry: Entry):
     lock_version = copied_entry_data.get('lock_version', 0)
 
     # Scrypt key on unlock must come from the request, not the in-memory cache, which is write-only.
-    scrypt_key = get_scrypt_key(user, password, writing=False)
+    scrypt_key = get_scrypt_key(user, password, read_cache=False)
 
     if lock_version == 0:
 

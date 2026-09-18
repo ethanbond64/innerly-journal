@@ -4,6 +4,17 @@ import { replace } from "./history.js";
 
 const dayLimit = 200;
 
+// The backend caches the key used to lock entries in memory for a short window. Once that window
+// lapses, any request needing the key answers 401 with {'lock-auth-expired': true}, which the
+// password modal subscribes to so it can prompt for the password again.
+const LOCK_AUTH_EXPIRED = 'lock-auth-expired';
+const lockAuthSubscribers = new Set();
+
+export const onLockAuthExpired = (subscriber) => {
+    lockAuthSubscribers.add(subscriber);
+    return () => lockAuthSubscribers.delete(subscriber);
+};
+
 const getAuthorizationHeader = () => {
     let token = getToken();
 
@@ -21,7 +32,11 @@ const getHeaders = (contentType = "application/json") => {
     };
 };
 
-const handleUnauthorized = () => {
+// An expired lock key is not a session problem, so it must never log the user out.
+const handleUnauthorized = (error = null) => {
+    if (error && error.lockAuthExpired) {
+        return;
+    }
     clearLocalStorage();
     replace(loginRoute);
 };
@@ -31,6 +46,12 @@ const handleResponse = async (response) => {
     if (!response.ok) {
         const error = new Error(data.message || response.statusText);
         error.response = { status: response.status, data };
+
+        if (response.status === 401 && data && data[LOCK_AUTH_EXPIRED] === true) {
+            error.lockAuthExpired = true;
+            lockAuthSubscribers.forEach((subscriber) => subscriber());
+        }
+
         throw error;
     }
     return { status: response.status, data };
@@ -73,7 +94,7 @@ export const fetchEntries = async (search, offset, limit, onError = (e) => {}) =
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -88,7 +109,7 @@ export const fetchDay = async (date, onError = (e) => {}) => {
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -103,7 +124,7 @@ export const fetchMemories = async (date, onError = (e) => {}) => {
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -118,7 +139,7 @@ export const fetchActivity = async (days, before, onError = (e) => {}) => {
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -141,7 +162,7 @@ export const insertTextEntry = async (text, functional_datetime, callback, onErr
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -160,7 +181,7 @@ export const updateTextEntry = async (id, entry_data, tags, callback, onError = 
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -183,7 +204,7 @@ export const insertLinkEntry = async (link, callback, functional_datetime = null
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -212,7 +233,7 @@ export const insertFileEntry = async (file, callback, functional_datetime = null
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }
@@ -270,6 +291,25 @@ export const lockEntry = async (id, password, callback, onError = (e) => {}) => 
     });
 };
 
+// Re-primes the backend's in-memory lock key cache. Only a 200 carrying
+// {'lock-auth-expired': false} counts as success.
+export const authenticateLock = async (password, callback, onError = (e) => {}) => {
+    return await fetch('/api/lock/auth', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ password })
+    }).then(handleResponse).then((response) => {
+        if (response.status === 200 && response.data[LOCK_AUTH_EXPIRED] === false) {
+            callback();
+        } else {
+            onError(new Error("Unable to verify password."));
+        }
+    }).catch((error) => {
+        console.error(error);
+        onError(error);
+    });
+};
+
 export const unlockEntry = async (id, password, callback, onError = (e) => {}) => {
     return await fetch(`/api/unlock/entries/${id}`, {
         method: 'POST',
@@ -296,7 +336,7 @@ export const importEntries = async (zipPath, passcode, callback, onError = (e) =
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error.response?.data?.message || "Import failed.");
         }
@@ -323,7 +363,7 @@ export const getImportFiles = async (callback, onError = (e) => {}) => {
     }).catch((error) => {
         console.error(error);
         if (error.response && error.response.status === 401) {
-            handleUnauthorized();
+            handleUnauthorized(error);
         } else {
             onError(error);
         }

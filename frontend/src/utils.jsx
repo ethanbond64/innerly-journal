@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { innerlyToken, innerlyUser } from './constants.js';
+import { innerlyToken, innerlyUser, LOCK_TTL_DEFAULT, LOCK_TTL_UNIT_SECONDS } from './constants.js';
 
 export const getToken = () => {
     return localStorage.getItem(innerlyToken);
@@ -23,6 +23,14 @@ export const getLockByDefault = () => {
     const userData = getUserData();
     const settings = userData && userData.settings ? userData.settings : {};
     return settings.lock_by_default !== false;
+}
+
+// The lock timeout the user picked, falling back to what the server uses when unset.
+export const getLockTtl = (userData = getUserData()) => {
+    const settings = userData && userData.settings ? userData.settings : {};
+    const unit = LOCK_TTL_UNIT_SECONDS[settings.lock_ttl_unit] ? settings.lock_ttl_unit : LOCK_TTL_DEFAULT.unit;
+    const value = Number.isInteger(settings.lock_ttl_value) ? settings.lock_ttl_value : LOCK_TTL_DEFAULT.value;
+    return { value, unit };
 }
 
 export const clearLocalStorage = () => {

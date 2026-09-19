@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
-import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
+import { getUserData, setUserData, clearLocalStorage, getLockTtl } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
 import { updatePassword, updateUser, importEntries, getImportStatus, getImportFiles, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 import { getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
-import { TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX } from "./constants.js";
+import { TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX, LOCK_TTL_UNIT_SECONDS, lockTtlMax } from "./constants.js";
 
 export const SettingsPage = () => {
 
@@ -23,6 +23,7 @@ export const SettingsPage = () => {
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
     const [submitting, setSubmitting] = useState(false);
     const [typewriter, setTypewriter] = useState(() => getTypewriterSettings());
+    const [lockTtl, setLockTtl] = useState(() => getLockTtl());
 
     const { isDarkMode, setDarkMode } = useDarkMode();
 
@@ -70,6 +71,37 @@ export const SettingsPage = () => {
             setUserData(data);
             setUserDataComponent(data);
         });
+    };
+
+    // Anything past the 7 day ceiling is saved as the ceiling for whichever unit is selected.
+    const saveLockTtl = (value, unit) => {
+        const max = lockTtlMax(unit);
+        const capped = Math.min(Math.max(value, 1), max);
+
+        setLockTtl({ value: capped, unit });
+
+        if (capped !== value) {
+            setError("Lock timeout cannot exceed 7 days.");
+        }
+
+        updateUser(userData.id, { settings: { lock_ttl_value: capped, lock_ttl_unit: unit } }, (data) => {
+            setUserData(data);
+            setUserDataComponent(data);
+        });
+    };
+
+    const onChangeLockTtlValue = (e) => {
+        setLockTtl((prev) => ({ ...prev, value: e.target.value }));
+    };
+
+    // Typing is free, the value is only checked and saved once the field is left.
+    const onCommitLockTtlValue = () => {
+        const value = parseInt(lockTtl.value, 10);
+        saveLockTtl(Number.isNaN(value) ? 1 : value, lockTtl.unit);
+    };
+
+    const onChangeLockTtlUnit = (e) => {
+        saveLockTtl(parseInt(lockTtl.value, 10) || 1, e.target.value);
     };
 
     const onSelectSensitivity = (e) => {
@@ -194,6 +226,30 @@ export const SettingsPage = () => {
                         <p class="text-muted" style={{ marginTop: '10px' }}>
                             Encrypts each new entry with your password before it is stored, so it is never
                             written in the clear. You will need your password to read it again later.
+                        </p>
+                        <label for="lockTtlValue"><strong>Stay unlocked for</strong></label>
+                        <div class="form-inline">
+                            <input
+                                class="form-control"
+                                id="lockTtlValue"
+                                type="number"
+                                min="1"
+                                max={lockTtlMax(lockTtl.unit)}
+                                step="1"
+                                style={{ width: '90px', marginRight: '10px' }}
+                                value={lockTtl.value}
+                                onChange={onChangeLockTtlValue}
+                                onBlur={onCommitLockTtlValue}
+                            />
+                            <select class="form-control" id="lockTtlUnit" value={lockTtl.unit} onChange={onChangeLockTtlUnit}>
+                                {Object.keys(LOCK_TTL_UNIT_SECONDS).map((unit) => (
+                                    <option key={unit} value={unit}>{unit}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <p class="text-muted" style={{ marginTop: '10px' }}>
+                            How long the server holds the key after you enter your password, up to 7 days.
+                            Shorter is safer, longer means fewer prompts while writing.
                         </p>
                     </div>
                     <div class="list-group well">

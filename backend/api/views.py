@@ -11,7 +11,7 @@ from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
-    LOCK_AUTH_EXPIRED
+    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -156,6 +156,15 @@ def update_user(current_user, id):
 
         if LOCK_BY_DEFAULT in input_settings:
             update_settings[LOCK_BY_DEFAULT] = bool(input_settings[LOCK_BY_DEFAULT])
+
+        # Both halves of the lock lifetime move together, and only if they describe a usable one.
+        if LOCK_TTL_VALUE in input_settings or LOCK_TTL_UNIT in input_settings:
+
+            if parse_lock_ttl(input_settings) is None:
+                return {'message': 'Bad request. Invalid lock timeout.'}, 400
+
+            update_settings[LOCK_TTL_VALUE] = input_settings[LOCK_TTL_VALUE]
+            update_settings[LOCK_TTL_UNIT] = input_settings[LOCK_TTL_UNIT]
         # TODO passcode
             
         user.update(settings=update_settings)

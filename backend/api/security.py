@@ -29,6 +29,12 @@ SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
 SCRYPT_KEY_LEN = 32
 SCRYPT_SALT_LEN = 16
 
+# How long the lock key stays cached, chosen by the user as a count plus a unit.
+LOCK_TTL_VALUE = 'lock_ttl_value'
+LOCK_TTL_UNIT = 'lock_ttl_unit'
+LOCK_TTL_UNITS = ('seconds', 'minutes', 'hours', 'days')
+LOCK_TTL_MAX = datetime.timedelta(days=7)
+
 cipher_suite = Fernet(SECRET_KEY)
 token_serializer = URLSafeTimedSerializer(SECRET_KEY, salt=TOKEN_SALT)
 
@@ -145,6 +151,30 @@ def lock_text(key_input, text):
     return str(fernet.encrypt(text.encode()))
 
 
+# The lifetime these settings describe, or None if they do not describe a usable one.
+def parse_lock_ttl(settings: Dict[str, Any]) -> Optional[datetime.timedelta]:
+
+    value = settings.get(LOCK_TTL_VALUE)
+    unit = settings.get(LOCK_TTL_UNIT)
+
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        return None
+
+    if unit not in LOCK_TTL_UNITS:
+        return None
+
+    ttl = datetime.timedelta(**{unit: value})
+
+    return ttl if ttl <= LOCK_TTL_MAX else None
+
+
+def get_lock_ttl(user: User) -> datetime.timedelta:
+
+    settings = user.settings if isinstance(user.settings, dict) else {}
+
+    return parse_lock_ttl(settings) or SCRYPT_KEY_MEMORY_TTL
+
+
 def get_scrypt_key(user: User, password: str, read_cache=False):
 
     global WRITE_LOCK_KEY_HASHTABLE
@@ -167,7 +197,7 @@ def get_scrypt_key(user: User, password: str, read_cache=False):
                                      n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
                               maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
 
-        WRITE_LOCK_KEY_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + SCRYPT_KEY_MEMORY_TTL)
+        WRITE_LOCK_KEY_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + get_lock_ttl(user))
 
     return scrypt_key
 

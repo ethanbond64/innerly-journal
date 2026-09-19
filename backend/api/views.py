@@ -101,6 +101,9 @@ def login():
     
     token = get_token(user)
 
+    # Warm lock auth cache
+    get_scrypt_key(user, password, read_cache=False)
+
     return {'token': token, 'user': user.json()}, 200
 
 @views.route('/update_password', methods=['POST'])

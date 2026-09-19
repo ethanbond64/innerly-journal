@@ -255,7 +255,7 @@ def update_entry(current_user, id):
 
         if 'text' in entry_data:
             
-            text = entry_data['text']
+            original_entry_data['text'] = entry_data['text']
             original_entry_data['word_count'] = count_words(text)
 
             # NOTE we haven't re-asked for the password here, but since the entry was originally locked, we're locking it again.

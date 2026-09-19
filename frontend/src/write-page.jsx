@@ -106,8 +106,6 @@ export const EditPage = () => {
     const { entryId } = useParams();
     const [text, setText] = useState(location.state ? location.state.text : null);
     const [title, setTitle] = useState(null);
-    // Stored as the raw string from the API: a new Date object on every fetch would
-    // never compare equal, re-rendering (and so re-running the effect) forever.
     const [functionalDate, setFunctionalDate] = useState(null);
 
     useEffect(() => {

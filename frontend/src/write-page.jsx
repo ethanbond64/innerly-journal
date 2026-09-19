@@ -106,7 +106,9 @@ export const EditPage = () => {
     const { entryId } = useParams();
     const [text, setText] = useState(location.state ? location.state.text : null);
     const [title, setTitle] = useState(null);
-    const [functionalDatetime, setFunctionalDatetime] = useState(null);
+    // Stored as the raw string from the API: a new Date object on every fetch would
+    // never compare equal, re-rendering (and so re-running the effect) forever.
+    const [functionalDate, setFunctionalDate] = useState(null);
 
     useEffect(() => {
         if (!entryId) {
@@ -121,7 +123,7 @@ export const EditPage = () => {
                 setText(data.entry_data.text ? data.entry_data.text : '');
             }
             setTitle(data.entry_data.title ? data.entry_data.title : null);
-            setFunctionalDatetime(data.functional_datetime ? new Date(data.functional_datetime) : null);
+            setFunctionalDate(data.functional_datetime ? data.functional_datetime : null);
         });
 
     }, [entryId, navigate]);
@@ -134,7 +136,7 @@ export const EditPage = () => {
         }
     };
 
-    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDatetime ? <> from {formatLongDateNoComma(functionalDatetime)}</> : null}</>);
+    const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDate ? <> from {formatLongDateNoComma(new Date(functionalDate))}</> : null}</>);
 
     return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };

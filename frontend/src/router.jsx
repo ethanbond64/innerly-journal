@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from "react";
 import { getState, push, readPath, replace, subscribe, toHref } from "./history.js";
 
 const LocationContext = createContext({ path: '/', state: null });
@@ -11,8 +11,8 @@ export const Router = ({ children }) => {
 
 export const useLocation = () => useContext(LocationContext);
 export const useParams = () => useContext(ParamsContext);
-export const useNavigate = () => (to, { replace: asReplace = false, state } = {}) =>
-    (asReplace ? replace : push)(to, state);
+export const useNavigate = () => useCallback((to, { replace: asReplace = false, state } = {}) =>
+    (asReplace ? replace : push)(to, state), []);
 
 export const useSearchParams = () => [new URLSearchParams(useLocation().path.split('?')[1] || '')];
 

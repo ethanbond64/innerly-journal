@@ -89,7 +89,7 @@ export const WritePage = () => {
 
     const onSubmit = (text) => {
         insertTextEntry(text, functionalDatetime, (data) => {
-            navigate(viewRoute + data.id);
+            navigate(viewRoute + data.id, { state: { entry: data } });
         });
     };
 
@@ -129,7 +129,7 @@ export const EditPage = () => {
     const onSubmit = (text) => {
         if (entryId) {
             updateTextEntry(entryId, { text }, null, (data) => {
-                navigate(viewRoute + data.id);
+                navigate(viewRoute + data.id, { state: { entry: data } });
             });
         }
     };
@@ -368,7 +368,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             onSumbit(text);
         } else {
             updateTextEntry(entryIdRef.current, { text }, null, (data) => {
-                navigate(viewRoute + data.id);
+                navigate(viewRoute + data.id, { state: { entry: data } });
             });
         }
     };

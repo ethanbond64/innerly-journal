@@ -5,6 +5,7 @@ import { Icon } from "./icon.jsx";
 import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { Link, useLocation, useNavigate, useParams } from "./router.jsx";
 import { getDateNoTime } from "./utils.jsx";
+import { putEntry } from "./entry-handoff.js";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
 
 // Measures the pixel offset of the caret within the textarea's scroll area
@@ -89,7 +90,8 @@ export const WritePage = () => {
 
     const onSubmit = (text) => {
         insertTextEntry(text, functionalDatetime, (data) => {
-            navigate(viewRoute + data.id, { state: { entry: data } });
+            putEntry(data);
+            navigate(viewRoute + data.id);
         });
     };
 
@@ -129,7 +131,8 @@ export const EditPage = () => {
     const onSubmit = (text) => {
         if (entryId) {
             updateTextEntry(entryId, { text }, null, (data) => {
-                navigate(viewRoute + data.id, { state: { entry: data } });
+                putEntry(data);
+                navigate(viewRoute + data.id);
             });
         }
     };
@@ -368,7 +371,8 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             onSumbit(text);
         } else {
             updateTextEntry(entryIdRef.current, { text }, null, (data) => {
-                navigate(viewRoute + data.id, { state: { entry: data } });
+                putEntry(data);
+                navigate(viewRoute + data.id);
             });
         }
     };

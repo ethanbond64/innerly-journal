@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate, useLocation } from "./router.jsx";
+import { useParams, useNavigate } from "./router.jsx";
 import { formatShortOrdinalDate, formatShortOrdinalDateTime } from './date-format.js';
 import { editRoute, homeRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
@@ -7,15 +7,15 @@ import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, upda
 import { BasePage } from "./base-page.jsx";
 import { ClickOutsideTracker, equalsDate } from "./utils.jsx";
 import { PasswordModal } from "./password-modal.jsx";
+import { takeEntry } from "./entry-handoff.js";
 
 export const ViewPage = () => {
 
     const { entryId } = useParams();
     const navigate = useNavigate();
-    const location = useLocation();
     const titleRef = useRef(null);
 
-    const [entry, setEntry] = useState(location.state?.entry ?? null);
+    const [entry, setEntry] = useState(() => takeEntry(entryId));
     const [title, setTitle] = useState(null);
     const [sentiment, setSentiment] = useState("Neutral");
     const [text, setText] = useState("");
@@ -41,16 +41,21 @@ export const ViewPage = () => {
             setTitle(entry.entry_data.title);
         }
         
-        if (entry && entry.entry_data && entry.entry_data.locked) { // TODO need a way to tell if the text is locked or not...
+        // An entry saved a moment ago comes back in the clear: locked at rest, but the
+        // writer has already seen the text, so there is nothing to prompt for.
+        if (entry && entry.entry_data && entry.entry_data.locked) {
             setLocked(true);
-            setPasswordModalParams({
-                prompt: "Enter password to view entry.",
-                callback: openLockedEntry,
-                cancel: () => navigate(homeRoute)
-            });
+
+            if (!entry.text_unlocked) {
+                setPasswordModalParams({
+                    prompt: "Enter password to view entry.",
+                    callback: openLockedEntry,
+                    cancel: () => navigate(homeRoute)
+                });
+            }
         }
 
-        if (entry && entry.entry_data && entry.entry_data.text && !entry.entry_data.locked) {
+        if (entry && entry.entry_data && entry.entry_data.text && (!entry.entry_data.locked || entry.text_unlocked)) {
             setText(entry.entry_data.text);
         }
 

@@ -161,6 +161,23 @@ def update_user(current_user, id):
 
     return {'data': user.json()}, 200
 
+# The writer just supplied this text, so it goes back in the clear even when the entry
+# is locked at rest. text_unlocked is a property of the response, never of the entry.
+def entry_json_with_text(entry, text, signer=None):
+
+    j = entry.json(signer=signer)
+
+    if text is None or not j['entry_data'].get('locked', False):
+        return j
+
+    entry_data = dict(j['entry_data'])
+    entry_data['text'] = text
+
+    j['entry_data'] = entry_data
+    j['text_unlocked'] = True
+
+    return j
+
 @views.route('/insert/entries', methods=['POST'])
 @login_required
 def insert_entry(current_user):
@@ -224,7 +241,7 @@ def insert_entry(current_user):
 
     upsert_tags(tags, current_user.id, new_entry.id)
 
-    return {'data': new_entry.json(signer=sign_filename)}, 201
+    return {'data': entry_json_with_text(new_entry, entry_data.get('text') if entry_type == 'text' else None, signer=sign_filename)}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])
 @login_required
@@ -243,6 +260,7 @@ def update_entry(current_user, id):
     
     # Parse valid updates and save
     changes = False
+    text = None
     entry_data = body.get('entry_data')
     if entry_data is not None:
         
@@ -279,7 +297,7 @@ def update_entry(current_user, id):
     if changes:
         entry.save()
 
-    return {'data': entry.json()}, 200
+    return {'data': entry_json_with_text(entry, text)}, 200
 
 @views.route('/fetch/entries', methods=['GET'])
 @login_required

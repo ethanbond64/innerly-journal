@@ -1,4 +1,4 @@
-import { clearLocalStorage, getToken } from "./utils.jsx";
+import { clearLocalStorage, getLockByDefault, getToken } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { replace } from "./history.js";
 
@@ -145,6 +145,7 @@ export const fetchActivity = (days, before, onError = (e) => {}) =>
         headers: getHeaders()
     }), { onError });
 
+// locked travels with the very first save, so the text is encrypted before it is ever stored.
 export const insertTextEntry = (text, functional_datetime, callback, onError = (e) => {}) =>
     apiRequest(() => fetch('/api/insert/entries', {
         method: 'POST',
@@ -152,7 +153,8 @@ export const insertTextEntry = (text, functional_datetime, callback, onError = (
         body: JSON.stringify({
             entry_type: 'text',
             entry_data: { text },
-            functional_datetime
+            functional_datetime,
+            locked: getLockByDefault()
         })
     }), { onResult: (response) => callback(response.data.data), onError });
 

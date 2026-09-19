@@ -65,6 +65,13 @@ export const SettingsPage = () => {
         setTypewriter(saveTypewriterSettings({ line: typewriter.line }));
     };
 
+    const onToggleLockByDefault = (e) => {
+        updateUser(userData.id, { settings: { lock_by_default: e.target.checked } }, (data) => {
+            setUserData(data);
+            setUserDataComponent(data);
+        });
+    };
+
     const onSelectSensitivity = (e) => {
         let newSensitivity = e.target.value;
         updateUser(userData.id, { settings: { sensitivity: newSensitivity } }, (data) => {
@@ -126,6 +133,8 @@ export const SettingsPage = () => {
         return <PageLoader />;
     }
 
+    let lockByDefault = !(userData && userData.settings && userData.settings.lock_by_default === false);
+
     let sensitivity = userData && userData.settings && userData.settings.sensitivity ? userData.settings.sensitivity : "default";
 
     return (
@@ -174,6 +183,18 @@ export const SettingsPage = () => {
                                 <p class="text-muted">You can also drag the arrow on the writing page.</p>
                             </>
                         )}
+                    </div>
+                    <div class="well">
+                        <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Lock New Entries</h4>
+                        <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
+                            <input type="checkbox" id="lockByDefaultSwitch" name="lockByDefault" onChange={onToggleLockByDefault} checked={lockByDefault}/>
+                            <label className="switch-label" for="lockByDefaultSwitch">Toggle</label>
+                        </div>
+                        <div style={{ clear: 'both' }}></div>
+                        <p class="text-muted" style={{ marginTop: '10px' }}>
+                            Encrypts each new entry with your password before it is stored, so it is never
+                            written in the clear. You will need your password to read it again later.
+                        </p>
                     </div>
                     <div class="list-group well">
                         <h4>Credentials</h4>

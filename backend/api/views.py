@@ -24,6 +24,9 @@ views = Blueprint('views', __name__)
 SHARE_INIIAL = "todo"
 TAG_LIMIT = 32
 
+# User setting: encrypt new text entries before they are first written.
+LOCK_BY_DEFAULT = 'lock_by_default'
+
 # 53 weeks, the width of the activity grid.
 ACTIVITY_DAYS = 371
 ACTIVITY_DAYS_MAX = 731
@@ -146,20 +149,35 @@ def update_user(current_user, id):
     # Only thing to update is user settings
     input_settings = body.get('settings')
     if input_settings is not None:
-        update_settings = user.settings
-
-        # Sqlite treats initial empty json object as a string.
-        if update_settings == '{}':
-            update_settings = {}
+        update_settings = get_settings(user)
 
         if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'both']:
             update_settings['sensitivity'] = input_settings['sensitivity']
+
+        if LOCK_BY_DEFAULT in input_settings:
+            update_settings[LOCK_BY_DEFAULT] = bool(input_settings[LOCK_BY_DEFAULT])
         # TODO passcode
             
         user.update(settings=update_settings)
         user.save()
 
     return {'data': user.json()}, 200
+
+# Sqlite stores the initial empty settings object as a string.
+def get_settings(user):
+
+    return user.settings if isinstance(user.settings, dict) else {}
+
+# Whether a new entry is encrypted before it is ever written. The client sends the flag it
+# read from the user's settings; a client that sends nothing still gets the setting applied.
+def lock_on_insert(current_user, body):
+
+    requested = body.get('locked')
+
+    if requested is None:
+        requested = get_settings(current_user).get(LOCK_BY_DEFAULT, True)
+
+    return bool(requested)
 
 # The writer just supplied this text, so it goes back in the clear even when the entry
 # is locked at rest. text_unlocked is a property of the response, never of the entry.
@@ -205,6 +223,7 @@ def insert_entry(current_user):
     
     entry_data = body.get('entry_data')
     tags = []
+    submitted_text = None
 
     if entry_type == 'text':
         
@@ -212,6 +231,10 @@ def insert_entry(current_user):
             return {'message': 'Entry data missing'}, 400
         
         entry_data, tags = process_text_entry(entry_data)
+        submitted_text = entry_data.get('text')
+
+        if lock_on_insert(current_user, body):
+            entry_data = lock_entry_data(current_user, body.get('password'), entry_data)
 
     elif entry_type == 'file':
         
@@ -241,7 +264,7 @@ def insert_entry(current_user):
 
     upsert_tags(tags, current_user.id, new_entry.id)
 
-    return {'data': entry_json_with_text(new_entry, entry_data.get('text') if entry_type == 'text' else None, signer=sign_filename)}, 201
+    return {'data': entry_json_with_text(new_entry, submitted_text, signer=sign_filename)}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])
 @login_required

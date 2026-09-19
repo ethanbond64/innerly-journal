@@ -18,6 +18,13 @@ export const setUserData = (userData) => {
     localStorage.setItem(innerlyUser, JSON.stringify(userData));
 }
 
+// New entries are encrypted before they are first stored unless the user turned this off.
+export const getLockByDefault = () => {
+    const userData = getUserData();
+    const settings = userData && userData.settings ? userData.settings : {};
+    return settings.lock_by_default !== false;
+}
+
 export const clearLocalStorage = () => {
     localStorage.removeItem(innerlyUser);
     localStorage.removeItem(innerlyToken);

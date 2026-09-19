@@ -163,6 +163,9 @@ export const insertTextEntry = async (text, functional_datetime, callback, onErr
         console.error(error);
         if (error.response && error.response.status === 401) {
             handleUnauthorized(error);
+            if (error.lockAuthExpired) {
+                onError(error);
+            }
         } else {
             onError(error);
         }
@@ -182,6 +185,9 @@ export const updateTextEntry = async (id, entry_data, tags, callback, onError = 
         console.error(error);
         if (error.response && error.response.status === 401) {
             handleUnauthorized(error);
+            if (error.lockAuthExpired) {
+                onError(error);
+            }
         } else {
             onError(error);
         }

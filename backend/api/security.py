@@ -24,6 +24,8 @@ TOKEN_MAX_AGE = datetime.timedelta(days=5)
 TOKEN_SALT = 'innerly-auth-token'
 CURRENT_LOCK_VERSION = 1
 
+ENTRY_LOCK_SALT = 'innerly-entry-lock'
+
 SCRYPT_KEY_MEMORY_TTL = datetime.timedelta(minutes=15)
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
 SCRYPT_KEY_LEN = 32
@@ -192,7 +194,7 @@ def get_scrypt_key(user: User, password: str, read_cache=False):
         if not authenticated(user, password):
             json_abort(HTTPStatus.UNAUTHORIZED, {LOCK_AUTH_EXPIRED: True})
 
-        scrypt_salt = SECRET_KEY + TOKEN_SALT
+        scrypt_salt = ENTRY_LOCK_SALT + user.email
         scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),
                                      n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
                               maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)

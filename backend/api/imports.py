@@ -21,7 +21,6 @@ from api.processors.entry_models import TextEntryData
 from api.processors.file_processor import process_file_entry
 from api.processors.link_processor import process_link_entry
 from api.processors.text_processor import count_words, sentiment_index_to_value
-from api.security import lock_text
 
 
 @dataclass
@@ -153,7 +152,7 @@ def read_csv_rows(path):
         return list(csv.DictReader(f))
 
 
-def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, cancel_event):
+def import_entries(extract_path, user_id, passcode, aes_key, job_state, cancel_event):
     """Import entries from an extracted ZIP directory. Runs in a background thread."""
 
     try:
@@ -204,6 +203,10 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
                     sentiment = sentiment_index_to_value(int(float(row.get("sentiment_idx", 1))))
                     locked = row.get("locked", "").lower() == "true"
 
+                    # Import only unlocks: whatever comes out of the ZIP is stored unlocked, since
+                    # locking needs the account password and this runs without one. Entries that
+                    # should be locked here can be locked afterwards, or swept up by the lock all
+                    # option on a password change.
                     if locked and passcode and aes_key:
                         # Decrypt from old AES-GCM format using supplied passcode + key
                         # CSV stores these as Python bytes repr: b'\x93\x06...'
@@ -212,10 +215,10 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
                         tag = parse_bytes_repr(row.get("tag", ""))
                         text = unlockText(aes_key, iv, cipher_text, tag, passcode)
                         word_count = count_words(text)
-                        # Re-encrypt using this project's Fernet format with user email
-                        text = lock_text(email, text) # TODO migrate to new format with user + password as scrypt key
                     elif locked:
-                        # No credentials supplied, import ciphertext as-is
+                        # No credentials supplied, so the ciphertext is all there is to import. It
+                        # comes in as the entry's text rather than as a locked entry nothing here
+                        # can open; re-importing with the passcode replaces it with the real text.
                         print(f"  Skipping decryption for locked entry {entry_id} (no passcode/key supplied)")
                         text = row.get("text", "")
                         word_count = 0
@@ -225,8 +228,6 @@ def import_entries(extract_path, user_id, passcode, aes_key, email, job_state, c
 
                     entry_type = "text"
                     entry_data = TextEntryData(title, text, sentiment, word_count).json()
-                    if locked:
-                        entry_data["locked"] = True
                 else:
                     # Media entry
                     media_id_key = str(int(float(media_entry_id)))

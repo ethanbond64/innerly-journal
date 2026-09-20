@@ -247,7 +247,7 @@ export const SettingsPage = () => {
                                 onChange={onChangeLockTtlValue}
                                 onBlur={onCommitLockTtlValue}
                             />
-                            <select class="form-control" id="lockTtlUnit" value={lockTtl.unit} onChange={onChangeLockTtlUnit}>
+                            <select class="form-control lock-ttl-unit" id="lockTtlUnit" value={lockTtl.unit} onChange={onChangeLockTtlUnit}>
                                 {Object.keys(LOCK_TTL_UNIT_SECONDS).map((unit) => (
                                     <option key={unit} value={unit}>{unit}</option>
                                 ))}

@@ -870,6 +870,17 @@ select.import-path-input {
   border: 1px solid #ccc !important;
 }
 
+/* Same escape from the pill-shaped select above, sized to match the number input beside it. */
+select.lock-ttl-unit {
+  height: 34px !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  background-color: #fff;
+  color: #555;
+  border: 1px solid #ccc !important;
+}
+
 .import-failures {
   max-height: 300px;
   overflow-y: auto;

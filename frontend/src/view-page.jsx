@@ -155,8 +155,9 @@ export const ViewPage = () => {
         });
     };
 
-    let wordCount = text.split(" ").length;
-    let sentenceCount = text.split(/[.!?]/).length;
+    // No text yet means a locked entry nobody has unlocked, so there is nothing to count.
+    let wordCount = text ? text.split(" ").length : "-";
+    let sentenceCount = text ? text.split(/[.!?]/).length : "-";
 
     let tags = entry && entry.tags ? entry.tags : [];
     let memory = entry && ! equalsDate(new Date(entry.functional_datetime), new Date(entry.created_on));

@@ -2,10 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
-import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
+import { fetchEntry, fetchLockedEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { Link, useLocation, useNavigate, useParams } from "./router.jsx";
 import { getDateNoTime } from "./utils.jsx";
 import { putEntry } from "./entry-handoff.js";
+import { PasswordModal } from "./password-modal.jsx";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
 
 // Measures the pixel offset of the caret within the textarea's scroll area
@@ -109,6 +110,7 @@ export const EditPage = () => {
     const [text, setText] = useState(location.state ? location.state.text : null);
     const [title, setTitle] = useState(null);
     const [functionalDate, setFunctionalDate] = useState(null);
+    const [passwordModalParams, setPasswordModalParams] = useState(null);
 
     useEffect(() => {
         if (!entryId) {
@@ -119,11 +121,30 @@ export const EditPage = () => {
             if (data.entry_type !== 'text' || !data.entry_data) {
                 navigate(homeRoute);
             }
-            if (text === null) {
-                setText(data.entry_data.text ? data.entry_data.text : '');
-            }
+
             setTitle(data.entry_data.title ? data.entry_data.title : null);
             setFunctionalDate(data.functional_datetime ? data.functional_datetime : null);
+
+            if (text !== null) {
+                return;
+            }
+
+            // The view page hands the plaintext over in location.state. Arriving any other way
+            // (a link, a bookmark, a reload) hands over ciphertext instead, which must never
+            // reach the editor: saving it would encrypt the ciphertext a second time.
+            if (data.entry_data.locked) {
+                setPasswordModalParams({
+                    prompt: "Enter password to edit entry.",
+                    callback: (password) => fetchLockedEntry(entryId, password, (unlocked) => {
+                        setPasswordModalParams(null);
+                        setText(unlocked.entry_data.text ? unlocked.entry_data.text : '');
+                    }),
+                    cancel: () => navigate(viewRoute + entryId)
+                });
+                return;
+            }
+
+            setText(data.entry_data.text ? data.entry_data.text : '');
         });
 
     }, [entryId, navigate]);
@@ -139,7 +160,11 @@ export const EditPage = () => {
 
     const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDate ? <> from {formatLongDateNoComma(new Date(functionalDate))}</> : null}</>);
 
-    return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
+    if (text === null) {
+        return passwordModalParams ? <PasswordModal {...passwordModalParams} /> : null;
+    }
+
+    return <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };
 
 export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,

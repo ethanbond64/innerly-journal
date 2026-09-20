@@ -18,6 +18,7 @@ export const SettingsPage = () => {
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState(null); // null | { text, type }
+    const [lockAll, setLockAll] = useState(false);
     const [importFiles, setImportFiles] = useState([]);
     const [importPath, setImportPath] = useState("");
     const [importPasscode, setImportPasscode] = useState("");
@@ -46,7 +47,7 @@ export const SettingsPage = () => {
             return;
         }
         
-        updatePassword(oldPassword, newPassword, (reencrypted) => {
+        updatePassword(oldPassword, newPassword, lockAll, (reencrypted) => {
             setPasswordMessage({
                 text: reencrypted
                     ? `Password updated successfully. ${reencrypted} locked ${reencrypted === 1 ? 'entry' : 'entries'} re-encrypted.`
@@ -268,6 +269,9 @@ export const SettingsPage = () => {
                         />
                         { editingPassword ?
                         <>
+                            <p class="text-muted">
+                                Changing your password re-encrypts your locked entries with the new one.
+                            </p>
                             <div class="form-group sm-margin-bottom">
                                 <label for="password"><strong>Current Password</strong>
                                 </label>
@@ -283,6 +287,14 @@ export const SettingsPage = () => {
                                     <strong>Confirm New Password</strong>
                                 </label>
                                 <input class="form-control" id="newPasswordConfirm" maxlength="128" minlength="8" name="newPasswordConfirm" type="password" placeholder="" />
+                                <div class="sm-margin-bottom" style={{ marginTop: '10px' }}>
+                                    <label for="lockAllSwitch" style={{ display: 'inline-block', float: 'left' }}>Lock all unlocked text entries</label>
+                                    <div class="toggle-container" style={{ display: 'inline-block', float: 'right' }}>
+                                        <input type="checkbox" id="lockAllSwitch" name="lockAll" onChange={(e) => setLockAll(e.target.checked)} checked={lockAll}/>
+                                        <label className="switch-label" for="lockAllSwitch">Toggle</label>
+                                    </div>
+                                    <div style={{ clear: 'both' }}></div>
+                                </div>
                                 <button onClick={() => { setEditingPassword(false); setPasswordMessage(null); }} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px', marginRight: '10px' }}>Cancel</button>
                                 <button onClick={onClickUpdatePassword} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px'}}>Update</button>
                             </div>

@@ -129,7 +129,12 @@ def reset_password(current_user):
     relock = entry_relocker(current_user, current_password, new_password)
 
     entries = Entry.query.filter(Entry.user_id == current_user.id, Entry.entry_type == 'text').all()
-    locked_entries = [entry for entry in entries if entry.entry_data.get('locked', False)]
+
+    # Already locked entries have to move onto the new key. The rest only join them if asked.
+    if body.get('lock_all', False):
+        locked_entries = entries
+    else:
+        locked_entries = [entry for entry in entries if entry.entry_data.get('locked', False)]
 
     # One transaction: a new password alongside an entry still under the old key is unrecoverable,
     # so if any entry cannot be re-encrypted the password does not change either.

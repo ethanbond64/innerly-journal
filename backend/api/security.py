@@ -274,7 +274,13 @@ def entry_relocker(user: User, current_password: str, new_password: str):
 
         copied_entry_data = dict(entry_data)
 
-        copied_entry_data['text'] = lock_text(new_key, unlock_text_at_version(user, entry_data, old_key))
+        if entry_data.get('locked', False):
+            text = unlock_text_at_version(user, entry_data, old_key)
+        else:
+            text = entry_data.get('text', '')
+
+        copied_entry_data['text'] = lock_text(new_key, text)
+        copied_entry_data['locked'] = True
         copied_entry_data['lock_version'] = CURRENT_LOCK_VERSION
 
         return copied_entry_data

@@ -107,11 +107,11 @@ const messageHandler = (onError, fallback) => (error) =>
     onError((error.response && error.response.data && error.response.data.message) || fallback);
 
 // A wrong current password answers 401, which must not be mistaken for a dead session.
-export const updatePassword = (oldPassword, newPassword, callback, onError = (m) => {}) =>
+export const updatePassword = (oldPassword, newPassword, lockAll, callback, onError = (m) => {}) =>
     apiRequest(() => fetch('/api/update_password', {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ current_password: oldPassword, new_password: newPassword })
+        body: JSON.stringify({ current_password: oldPassword, new_password: newPassword, lock_all: lockAll })
     }), {
         onResult: (response) => callback(response.data.reencrypted),
         onError: messageHandler(onError, "Unable to update password."),

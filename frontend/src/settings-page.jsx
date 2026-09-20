@@ -17,6 +17,7 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
+    const [passwordMessage, setPasswordMessage] = useState(null); // null | { text, type }
     const [importFiles, setImportFiles] = useState([]);
     const [importPath, setImportPath] = useState("");
     const [importPasscode, setImportPasscode] = useState("");
@@ -37,21 +38,24 @@ export const SettingsPage = () => {
         let newPasswordConfirm = document.getElementById('newPasswordConfirm').value;
         
         if (!oldPassword || !newPassword || !newPasswordConfirm) {
-            setError("Please fill out all fields to update password.");
+            setPasswordMessage({ text: "Please fill out all fields to update password.", type: "error" });
             return;
         }
         if (newPassword !== newPasswordConfirm) {
-            setError("New passwords do not match.");
+            setPasswordMessage({ text: "New passwords do not match.", type: "error" });
             return;
         }
         
         updatePassword(oldPassword, newPassword, (reencrypted) => {
-            setSuccess(reencrypted
-                ? `Password updated successfully. ${reencrypted} locked ${reencrypted === 1 ? 'entry' : 'entries'} re-encrypted.`
-                : "Password updated successfully.");
+            setPasswordMessage({
+                text: reencrypted
+                    ? `Password updated successfully. ${reencrypted} locked ${reencrypted === 1 ? 'entry' : 'entries'} re-encrypted.`
+                    : "Password updated successfully.",
+                type: "success"
+            });
             setEditingPassword(false);
         }, (e) => {
-            setError(e);
+            setPasswordMessage({ text: e, type: "error" });
         });
     };
 
@@ -256,6 +260,12 @@ export const SettingsPage = () => {
                     </div>
                     <div class="list-group well">
                         <h4>Credentials</h4>
+                        <Notification
+                            message={passwordMessage ? passwordMessage.text : null}
+                            clear={() => setPasswordMessage(null)}
+                            type={passwordMessage ? passwordMessage.type : 'error'}
+                            inline
+                        />
                         { editingPassword ?
                         <>
                             <div class="form-group sm-margin-bottom">
@@ -273,11 +283,11 @@ export const SettingsPage = () => {
                                     <strong>Confirm New Password</strong>
                                 </label>
                                 <input class="form-control" id="newPasswordConfirm" maxlength="128" minlength="8" name="newPasswordConfirm" type="password" placeholder="" />
-                                <button onClick={() => setEditingPassword(false)} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px', marginRight: '10px' }}>Cancel</button>
+                                <button onClick={() => { setEditingPassword(false); setPasswordMessage(null); }} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px', marginRight: '10px' }}>Cancel</button>
                                 <button onClick={onClickUpdatePassword} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px'}}>Update</button>
                             </div>
                         </> : 
-                        <span onClick={() => setEditingPassword(true)} class="list-group-item" style={{ cursor: 'pointer', 'borderRadius': '.25rem!important' }}>
+                        <span onClick={() => { setEditingPassword(true); setPasswordMessage(null); }} class="list-group-item" style={{ cursor: 'pointer', 'borderRadius': '.25rem!important' }}>
                             Click here to update password
                         </span>}
                     </div>

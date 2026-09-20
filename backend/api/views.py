@@ -147,7 +147,7 @@ def reset_password(current_user):
         return {'message': 'Could not re-encrypt your locked entries. Password unchanged.'}, 409
 
     # The cache still holds the key the old password derived.
-    get_scrypt_key(current_user, new_password, read_cache=False) # TODO this won't override the existing password cache entry if it is not expired.
+    get_scrypt_key(current_user, new_password, read_cache=False)
 
     return {'success': True, 'reencrypted': len(locked_entries)}, 200
 

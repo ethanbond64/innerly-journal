@@ -191,7 +191,6 @@ def update_user(current_user, id):
 
             update_settings[LOCK_TTL_VALUE] = input_settings[LOCK_TTL_VALUE]
             update_settings[LOCK_TTL_UNIT] = input_settings[LOCK_TTL_UNIT]
-        # TODO passcode
             
         user.update(settings=update_settings)
         user.save()
@@ -394,11 +393,7 @@ def fetch_entries(current_user):
                 )
             )
         )
-            # Entry.tags.any(search) # TODO this is exact match case sensitive
 
-    # if tag:TODO seach by tag
-    #     # Exact tag search
-    #     query = query.filter(func.array_contains(Entry.tags, tag))
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200
@@ -521,7 +516,6 @@ def fetch_entry(current_user, id):
     if entry is None:
         return {'message': 'Entry not found'}, 404
 
-    # TODO passcode stuff
     if request.method == 'POST' and entry.entry_data.get('locked', False):
         body = request.get_json()
         if body is None:

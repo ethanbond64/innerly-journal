@@ -11,7 +11,7 @@ from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
-    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key
+    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key, is_locked_text
 from api.extensions import db
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
@@ -335,6 +335,11 @@ def update_entry(current_user, id):
         if 'text' in entry_data:
 
             text = entry_data['text']
+
+            # Don't edit with unencrypted text coming from the client
+            if original_entry_data.get('locked', False) and is_locked_text(text):
+                return {'message': 'Entry must be unlocked before it can be edited.'}, 409
+
             original_entry_data['text'] = text
             original_entry_data['word_count'] = count_words(text)
 
@@ -557,10 +562,17 @@ def lock_entry(current_user, id):
     entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
     if entry is None:
         return {'message': 'Entry not found'}, 404
-    
+
+    if entry.entry_type != 'text':
+        return {'message': 'Entry type not supported for locking.'}, 400
+
     body = request.get_json()
     if body is None:
         return {'message': 'Bad request'}, 400
+
+    # Do nothing if already locked
+    if entry.entry_data.get('locked', False):
+        return {'data': entry.json()}, 200
 
     # Password optional on lock due to lock key cache.
     password = body.get('password')

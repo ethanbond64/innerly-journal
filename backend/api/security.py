@@ -138,6 +138,16 @@ def create_32_byte_key(key_base):
     return base64.urlsafe_b64encode(bytes(key[:32], 'utf-8'))
 
 
+# Locked text is the repr of a Fernet token, which always opens this way. Text arriving from a
+# client that starts with it is that client handing back ciphertext it was never able to read.
+LOCKED_TEXT_PREFIX = "b'gAAAA"
+
+
+def is_locked_text(text) -> bool:
+
+    return isinstance(text, str) and text.startswith(LOCKED_TEXT_PREFIX)
+
+
 def lock_text(key_input, text):
 
     if type(key_input) == str:

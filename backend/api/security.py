@@ -1,26 +1,46 @@
 import base64
+import hashlib
 import os
 import re
 import datetime
 from functools import wraps
 from http import HTTPStatus
+from typing import Any, Dict, Tuple, Optional
+
 from cryptography.fernet import Fernet
 
 from flask import abort, jsonify, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from api.models import User
+from api.models import User, Entry
 from api.settings import SECRET_KEY
 
 IDENTITY_PADDING = '-innerly-auth'
 UNAUTHORIZED = {'message': 'Requires authentication'}
+LOCK_AUTH_EXPIRED = 'lock-auth-expired'
 EMAIL_REGEX = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 TOKEN_MAX_AGE = datetime.timedelta(days=5)
 TOKEN_SALT = 'innerly-auth-token'
+CURRENT_LOCK_VERSION = 1
+
+ENTRY_LOCK_SALT = 'innerly-entry-lock'
+
+SCRYPT_KEY_MEMORY_TTL = datetime.timedelta(hours=1)
+SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
+SCRYPT_KEY_LEN = 32
+
+# How long the lock key stays cached, chosen by the user as a count plus a unit.
+LOCK_TTL_VALUE = 'lock_ttl_value'
+LOCK_TTL_UNIT = 'lock_ttl_unit'
+LOCK_TTL_UNITS = ('seconds', 'minutes', 'hours', 'days')
+LOCK_TTL_MAX = datetime.timedelta(days=7)
 
 cipher_suite = Fernet(SECRET_KEY)
 token_serializer = URLSafeTimedSerializer(SECRET_KEY, salt=TOKEN_SALT)
+
+# Global dict of user id to tuple (entry lock key, expiry) # TODO spawn a thread that clears expired tuples every minute
+WRITE_LOCK_KEY_HASHTABLE: Dict[int, Tuple[str, datetime.datetime]] = {}
 
 def json_abort(status_code, data=None):
     response = jsonify(data)
@@ -110,24 +130,174 @@ def get_user_from_signature(signature):
     return user
 
 def create_32_byte_key(key_base):
-    
+
     key = key_base
     while len(key) < 32:
         key += key_base
 
     return base64.urlsafe_b64encode(bytes(key[:32], 'utf-8'))
 
+
+# Locked text is the repr of a Fernet token, which always opens this way. Text arriving from a
+# client that starts with it is that client handing back ciphertext it was never able to read.
+LOCKED_TEXT_PREFIX = "b'gAAAA"
+
+
+def is_locked_text(text) -> bool:
+
+    return isinstance(text, str) and text.startswith(LOCKED_TEXT_PREFIX)
+
+
 def lock_text(key_input, text):
 
-    key = create_32_byte_key(key_input)
+    if type(key_input) == str:
+        key = create_32_byte_key(key_input)
+    elif type(key_input) == bytes:
+        key = base64.urlsafe_b64encode(key_input)
+    else:
+        raise TypeError('key_input must be str or bytes')
+
     fernet = Fernet(key)
     
     return str(fernet.encrypt(text.encode()))
 
+
+# The lifetime these settings describe, or None if they do not describe a usable one.
+def parse_lock_ttl(settings: Dict[str, Any]) -> Optional[datetime.timedelta]:
+
+    value = settings.get(LOCK_TTL_VALUE)
+    unit = settings.get(LOCK_TTL_UNIT)
+
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        return None
+
+    if unit not in LOCK_TTL_UNITS:
+        return None
+
+    ttl = datetime.timedelta(**{unit: value})
+
+    return ttl if ttl <= LOCK_TTL_MAX else None
+
+
+def get_lock_ttl(user: User) -> datetime.timedelta:
+
+    settings = user.settings if isinstance(user.settings, dict) else {}
+
+    return parse_lock_ttl(settings) or SCRYPT_KEY_MEMORY_TTL
+
+
+# The entry lock key itself. Deterministic: the same user and password always derive the same key.
+def derive_scrypt_key(user: User, password: str) -> bytes:
+
+    scrypt_salt = ENTRY_LOCK_SALT + user.email
+
+    return hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),
+                          n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
+                          maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
+
+
+def get_scrypt_key(user: User, password: str, read_cache=False):
+
+    global WRITE_LOCK_KEY_HASHTABLE
+
+    scrypt_key, expiry = None, None
+
+    if read_cache:
+        scrypt_key, expiry = WRITE_LOCK_KEY_HASHTABLE.get(user.id, (None, None))
+
+    if scrypt_key is None or (expiry is not None and expiry < datetime.datetime.now()):
+
+        if user.id in WRITE_LOCK_KEY_HASHTABLE:
+            del WRITE_LOCK_KEY_HASHTABLE[user.id]
+
+        if not authenticated(user, password):
+            json_abort(HTTPStatus.UNAUTHORIZED, {LOCK_AUTH_EXPIRED: True})
+
+        scrypt_key = derive_scrypt_key(user, password)
+
+        WRITE_LOCK_KEY_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + get_lock_ttl(user))
+
+    return scrypt_key
+
+
+def clear_scrypt_key(user: User):
+
+    global WRITE_LOCK_KEY_HASHTABLE
+    WRITE_LOCK_KEY_HASHTABLE.pop(user.id, None)
+
+
+def lock_entry_data(user: User, password: Optional[str], entry_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    copied_entry_data = dict(entry_data)
+
+    scrypt_key = get_scrypt_key(user, password, read_cache=True)
+    text = entry_data.get('text', '')
+
+    copied_entry_data['text'] = lock_text(scrypt_key, text)
+    copied_entry_data['locked'] = True
+    copied_entry_data['lock_version'] = CURRENT_LOCK_VERSION
+
+    return copied_entry_data
+
 def unlock_text(key_input, text):
 
-        key = create_32_byte_key(key_input)
+        if type(key_input) == str:
+            key = create_32_byte_key(key_input)
+        elif type(key_input) == bytes:
+            key = base64.urlsafe_b64encode(key_input)
+        else:
+            raise TypeError('key_input must be str or bytes')
+
         fernet = Fernet(key)
         
         text_as_bytes = text[2:-1].encode()
         return fernet.decrypt(text_as_bytes).decode()
+
+# Reads locked text at whatever version it was written at.
+def unlock_text_at_version(user: User, entry_data: Dict[str, Any], scrypt_key: bytes) -> str:
+
+    locked_text = entry_data.get('text', '')
+    lock_version = entry_data.get('lock_version', 0)
+
+    if lock_version == 0:
+        return unlock_text(user.email, locked_text)
+
+    if lock_version == 1:
+        return unlock_text(scrypt_key, locked_text)
+
+    raise RuntimeError('Lock version not supported')
+
+
+def unlock_entry_data(user: User, password, entry: Entry):
+
+    copied_entry_data = dict(entry.entry_data)
+
+    # Scrypt key on unlock must come from the request, not the in-memory cache, which is write-only.
+    scrypt_key = get_scrypt_key(user, password, read_cache=False)
+
+    copied_entry_data['text'] = unlock_text_at_version(user, copied_entry_data, scrypt_key)
+
+    return copied_entry_data
+
+
+def entry_relocker(user: User, current_password: str, new_password: str):
+
+    old_key = derive_scrypt_key(user, current_password)
+    new_key = derive_scrypt_key(user, new_password)
+
+    def relock(entry_data: Dict[str, Any]) -> Dict[str, Any]:
+
+        copied_entry_data = dict(entry_data)
+
+        if entry_data.get('locked', False):
+            text = unlock_text_at_version(user, entry_data, old_key)
+        else:
+            text = entry_data.get('text', '')
+
+        copied_entry_data['text'] = lock_text(new_key, text)
+        copied_entry_data['locked'] = True
+        copied_entry_data['lock_version'] = CURRENT_LOCK_VERSION
+
+        return copied_entry_data
+
+    return relock

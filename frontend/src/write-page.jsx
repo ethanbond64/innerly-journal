@@ -2,9 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
-import { fetchEntry, insertTextEntry, updateTextEntry } from "./requests.js";
+import { fetchEntry, fetchLockedEntry, insertTextEntry, updateTextEntry } from "./requests.js";
 import { Link, useLocation, useNavigate, useParams } from "./router.jsx";
 import { getDateNoTime } from "./utils.jsx";
+import { putEntry } from "./entry-handoff.js";
+import { PasswordModal } from "./password-modal.jsx";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
 
 // Measures the pixel offset of the caret within the textarea's scroll area
@@ -89,6 +91,7 @@ export const WritePage = () => {
 
     const onSubmit = (text) => {
         insertTextEntry(text, functionalDatetime, (data) => {
+            putEntry(data);
             navigate(viewRoute + data.id);
         });
     };
@@ -107,6 +110,7 @@ export const EditPage = () => {
     const [text, setText] = useState(location.state ? location.state.text : null);
     const [title, setTitle] = useState(null);
     const [functionalDate, setFunctionalDate] = useState(null);
+    const [passwordModalParams, setPasswordModalParams] = useState(null);
 
     useEffect(() => {
         if (!entryId) {
@@ -117,11 +121,30 @@ export const EditPage = () => {
             if (data.entry_type !== 'text' || !data.entry_data) {
                 navigate(homeRoute);
             }
-            if (text === null) {
-                setText(data.entry_data.text ? data.entry_data.text : '');
-            }
+
             setTitle(data.entry_data.title ? data.entry_data.title : null);
             setFunctionalDate(data.functional_datetime ? data.functional_datetime : null);
+
+            if (text !== null) {
+                return;
+            }
+
+            // The view page hands the plaintext over in location.state. Arriving any other way
+            // (a link, a bookmark, a reload) hands over ciphertext instead, which must never
+            // reach the editor: saving it would encrypt the ciphertext a second time.
+            if (data.entry_data.locked) {
+                setPasswordModalParams({
+                    prompt: "Enter password to edit entry.",
+                    callback: (password) => fetchLockedEntry(entryId, password, (unlocked) => {
+                        setPasswordModalParams(null);
+                        setText(unlocked.entry_data.text ? unlocked.entry_data.text : '');
+                    }),
+                    cancel: () => navigate(viewRoute + entryId)
+                });
+                return;
+            }
+
+            setText(data.entry_data.text ? data.entry_data.text : '');
         });
 
     }, [entryId, navigate]);
@@ -129,6 +152,7 @@ export const EditPage = () => {
     const onSubmit = (text) => {
         if (entryId) {
             updateTextEntry(entryId, { text }, null, (data) => {
+                putEntry(data);
                 navigate(viewRoute + data.id);
             });
         }
@@ -136,7 +160,11 @@ export const EditPage = () => {
 
     const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDate ? <> from {formatLongDateNoComma(new Date(functionalDate))}</> : null}</>);
 
-    return text === null ? null : <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
+    if (text === null) {
+        return passwordModalParams ? <PasswordModal {...passwordModalParams} /> : null;
+    }
+
+    return <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
 };
 
 export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
@@ -144,9 +172,12 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
 
     const navigate = useNavigate();
     const [showHeader, setShowHeader] = useState(true);
-    const [untrackedChanges, setUntrackedChanges] = useState(false);
-    const [asyncSaving, setAsyncSaving] = useState(false);
-    const [entryId, setEntryId] = useState(initialId);
+
+    const entryIdRef = useRef(initialId);
+    const dirtyRef = useRef(false);   // text differs from what the server has
+    const savingRef = useRef(false);  // a save request is in flight
+
+    const [saveState, setSaveState] = useState('saved'); // drives the status dot only
     const textareaRef = useRef(null);
     const arrowRef = useRef(null);
     const lastProgScrollRef = useRef(0); // timestamp of last programmatic scroll
@@ -235,35 +266,46 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
         }
     };
 
-    const onTextChange = () => {
-        // Autosave logic (unchanged)
-        setUntrackedChanges(true);
-        if (!asyncSaving) {
-            setAsyncSaving(true);
-            if (entryId === null) {
-                // TODO need to suspend tags and sentiment analysis until the user clicks save.
-                setTimeout(() => {
-                    setUntrackedChanges(false);
-                    const writeTo = textareaRef.current;
-                    if (writeTo) {
-                        insertTextEntry(writeTo.value, functionalDatetime, data => {
-                            setEntryId(data.id);
-                            setAsyncSaving(false);
-                        }); // TODO need fn datetime
-                    }
-                }, 3000); // TODO handle failure
-            } else {
-                setTimeout(() => {
-                    setUntrackedChanges(false);
-                    const writeTo = textareaRef.current;
-                    if (writeTo) {
-                        updateTextEntry(entryId, { text: writeTo.value }, null, () => {
-                            setAsyncSaving(false);
-                        });
-                    }
-                }, 3000); // TODO handle failure
+    // Autosave: every 3 seconds, save if the text is dirty and nothing is in flight. A
+    // failed save leaves the text dirty, so the next tick simply tries again.
+    useEffect(() => {
+        const onSaved = (data) => {
+            savingRef.current = false;
+            if (data && data.id) {
+                entryIdRef.current = data.id;
             }
-        }
+            // Edits made while the request was in flight are still unsaved.
+            setSaveState(dirtyRef.current ? 'unsaved' : 'saved');
+        };
+
+        const onFailed = () => {
+            savingRef.current = false;
+            dirtyRef.current = true; // the text never reached the server
+            setSaveState('failed');
+        };
+
+        const timer = setInterval(() => {
+            const writeTo = textareaRef.current;
+            if (!dirtyRef.current || savingRef.current || !writeTo) return;
+
+            dirtyRef.current = false;
+            savingRef.current = true;
+
+            if (entryIdRef.current === null) {
+                // TODO need to suspend tags and sentiment analysis until the user clicks save.
+                insertTextEntry(writeTo.value, functionalDatetime, onSaved, onFailed);
+            } else {
+                updateTextEntry(entryIdRef.current, { text: writeTo.value }, null, onSaved, onFailed);
+            }
+        }, 3000);
+
+        return () => clearInterval(timer);
+    }, [functionalDatetime]);
+
+    const onTextChange = () => {
+        dirtyRef.current = true;
+        // A failure stays red until a save actually succeeds.
+        setSaveState(prev => prev === 'failed' ? prev : 'unsaved');
 
         // Typewriter autoscroll
         const textarea = textareaRef.current;
@@ -350,10 +392,11 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     const onSubmitInner = (e) => {
         e.preventDefault();
         const text = textareaRef.current.value;
-        if (entryId === null) {
+        if (entryIdRef.current === null) {
             onSumbit(text);
         } else {
-            updateTextEntry(entryId, { text }, null, (data) => {
+            updateTextEntry(entryIdRef.current, { text }, null, (data) => {
+                putEntry(data);
                 navigate(viewRoute + data.id);
             });
         }
@@ -429,7 +472,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
                                 <span className="nremove hidden-xs">{showHeader ? 'Save ' : null}</span>
                                 <b><Icon name="chevron-right" /></b>
                             </button>
-                            <span style={{ float: 'right', marginRight: '8px', fontSize: 'xx-large', textAlign: 'center', marginTop: '-6px', color: (untrackedChanges ? '#ffcc00' : '#00ff00') }}>•</span>
+                            <span style={{ float: 'right', marginRight: '8px', fontSize: 'xx-large', textAlign: 'center', marginTop: '-6px', color: ({ failed: '#ff3b30', unsaved: '#ffcc00', saved: '#00ff00' })[saveState] }}>•</span>
                         </div>
                         <div id="progressbar">
                             <div style={{ height: '0px', width: '0%' }}></div>

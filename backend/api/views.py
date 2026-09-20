@@ -9,7 +9,10 @@ from flask import Blueprint, request, send_from_directory, current_app
 
 from sqlalchemy import Boolean, String, and_, cast, func, or_
 
-from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, lock_text, login_required, sign_filename, unlock_text, validate_email, validate_password
+from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
+    sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
+    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key, is_locked_text
+from api.extensions import db
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -21,6 +24,9 @@ views = Blueprint('views', __name__)
 
 SHARE_INIIAL = "todo"
 TAG_LIMIT = 32
+
+# User setting: encrypt new text entries before they are first written.
+LOCK_BY_DEFAULT = 'lock_by_default'
 
 # 53 weeks, the width of the activity grid.
 ACTIVITY_DAYS = 371
@@ -99,6 +105,9 @@ def login():
     
     token = get_token(user)
 
+    # Warm lock auth cache
+    get_scrypt_key(user, password, read_cache=False)
+
     return {'token': token, 'user': user.json()}, 200
 
 @views.route('/update_password', methods=['POST'])
@@ -117,10 +126,36 @@ def reset_password(current_user):
     if not authenticated(current_user, current_password):
         return {'message': 'Current password incorrect.'}, 401
     
-    current_user.password_hash = encrypt_password(new_password)
-    current_user.save()
+    relock = entry_relocker(current_user, current_password, new_password)
 
-    return {'success': True}, 200
+    clear_scrypt_key(current_user)
+
+    entries = Entry.query.filter(Entry.user_id == current_user.id, Entry.entry_type == 'text').all()
+
+    # Already locked entries have to move onto the new key. The rest only join them if asked.
+    if body.get('lock_all', False):
+        locked_entries = entries
+    else:
+        locked_entries = [entry for entry in entries if entry.entry_data.get('locked', False)]
+
+    # One transaction: a new password alongside an entry still under the old key is unrecoverable,
+    # so if any entry cannot be re-encrypted the password does not change either.
+    try:
+        for entry in locked_entries:
+            entry.update(entry_data=relock(entry.entry_data))
+
+        current_user.update(password_hash=encrypt_password(new_password))
+
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Password change rolled back, could not re-encrypt locked entries: {type(e).__name__} {e}")
+        return {'message': 'Could not re-encrypt your locked entries. Password unchanged.'}, 409
+
+    get_scrypt_key(current_user, new_password, read_cache=False)
+
+    return {'success': True, 'reencrypted': len(locked_entries)}, 200
 
 @views.route('/update/users/<int:id>', methods=['POST'])
 @login_required
@@ -141,20 +176,60 @@ def update_user(current_user, id):
     # Only thing to update is user settings
     input_settings = body.get('settings')
     if input_settings is not None:
-        update_settings = user.settings
-
-        # Sqlite treats initial empty json object as a string.
-        if update_settings == '{}':
-            update_settings = {}
+        update_settings = get_settings(user)
 
         if 'sensitivity' in input_settings and input_settings['sensitivity'] in ['default', 'blur', 'both']:
             update_settings['sensitivity'] = input_settings['sensitivity']
-        # TODO passcode
+
+        if LOCK_BY_DEFAULT in input_settings:
+            update_settings[LOCK_BY_DEFAULT] = bool(input_settings[LOCK_BY_DEFAULT])
+
+        # Both halves of the lock lifetime move together, and only if they describe a usable one.
+        if LOCK_TTL_VALUE in input_settings or LOCK_TTL_UNIT in input_settings:
+
+            if parse_lock_ttl(input_settings) is None:
+                return {'message': 'Bad request. Invalid lock timeout.'}, 400
+
+            update_settings[LOCK_TTL_VALUE] = input_settings[LOCK_TTL_VALUE]
+            update_settings[LOCK_TTL_UNIT] = input_settings[LOCK_TTL_UNIT]
             
         user.update(settings=update_settings)
         user.save()
 
     return {'data': user.json()}, 200
+
+# Sqlite stores the initial empty settings object as a string.
+def get_settings(user):
+
+    return user.settings if isinstance(user.settings, dict) else {}
+
+# Whether a new entry is encrypted before it is ever written. The client sends the flag it
+# read from the user's settings; a client that sends nothing still gets the setting applied.
+def lock_on_insert(current_user, body):
+
+    requested = body.get('locked')
+
+    if requested is None:
+        requested = get_settings(current_user).get(LOCK_BY_DEFAULT, True)
+
+    return bool(requested)
+
+# The writer just supplied this text, so it goes back in the clear even when the entry
+# is locked at rest. text_unlocked is a property of the response, never of the entry.
+def entry_json_with_text(entry, text, signer=None):
+
+    j = entry.json(signer=signer)
+
+    if text is None or not j['entry_data'].get('locked', False):
+        return j
+
+    entry_data = dict(j['entry_data'])
+    entry_data['text'] = text
+
+    j['entry_data'] = entry_data
+    j['text_unlocked'] = True
+
+    return j
 
 @views.route('/insert/entries', methods=['POST'])
 @login_required
@@ -183,6 +258,7 @@ def insert_entry(current_user):
     
     entry_data = body.get('entry_data')
     tags = []
+    submitted_text = None
 
     if entry_type == 'text':
         
@@ -190,6 +266,10 @@ def insert_entry(current_user):
             return {'message': 'Entry data missing'}, 400
         
         entry_data, tags = process_text_entry(entry_data)
+        submitted_text = entry_data.get('text')
+
+        if lock_on_insert(current_user, body):
+            entry_data = lock_entry_data(current_user, body.get('password'), entry_data)
 
     elif entry_type == 'file':
         
@@ -219,7 +299,7 @@ def insert_entry(current_user):
 
     upsert_tags(tags, current_user.id, new_entry.id)
 
-    return {'data': new_entry.json(signer=sign_filename)}, 201
+    return {'data': entry_json_with_text(new_entry, submitted_text, signer=sign_filename)}, 201
 
 @views.route('/update/entries/<int:id>', methods=['POST'])
 @login_required
@@ -238,6 +318,7 @@ def update_entry(current_user, id):
     
     # Parse valid updates and save
     changes = False
+    text = None
     entry_data = body.get('entry_data')
     if entry_data is not None:
         
@@ -252,15 +333,20 @@ def update_entry(current_user, id):
             changes = True
 
         if 'text' in entry_data:
-            
+
             text = entry_data['text']
+
+            # Don't edit with unencrypted text coming from the client
+            if original_entry_data.get('locked', False) and is_locked_text(text):
+                return {'message': 'Entry must be unlocked before it can be edited.'}, 409
+
+            original_entry_data['text'] = text
             original_entry_data['word_count'] = count_words(text)
 
             # NOTE we haven't re-asked for the password here, but since the entry was originally locked, we're locking it again.
             if original_entry_data.get('locked', False):
-                text = lock_text(current_user.email, text)
+                original_entry_data = lock_entry_data(current_user, None, original_entry_data)
 
-            original_entry_data['text'] = text
             changes = True
 
         entry.update(entry_data=original_entry_data)
@@ -274,7 +360,7 @@ def update_entry(current_user, id):
     if changes:
         entry.save()
 
-    return {'data': entry.json()}, 200
+    return {'data': entry_json_with_text(entry, text)}, 200
 
 @views.route('/fetch/entries', methods=['GET'])
 @login_required
@@ -313,11 +399,7 @@ def fetch_entries(current_user):
                 )
             )
         )
-            # Entry.tags.any(search) # TODO this is exact match case sensitive
 
-    # if tag:TODO seach by tag
-    #     # Exact tag search
-    #     query = query.filter(func.array_contains(Entry.tags, tag))
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200
@@ -440,7 +522,6 @@ def fetch_entry(current_user, id):
     if entry is None:
         return {'message': 'Entry not found'}, 404
 
-    # TODO passcode stuff
     if request.method == 'POST' and entry.entry_data.get('locked', False):
         body = request.get_json()
         if body is None:
@@ -453,9 +534,7 @@ def fetch_entry(current_user, id):
         if not authenticated(current_user, password):
             return {'message': 'Unauthorized'}, 401
         
-        entry_data = entry.entry_data
-        unlocked_text = unlock_text(current_user.email, entry_data.get('text', ''))
-        entry_data['text'] = unlocked_text
+        entry_data = unlock_entry_data(current_user, password, entry)
         entry.update(entry_data=entry_data)
 
     return {'data': entry.json()}, 200
@@ -483,29 +562,41 @@ def lock_entry(current_user, id):
     entry = Entry.query.filter(Entry.id == id, Entry.user_id == current_user.id).first()
     if entry is None:
         return {'message': 'Entry not found'}, 404
-    
+
+    if entry.entry_type != 'text':
+        return {'message': 'Entry type not supported for locking.'}, 400
+
     body = request.get_json()
     if body is None:
         return {'message': 'Bad request'}, 400
 
-    # Try no-longer requiring password to lock entries
-    # password = body.get('password')
-    # if password is None:
-    #     return {'message': 'Password required to lock entries.'}, 400
-    #
-    # if not authenticated(current_user, password):
-    #     return {'message': 'Unauthorized'}, 401
-    
-    entry_data = entry.entry_data
-    locked_text = lock_text(current_user.email, entry_data.get('text', ''))
-    
-    entry_data['locked'] = True
-    entry_data['text'] = locked_text
+    # Do nothing if already locked
+    if entry.entry_data.get('locked', False):
+        return {'data': entry.json()}, 200
+
+    # Password optional on lock due to lock key cache.
+    password = body.get('password')
+
+    entry_data = lock_entry_data(current_user, password, entry.entry_data)
     entry.update(entry_data=entry_data)
-    
     entry.save()
 
     return {'data': entry.json()}, 200
+
+
+@views.route('/lock/auth', methods=['POST'])
+@login_required
+def auth_lock_key_cache(current_user):
+
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+
+    password = body.get('password')
+    failed_to_cache = (get_scrypt_key(current_user, password, read_cache=False) == None)
+
+    return {LOCK_AUTH_EXPIRED: failed_to_cache}, 200
+
 
 @views.route('/unlock/entries/<int:id>', methods=['POST'])
 @login_required
@@ -526,13 +617,10 @@ def unlock_entry(current_user, id):
     if not authenticated(current_user, password):
         return {'message': 'Unauthorized'}, 401
     
-    entry_data = entry.entry_data
-    unlocked_text = unlock_text(current_user.email, entry_data.get('text', ''))
-    
+    entry_data = unlock_entry_data(current_user, password, entry)
     entry_data['locked'] = False
-    entry_data['text'] = unlocked_text
+
     entry.update(entry_data=entry_data)
-    
     entry.save()
 
     return {'data': entry.json()}, 200
@@ -609,7 +697,7 @@ def start_import(current_user):
     app_context = current_app.app_context()
     thread = threading.Thread(
         target=_import_worker,
-        args=(app_context, extract_path, current_user.id, passcode, aes_key, current_user.email),
+        args=(app_context, extract_path, current_user.id, passcode, aes_key),
         daemon=True,
     )
 
@@ -640,8 +728,8 @@ def cancel_import(current_user):
     return {'message': 'No running import to cancel.'}, 404
 
 
-def _import_worker(app_context, extract_path, user_id, passcode, aes_key, email):
+def _import_worker(app_context, extract_path, user_id, passcode, aes_key):
     app_context.push()
     job_state = import_jobs.get(user_id)
     cancel_event = import_jobs.get_cancel_event(user_id)
-    import_entries(extract_path, user_id, passcode, aes_key, email, job_state, cancel_event)
+    import_entries(extract_path, user_id, passcode, aes_key, job_state, cancel_event)

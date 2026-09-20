@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
-import { getUserData, setUserData, clearLocalStorage } from "./utils.jsx";
+import { getUserData, setUserData, clearLocalStorage, getLockTtl } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
 import { updatePassword, updateUser, importEntries, getImportStatus, getImportFiles, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 import { getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
-import { TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX } from "./constants.js";
+import { TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX, LOCK_TTL_UNIT_SECONDS, lockTtlMax } from "./constants.js";
 
 export const SettingsPage = () => {
 
@@ -17,12 +17,15 @@ export const SettingsPage = () => {
     const [success, setSuccess] = useState(null);
     const [userData, setUserDataComponent] = useState(null);
     const [editingPassword, setEditingPassword] = useState(false);
+    const [passwordMessage, setPasswordMessage] = useState(null); // null | { text, type }
+    const [lockAll, setLockAll] = useState(false);
     const [importFiles, setImportFiles] = useState([]);
     const [importPath, setImportPath] = useState("");
     const [importPasscode, setImportPasscode] = useState("");
     const [importStatus, setImportStatus] = useState(null); // null | { status, total, processed, failures, errors }
     const [submitting, setSubmitting] = useState(false);
     const [typewriter, setTypewriter] = useState(() => getTypewriterSettings());
+    const [lockTtl, setLockTtl] = useState(() => getLockTtl());
 
     const { isDarkMode, setDarkMode } = useDarkMode();
 
@@ -36,19 +39,24 @@ export const SettingsPage = () => {
         let newPasswordConfirm = document.getElementById('newPasswordConfirm').value;
         
         if (!oldPassword || !newPassword || !newPasswordConfirm) {
-            setError("Please fill out all fields to update password.");
+            setPasswordMessage({ text: "Please fill out all fields to update password.", type: "error" });
             return;
         }
         if (newPassword !== newPasswordConfirm) {
-            setError("New passwords do not match.");
+            setPasswordMessage({ text: "New passwords do not match.", type: "error" });
             return;
         }
         
-        updatePassword(oldPassword, newPassword, () => {
-            setSuccess("Password updated successfully.");
+        updatePassword(oldPassword, newPassword, lockAll, (reencrypted) => {
+            setPasswordMessage({
+                text: reencrypted
+                    ? `Password updated successfully. ${reencrypted} locked ${reencrypted === 1 ? 'entry' : 'entries'} re-encrypted.`
+                    : "Password updated successfully.",
+                type: "success"
+            });
             setEditingPassword(false);
         }, (e) => {
-            setError(e);
+            setPasswordMessage({ text: e, type: "error" });
         });
     };
 
@@ -63,6 +71,44 @@ export const SettingsPage = () => {
 
     const onCommitTypewriterLine = () => {
         setTypewriter(saveTypewriterSettings({ line: typewriter.line }));
+    };
+
+    const onToggleLockByDefault = (e) => {
+        updateUser(userData.id, { settings: { lock_by_default: e.target.checked } }, (data) => {
+            setUserData(data);
+            setUserDataComponent(data);
+        });
+    };
+
+    // Anything past the 7 day ceiling is saved as the ceiling for whichever unit is selected.
+    const saveLockTtl = (value, unit) => {
+        const max = lockTtlMax(unit);
+        const capped = Math.min(Math.max(value, 1), max);
+
+        setLockTtl({ value: capped, unit });
+
+        if (capped !== value) {
+            setError("Lock timeout cannot exceed 7 days.");
+        }
+
+        updateUser(userData.id, { settings: { lock_ttl_value: capped, lock_ttl_unit: unit } }, (data) => {
+            setUserData(data);
+            setUserDataComponent(data);
+        });
+    };
+
+    const onChangeLockTtlValue = (e) => {
+        setLockTtl((prev) => ({ ...prev, value: e.target.value }));
+    };
+
+    // Typing is free, the value is only checked and saved once the field is left.
+    const onCommitLockTtlValue = () => {
+        const value = parseInt(lockTtl.value, 10);
+        saveLockTtl(Number.isNaN(value) ? 1 : value, lockTtl.unit);
+    };
+
+    const onChangeLockTtlUnit = (e) => {
+        saveLockTtl(parseInt(lockTtl.value, 10) || 1, e.target.value);
     };
 
     const onSelectSensitivity = (e) => {
@@ -126,6 +172,8 @@ export const SettingsPage = () => {
         return <PageLoader />;
     }
 
+    let lockByDefault = !(userData && userData.settings && userData.settings.lock_by_default === false);
+
     let sensitivity = userData && userData.settings && userData.settings.sensitivity ? userData.settings.sensitivity : "default";
 
     return (
@@ -175,10 +223,55 @@ export const SettingsPage = () => {
                             </>
                         )}
                     </div>
+                    <div class="well">
+                        <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Lock New Entries</h4>
+                        <div class="toggle-container" style={{ display: 'inline-block', float: 'right'}}>
+                            <input type="checkbox" id="lockByDefaultSwitch" name="lockByDefault" onChange={onToggleLockByDefault} checked={lockByDefault}/>
+                            <label className="switch-label" for="lockByDefaultSwitch">Toggle</label>
+                        </div>
+                        <div style={{ clear: 'both' }}></div>
+                        <p class="text-muted" style={{ marginTop: '10px' }}>
+                            Encrypts each new entry with your password before it is stored, so it is never
+                            written in the clear. You will need your password to read it again later.
+                        </p>
+                        <label for="lockTtlValue"><strong>Stay unlocked for</strong></label>
+                        <div class="form-inline">
+                            <input
+                                class="form-control"
+                                id="lockTtlValue"
+                                type="number"
+                                min="1"
+                                max={lockTtlMax(lockTtl.unit)}
+                                step="1"
+                                style={{ width: '90px', marginRight: '10px' }}
+                                value={lockTtl.value}
+                                onChange={onChangeLockTtlValue}
+                                onBlur={onCommitLockTtlValue}
+                            />
+                            <select class="form-control lock-ttl-unit" id="lockTtlUnit" value={lockTtl.unit} onChange={onChangeLockTtlUnit}>
+                                {Object.keys(LOCK_TTL_UNIT_SECONDS).map((unit) => (
+                                    <option key={unit} value={unit}>{unit}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <p class="text-muted" style={{ marginTop: '10px' }}>
+                            How long the server holds the key after you enter your password, up to 7 days.
+                            Shorter is safer, longer means fewer prompts while writing.
+                        </p>
+                    </div>
                     <div class="list-group well">
                         <h4>Credentials</h4>
+                        <Notification
+                            message={passwordMessage ? passwordMessage.text : null}
+                            clear={() => setPasswordMessage(null)}
+                            type={passwordMessage ? passwordMessage.type : 'error'}
+                            inline
+                        />
                         { editingPassword ?
                         <>
+                            <p class="text-muted">
+                                Changing your password re-encrypts your locked entries with the new one.
+                            </p>
                             <div class="form-group sm-margin-bottom">
                                 <label for="password"><strong>Current Password</strong>
                                 </label>
@@ -194,11 +287,19 @@ export const SettingsPage = () => {
                                     <strong>Confirm New Password</strong>
                                 </label>
                                 <input class="form-control" id="newPasswordConfirm" maxlength="128" minlength="8" name="newPasswordConfirm" type="password" placeholder="" />
-                                <button onClick={() => setEditingPassword(false)} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px', marginRight: '10px' }}>Cancel</button>
+                                <div class="sm-margin-bottom" style={{ marginTop: '10px' }}>
+                                    <label for="lockAllSwitch" style={{ display: 'inline-block', float: 'left' }}>Lock all unlocked text entries</label>
+                                    <div class="toggle-container" style={{ display: 'inline-block', float: 'right' }}>
+                                        <input type="checkbox" id="lockAllSwitch" name="lockAll" onChange={(e) => setLockAll(e.target.checked)} checked={lockAll}/>
+                                        <label className="switch-label" for="lockAllSwitch">Toggle</label>
+                                    </div>
+                                    <div style={{ clear: 'both' }}></div>
+                                </div>
+                                <button onClick={() => { setEditingPassword(false); setPasswordMessage(null); }} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px', marginRight: '10px' }}>Cancel</button>
                                 <button onClick={onClickUpdatePassword} class="btn btn-md btn-info" type="button" style={{ marginTop: '10px'}}>Update</button>
                             </div>
                         </> : 
-                        <span onClick={() => setEditingPassword(true)} class="list-group-item" style={{ cursor: 'pointer', 'borderRadius': '.25rem!important' }}>
+                        <span onClick={() => { setEditingPassword(true); setPasswordMessage(null); }} class="list-group-item" style={{ cursor: 'pointer', 'borderRadius': '.25rem!important' }}>
                             Click here to update password
                         </span>}
                     </div>

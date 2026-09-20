@@ -7,14 +7,15 @@ import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, upda
 import { BasePage } from "./base-page.jsx";
 import { ClickOutsideTracker, equalsDate } from "./utils.jsx";
 import { PasswordModal } from "./password-modal.jsx";
+import { takeEntry } from "./entry-handoff.js";
 
-export const ViewPage = ({ entryInput = null }) => {
+export const ViewPage = () => {
 
     const { entryId } = useParams();
     const navigate = useNavigate();
     const titleRef = useRef(null);
 
-    const [entry, setEntry] = useState(entryInput);
+    const [entry, setEntry] = useState(() => takeEntry(entryId));
     const [title, setTitle] = useState(null);
     const [sentiment, setSentiment] = useState("Neutral");
     const [text, setText] = useState("");
@@ -40,16 +41,21 @@ export const ViewPage = ({ entryInput = null }) => {
             setTitle(entry.entry_data.title);
         }
         
+        // An entry saved a moment ago comes back in the clear: locked at rest, but the
+        // writer has already seen the text, so there is nothing to prompt for.
         if (entry && entry.entry_data && entry.entry_data.locked) {
             setLocked(true);
-            setPasswordModalParams({
-                prompt: "Enter password to view entry.",
-                callback: openLockedEntry,
-                cancel: () => navigate(homeRoute)
-            });
+
+            if (!entry.text_unlocked) {
+                setPasswordModalParams({
+                    prompt: "Enter password to view entry.",
+                    callback: openLockedEntry,
+                    cancel: () => navigate(homeRoute)
+                });
+            }
         }
 
-        if (entry && entry.entry_data && entry.entry_data.text && !entry.entry_data.locked) {
+        if (entry && entry.entry_data && entry.entry_data.text && (!entry.entry_data.locked || entry.text_unlocked)) {
             setText(entry.entry_data.text);
         }
 
@@ -149,8 +155,9 @@ export const ViewPage = ({ entryInput = null }) => {
         });
     };
 
-    let wordCount = text.split(" ").length;
-    let sentenceCount = text.split(/[.!?]/).length;
+    // No text yet means a locked entry nobody has unlocked, so there is nothing to count.
+    let wordCount = text ? text.split(" ").length : "-";
+    let sentenceCount = text ? text.split(/[.!?]/).length : "-";
 
     let tags = entry && entry.tags ? entry.tags : [];
     let memory = entry && ! equalsDate(new Date(entry.functional_datetime), new Date(entry.created_on));

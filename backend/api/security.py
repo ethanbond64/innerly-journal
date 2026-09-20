@@ -26,10 +26,9 @@ CURRENT_LOCK_VERSION = 1
 
 ENTRY_LOCK_SALT = 'innerly-entry-lock'
 
-SCRYPT_KEY_MEMORY_TTL = datetime.timedelta(minutes=15)
+SCRYPT_KEY_MEMORY_TTL = datetime.timedelta(hours=1)
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
 SCRYPT_KEY_LEN = 32
-SCRYPT_SALT_LEN = 16
 
 # How long the lock key stays cached, chosen by the user as a count plus a unit.
 LOCK_TTL_VALUE = 'lock_ttl_value'
@@ -209,6 +208,12 @@ def get_scrypt_key(user: User, password: str, read_cache=False):
         WRITE_LOCK_KEY_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + get_lock_ttl(user))
 
     return scrypt_key
+
+
+def clear_scrypt_key(user: User):
+
+    global WRITE_LOCK_KEY_HASHTABLE
+    WRITE_LOCK_KEY_HASHTABLE.pop(user.id, None)
 
 
 def lock_entry_data(user: User, password: Optional[str], entry_data: Dict[str, Any]) -> Dict[str, Any]:

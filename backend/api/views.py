@@ -11,7 +11,7 @@ from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
-    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker
+    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key
 from api.extensions import db
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
@@ -128,6 +128,8 @@ def reset_password(current_user):
     
     relock = entry_relocker(current_user, current_password, new_password)
 
+    clear_scrypt_key(current_user)
+
     entries = Entry.query.filter(Entry.user_id == current_user.id, Entry.entry_type == 'text').all()
 
     # Already locked entries have to move onto the new key. The rest only join them if asked.
@@ -151,7 +153,6 @@ def reset_password(current_user):
         print(f"Password change rolled back, could not re-encrypt locked entries: {type(e).__name__} {e}")
         return {'message': 'Could not re-encrypt your locked entries. Password unchanged.'}, 409
 
-    # The cache still holds the key the old password derived.
     get_scrypt_key(current_user, new_password, read_cache=False)
 
     return {'success': True, 'reencrypted': len(locked_entries)}, 200
@@ -604,7 +605,7 @@ def unlock_entry(current_user, id):
     if not authenticated(current_user, password):
         return {'message': 'Unauthorized'}, 401
     
-    entry_data = unlock_entry_data(current_user, password, entry.entry_data)
+    entry_data = unlock_entry_data(current_user, password, entry)
     entry_data['locked'] = False
 
     entry.update(entry_data=entry_data)

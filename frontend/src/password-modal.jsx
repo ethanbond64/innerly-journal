@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { ClickOutsideTracker } from "./utils.jsx";
+import { ClickOutsideTracker, getLockTtl } from "./utils.jsx";
 import { authenticateLock, onLockAuthExpired } from "./requests.js";
 
 const LOCK_TIMEOUT_PROMPT = "Enter password to continue.";
-const LOCK_TIMEOUT_SUBTITLE = "Password is required to lock your entries, but must be re-entered every 15 minutes.";
+
+// Quotes back the lifetime the user picked, since that is how long this modal stays away.
+const lockTimeoutSubtitle = () => {
+    const { value, unit } = getLockTtl();
+    const period = value === 1 ? unit.slice(0, -1) : `${value} ${unit}`;
+    return `Password is required to lock your entries, but must be re-entered every ${period}.`;
+};
 
 // One modal, two uses:
 //  - unlocking an entry: the parent passes prompt/callback/cancel and decides when to render it.
@@ -72,7 +78,7 @@ export const PasswordModal = ({ prompt = null, callback = (p) => {}, cancel = nu
                                 <h3 className="modal-title" id="lockModalLabel">{lockTimeout ? LOCK_TIMEOUT_PROMPT : prompt}</h3>
                                 {
                                     lockTimeout ?
-                                    <p className="text-muted" id="lockModalSubtitle" style={{ marginTop: '8px', marginBottom: '0px' }}>{LOCK_TIMEOUT_SUBTITLE}</p>
+                                    <p className="text-muted" id="lockModalSubtitle" style={{ marginTop: '8px', marginBottom: '0px' }}>{lockTimeoutSubtitle()}</p>
                                     : null
                                 }
                             </div>

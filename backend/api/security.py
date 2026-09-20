@@ -177,6 +177,16 @@ def get_lock_ttl(user: User) -> datetime.timedelta:
     return parse_lock_ttl(settings) or SCRYPT_KEY_MEMORY_TTL
 
 
+# The entry lock key itself. Deterministic: the same user and password always derive the same key.
+def derive_scrypt_key(user: User, password: str) -> bytes:
+
+    scrypt_salt = ENTRY_LOCK_SALT + user.email
+
+    return hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),
+                          n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
+                          maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
+
+
 def get_scrypt_key(user: User, password: str, read_cache=False):
 
     global WRITE_LOCK_KEY_HASHTABLE
@@ -194,10 +204,7 @@ def get_scrypt_key(user: User, password: str, read_cache=False):
         if not authenticated(user, password):
             json_abort(HTTPStatus.UNAUTHORIZED, {LOCK_AUTH_EXPIRED: True})
 
-        scrypt_salt = ENTRY_LOCK_SALT + user.email
-        scrypt_key =  hashlib.scrypt(password.encode("utf-8"), salt=scrypt_salt.encode("utf-8"),
-                                     n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P,
-                              maxmem=128 * SCRYPT_N * SCRYPT_R * 2, dklen=SCRYPT_KEY_LEN)
+        scrypt_key = derive_scrypt_key(user, password)
 
         WRITE_LOCK_KEY_HASHTABLE[user.id] = (scrypt_key, datetime.datetime.now() + get_lock_ttl(user))
 
@@ -231,29 +238,45 @@ def unlock_text(key_input, text):
         text_as_bytes = text[2:-1].encode()
         return fernet.decrypt(text_as_bytes).decode()
 
+# Reads locked text at whatever version it was written at.
+def unlock_text_at_version(user: User, entry_data: Dict[str, Any], scrypt_key: bytes) -> str:
+
+    locked_text = entry_data.get('text', '')
+    lock_version = entry_data.get('lock_version', 0)
+
+    if lock_version == 0:
+        return unlock_text(user.email, locked_text)
+
+    if lock_version == 1:
+        return unlock_text(scrypt_key, locked_text)
+
+    raise RuntimeError('Lock version not supported')
+
+
 def unlock_entry_data(user: User, password, entry: Entry):
 
     copied_entry_data = dict(entry.entry_data)
 
-    locked_text = copied_entry_data.get('text', '')
-    lock_version = copied_entry_data.get('lock_version', 0)
-
     # Scrypt key on unlock must come from the request, not the in-memory cache, which is write-only.
     scrypt_key = get_scrypt_key(user, password, read_cache=False)
 
-    if lock_version == 0:
-
-        copied_entry_data['text'] = unlock_text(user.email, locked_text)
-
-        # TODO migrate to version 1 behind the scenes, require password + save
-        # new_locked_entry_data = lock_entry_data(user, password, copied_entry_data)
-        # entry.update(entry_data=new_locked_entry_data)
-        # entry.save()
-
-    elif lock_version == 1:
-        copied_entry_data['text'] = unlock_text(scrypt_key, locked_text)
-
-    else:
-        raise RuntimeError('Lock version not supported')
+    copied_entry_data['text'] = unlock_text_at_version(user, copied_entry_data, scrypt_key)
 
     return copied_entry_data
+
+
+def entry_relocker(user: User, current_password: str, new_password: str):
+
+    old_key = derive_scrypt_key(user, current_password)
+    new_key = derive_scrypt_key(user, new_password)
+
+    def relock(entry_data: Dict[str, Any]) -> Dict[str, Any]:
+
+        copied_entry_data = dict(entry_data)
+
+        copied_entry_data['text'] = lock_text(new_key, unlock_text_at_version(user, entry_data, old_key))
+        copied_entry_data['lock_version'] = CURRENT_LOCK_VERSION
+
+        return copied_entry_data
+
+    return relock

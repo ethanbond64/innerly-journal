@@ -45,8 +45,10 @@ export const SettingsPage = () => {
             return;
         }
         
-        updatePassword(oldPassword, newPassword, () => {
-            setSuccess("Password updated successfully.");
+        updatePassword(oldPassword, newPassword, (reencrypted) => {
+            setSuccess(reencrypted
+                ? `Password updated successfully. ${reencrypted} locked ${reencrypted === 1 ? 'entry' : 'entries'} re-encrypted.`
+                : "Password updated successfully.");
             setEditingPassword(false);
         }, (e) => {
             setError(e);

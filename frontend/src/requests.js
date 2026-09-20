@@ -113,7 +113,7 @@ export const updatePassword = (oldPassword, newPassword, callback, onError = (m)
         headers: getHeaders(),
         body: JSON.stringify({ current_password: oldPassword, new_password: newPassword })
     }), {
-        onResult: () => callback(),
+        onResult: (response) => callback(response.data.reencrypted),
         onError: messageHandler(onError, "Unable to update password."),
         logoutOn401: false
     });

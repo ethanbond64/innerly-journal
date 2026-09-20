@@ -11,7 +11,8 @@ from sqlalchemy import Boolean, String, and_, cast, func, or_
 
 from api.security import authenticated, encrypt_password, get_token, get_user_from_signature, login_required, \
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
-    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl
+    LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker
+from api.extensions import db
 from api.models import User, Entry, Tag, getattr_typed, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -125,10 +126,30 @@ def reset_password(current_user):
     if not authenticated(current_user, current_password):
         return {'message': 'Current password incorrect.'}, 401
     
-    current_user.password_hash = encrypt_password(new_password)
-    current_user.save()
+    relock = entry_relocker(current_user, current_password, new_password)
 
-    return {'success': True}, 200
+    entries = Entry.query.filter(Entry.user_id == current_user.id, Entry.entry_type == 'text').all()
+    locked_entries = [entry for entry in entries if entry.entry_data.get('locked', False)]
+
+    # One transaction: a new password alongside an entry still under the old key is unrecoverable,
+    # so if any entry cannot be re-encrypted the password does not change either.
+    try:
+        for entry in locked_entries:
+            entry.update(entry_data=relock(entry.entry_data))
+
+        current_user.update(password_hash=encrypt_password(new_password))
+
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Password change rolled back, could not re-encrypt locked entries: {type(e).__name__} {e}")
+        return {'message': 'Could not re-encrypt your locked entries. Password unchanged.'}, 409
+
+    # The cache still holds the key the old password derived.
+    get_scrypt_key(current_user, new_password, read_cache=False) # TODO this won't override the existing password cache entry if it is not expired.
+
+    return {'success': True, 'reencrypted': len(locked_entries)}, 200
 
 @views.route('/update/users/<int:id>', methods=['POST'])
 @login_required

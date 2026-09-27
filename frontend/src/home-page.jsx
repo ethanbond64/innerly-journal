@@ -19,7 +19,7 @@ export const HomePage = () => {
   // Fixed for the life of the page, so the badge does not move rows at midnight.
   const today = useMemo(() => getTodaysDate(), []);
 
-  const { loading, list } = useFetch(search, offset, limit);  
+  const { loading, list } = useFetch(search, offset, limit);  // TODO this needs to propagate day tags
   const loader = useRef(null);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export const HomePage = () => {
             {list.map((row,i) => row.collapse ? 
                 <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} /> :
                 <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath}
-                    memories={equalsDate(row.date, today) ? memories : []} />
+                    memories={equalsDate(row.date, today) ? memories : []} /> // TODO pass date tag args
             )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>

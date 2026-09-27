@@ -11,6 +11,8 @@ import { LinkCard } from './cards/link-card.jsx';
 
 export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [] }) =>  {
 
+    // TODO date tag subcomponent, get initial state from args
+
     const [entryGroups, setEntryGroups] = useState([]);
     const [showMemories, setShowMemories] = useState(false);
 

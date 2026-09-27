@@ -125,11 +125,15 @@ export const updateUser = (userId, data, callback, onError = (e) => {}) =>
         body: JSON.stringify(data)
     }), { onResult: (response) => callback(response.data.data), onError });
 
+
+// TODO uptake new shape
 export const fetchEntries = (search, offset, limit, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
         headers: getHeaders()
     }), { onError });
 
+
+// TODO uptake new shape
 export const fetchDay = (date, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/entries?date=${date}&limit=${dayLimit}&offset=0`, {
         headers: getHeaders()

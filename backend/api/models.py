@@ -89,6 +89,7 @@ class Tag(db.Model, BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # day_tag = db.Column(db.Boolean, nullable=False, default=False, server_default='FALSE')
 
 class EntryTagXref(db.Model, BaseModel):
     __tablename__ = 'entry_tag_xref'
@@ -97,6 +98,15 @@ class EntryTagXref(db.Model, BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'), nullable=False)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)
+
+# class DateTagXref(db.Model, BaseModel):
+#     __tablename__ = 'date_tag_xref'
+#     __table_args__ = (db.UniqueConstraint('user_id', 'functional_datetime', 'tag_id', name='_user_date_tag_uc'),)
+#
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+#     functional_datetime = db.Column(db.DateTime(), default=get_datetime, index=True)
+#     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)
 
 
 def upsert_tags(tags, user_id, entry_id):

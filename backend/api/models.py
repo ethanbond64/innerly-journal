@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from sqlalchemy import inspect, text
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -89,8 +90,11 @@ class Tag(db.Model, BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    # TODO new column, should be lazy created on startup for users who don't have it.
-    # day_tag = db.Column(db.Boolean, nullable=False, default=False, server_default='FALSE')
+    # One row per name per user, so a tag used on days and a tag used on entries with the
+    # same name are the same row. This marks a tag as offered for days; it is not exclusive.
+    # Sqlite keeps a quoted default as text, and 'FALSE' read back as a boolean is true, so the
+    # default is the number sqlite actually stores a false in.
+    day_tag = db.Column(db.Boolean, nullable=False, default=False, server_default=text('0'))
 
 class EntryTagXref(db.Model, BaseModel):
     __tablename__ = 'entry_tag_xref'
@@ -100,15 +104,41 @@ class EntryTagXref(db.Model, BaseModel):
     entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'), nullable=False)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)
 
-# TODO new table - should be lazy created on startup for users who don't have it in their db schema. NO 3rd party migration tool.
-# class DateTagXref(db.Model, BaseModel):
-#     __tablename__ = 'date_tag_xref'
-#     __table_args__ = (db.UniqueConstraint('user_id', 'functional_datetime', 'tag_id', name='_user_date_tag_uc'),)
-#
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-#     functional_datetime = db.Column(db.DateTime(), default=get_datetime, index=True)
-#     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)
+# A tag on a day itself, with no entry behind it. The datetime follows the same convention
+# the entries do — the local day at 23:59, stored as UTC — so the client buckets both into
+# days the same way. The constraint therefore holds a day to one row per tag only as long as
+# that convention is kept, so nothing should write here with a time of its own choosing.
+class DateTagXref(db.Model, BaseModel):
+    __tablename__ = 'date_tag_xref'
+    __table_args__ = (db.UniqueConstraint('user_id', 'functional_datetime', 'tag_id', name='_user_date_tag_uc'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    functional_datetime = db.Column(db.DateTime(), default=get_datetime, index=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), nullable=False)
+
+# Tables missing from an existing database are created by db.create_all() on startup, but a
+# column added to a table that already exists is not, and there is no migration tool here by
+# design. Each entry is a column this application expects and the DDL to add it, applied once,
+# in the order they were introduced.
+COLUMN_MIGRATIONS = [
+    ('tags', 'day_tag', 'day_tag BOOLEAN NOT NULL DEFAULT 0'),
+]
+
+def apply_column_migrations():
+
+    inspector = inspect(db.engine)
+
+    for table, column, ddl in COLUMN_MIGRATIONS:
+
+        if not inspector.has_table(table):
+            continue
+
+        if column in {existing['name'] for existing in inspector.get_columns(table)}:
+            continue
+
+        db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN {ddl}'))
+        db.session.commit()
 
 
 def upsert_tags(tags, user_id, entry_id):

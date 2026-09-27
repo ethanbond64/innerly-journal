@@ -6,6 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from api.extensions import db
 
 PREIVEW_LENGTH = 64
+TAG_NAME_LENGTH = 255
 
 def get_datetime():
     return datetime.now(timezone.utc)
@@ -139,6 +140,28 @@ def apply_column_migrations():
 
         db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN {ddl}'))
         db.session.commit()
+
+
+def upsert_day_tag(name, user_id):
+
+    if name is None:
+        return None
+
+    name = name.strip().lower()
+
+    if len(name) == 0 or len(name) > TAG_NAME_LENGTH:
+        return None
+
+    tag = Tag.query.filter(Tag.user_id == user_id, Tag.name == name).first()
+
+    if tag is None:
+        return Tag(user_id=user_id, name=name, day_tag=True).save()
+
+    if not tag.day_tag:
+        tag.update(day_tag=True)
+        tag.save()
+
+    return tag
 
 
 def upsert_tags(tags, user_id, entry_id):

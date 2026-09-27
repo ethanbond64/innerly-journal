@@ -28,13 +28,19 @@ type Entry struct {
 	FunctionalDatetime time.Time      `json:"functional_datetime" db:"functional_datetime"`
 	EntryType          string         `json:"entry_type" db:"entry_type"`
 	EntryData          map[string]any `json:"entry_data" db:"entry_data"`
+
+	// Tags is read from entry_tag_xref rather than a column of its own, and
+	// TextUnlocked marks a response carrying text the writer just supplied for
+	// an entry that is locked at rest. Neither is ever written back.
+	Tags         []string `json:"tags" db:"-"`
+	TextUnlocked bool     `json:"text_unlocked,omitempty" db:"-"`
 }
 
 // Table: tags
 type Tag struct {
 	BaseModel
 	ID     int    `json:"id" db:"id"`
-	UserID string `json:"user_id" db:"user_id"`
+	UserID int    `json:"user_id" db:"user_id"`
 	Name   string `json:"name" db:"name"`
 }
 

@@ -362,13 +362,11 @@ def update_entry(current_user, id):
 
     return {'data': entry_json_with_text(entry, text)}, 200
 
-# TODO fetch datetags - no filter, but paging
-
-# TODO insert datetag
+# TODO insert datetagxref
  # Upsert tag
  # Delete
 
-# TODO delete datetag
+# TODO delete datetagxref
  # Delete date_tag_xref entry ONLY
 
 
@@ -516,6 +514,7 @@ def fetch_tags(current_user):
     limit = request.args.get('limit', 30)
     offset = request.args.get('offset', 0)
     name = request.args.get('search', None)
+    # TODO filter on day_use...
 
     query = Tag.query.filter(Tag.user_id == current_user.id)
 

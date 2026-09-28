@@ -3,7 +3,7 @@ import { formatShortDate } from './date-format.js';
 import { Row } from "./row.jsx";
 import { equalsDate } from "./utils.jsx";
 
-export const Collapse = ({ row, setImagePath }) => {
+export const Collapse = ({ row, setImagePath, dayTags = null }) => {
 
     const [open, setOpen] = React.useState(false);
     const [rows, setRows] = React.useState([]);
@@ -37,7 +37,7 @@ export const Collapse = ({ row, setImagePath }) => {
     }, [open, row]);
 
     return open ?
-        rows.map((r, i) => <Row key={`collapse-row-${i}`} row={r} setImagePath={setImagePath} />) :
+        rows.map((r, i) => <Row key={`collapse-row-${i}`} row={r} setImagePath={setImagePath} dayTags={dayTags} />) :
         (<div className="c_well" style={{ textAlign: 'center' }}>
             <div className={`row sm-margin-bottom`}>
                 <div className="col-sm-3">

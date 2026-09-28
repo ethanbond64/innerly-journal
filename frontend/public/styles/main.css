@@ -1305,3 +1305,97 @@ a.activity-cell:hover {
 .memory-year:focus > .memory-year-go {
   color: #ffd942;
 }
+
+/* Tags on the day itself, under the date on each row. They sit where the memories badge
+   does and are boxed like it, in the grey of a card rather than its gold. */
+.day-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.day-tag,
+.day-tag-add,
+.day-tag-input {
+  padding: 4px 10px;
+  background-color: transparent;
+  border: 1px solid var(--dm-muted);
+  border-radius: 6px;
+  color: var(--dm-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Only the day being written on offers the button outright. Every other row keeps it
+   until the row is hovered, the way the cards hold back their own delete. */
+.day-tag-add {
+  display: none;
+  cursor: pointer;
+  border-style: dashed;
+  color: var(--dm-muted);
+}
+
+.owell:hover .day-tag-add,
+.day-tags-open .day-tag-add {
+  display: block;
+}
+
+.day-tag-add:hover {
+  border-style: solid;
+  color: var(--dm-text);
+}
+
+.day-tag-remove {
+  display: none;
+  padding: 0;
+  margin-left: 6px;
+  background: none;
+  border: 0;
+  color: #a40f0f;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.day-tag:hover .day-tag-remove {
+  display: inline;
+}
+
+.day-tag-picker {
+  position: relative;
+}
+
+.day-tag-input {
+  width: 160px;
+  font-weight: 400;
+}
+
+.day-tag-options {
+  position: absolute;
+  z-index: 20;
+  margin-top: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  background-color: var(--bgeb);
+  border: 1px solid var(--dm-muted);
+  border-radius: 6px;
+}
+
+.day-tag-option {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: 0;
+  color: var(--dm-text);
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.day-tag-option:hover {
+  background-color: var(--well-grey);
+}

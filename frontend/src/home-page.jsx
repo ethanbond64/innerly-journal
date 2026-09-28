@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useFetch } from "./use-fetch.js";
+import { useDayTags } from "./use-day-tags.js";
 import { fetchMemories } from "./requests.js";
 import { dateToString, equalsDate, getTodaysDate } from "./utils.jsx";
 import { Collapse } from "./collapse.jsx";
@@ -19,7 +20,8 @@ export const HomePage = () => {
   // Fixed for the life of the page, so the badge does not move rows at midnight.
   const today = useMemo(() => getTodaysDate(), []);
 
-  const { loading, list } = useFetch(search, offset, limit);  // TODO this needs to propagate day tags
+  const { loading, list } = useFetch(search, offset, limit);
+  const dayTags = useDayTags();
   const loader = useRef(null);
 
   useEffect(() => {
@@ -60,9 +62,10 @@ export const HomePage = () => {
         <div className={`container`}>
           <div id="scroller" className="mb-3">
             {list.map((row,i) => row.collapse ? 
-                <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} /> :
-                <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath}
-                    memories={equalsDate(row.date, today) ? memories : []} /> // TODO pass date tag args
+                <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} dayTags={dayTags} /> :
+                <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} dayTags={dayTags}
+                    memories={equalsDate(row.date, today) ? memories : []}
+                    openTags={equalsDate(row.date, today)} />
             )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>

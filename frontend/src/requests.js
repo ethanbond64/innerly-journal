@@ -126,18 +126,41 @@ export const updateUser = (userId, data, callback, onError = (e) => {}) =>
     }), { onResult: (response) => callback(response.data.data), onError });
 
 
-// TODO uptake new shape
 export const fetchEntries = (search, offset, limit, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
         headers: getHeaders()
     }), { onError });
 
 
-// TODO uptake new shape
 export const fetchDay = (date, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/entries?date=${date}&limit=${dayLimit}&offset=0`, {
         headers: getHeaders()
     }), { onError });
+
+export const fetchTaggedDays = (onError = (e) => {}) =>
+    apiRequest(() => fetch('/api/fetch/tagged_days', {
+        headers: getHeaders()
+    }), { onError });
+
+// The tags offered by the day tag typeahead.
+export const fetchDateTags = (search, onError = (e) => {}) =>
+    apiRequest(() => fetch(`/api/fetch/date_tags?search=${encodeURIComponent(search)}`, {
+        headers: getHeaders()
+    }), { onError });
+
+export const insertDateTag = (name, functional_datetime, callback, onError = (e) => {}) =>
+    apiRequest(() => fetch('/api/insert/date_tags', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ name, functional_datetime })
+    }), { onResult: (response) => callback(response.data.data), onError });
+
+export const deleteDateTag = (id, callback, onError = (e) => {}) =>
+    apiRequest(() => fetch(`/api/delete/date_tags/${id}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({})
+    }), { onResult: (response) => callback(response.data.success), onError });
 
 export const fetchMemories = (date, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/memories?date=${date}`, {

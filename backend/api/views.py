@@ -429,6 +429,19 @@ def delete_date_tag(current_user, id):
 
     return {'success': True}, 200
 
+# Every tag on every day, for the client to key by day.
+@views.route('/fetch/tagged_days', methods=['GET'])
+@login_required
+def fetch_tagged_days(current_user):
+
+    rows = DateTagXref.query.filter(DateTagXref.user_id == current_user.id) \
+        .join(Tag, Tag.id == DateTagXref.tag_id) \
+        .with_entities(DateTagXref, Tag.name) \
+        .order_by(DateTagXref.functional_datetime.desc()).all()
+
+    return {'data': [date_tag_json(xref, name) for xref, name in rows]}, 200
+
+
 # The tags offered when tagging a day.
 @views.route('/fetch/date_tags', methods=['GET'])
 @login_required

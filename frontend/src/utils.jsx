@@ -38,6 +38,8 @@ export const clearLocalStorage = () => {
     localStorage.removeItem(innerlyToken);
 }
 
+export const capitalize = (string) => string.charAt(0).toUpperCase() + string.slice(1);
+
 export const getTodaysDate = () => {
     const now = new Date();
     return getDateNoTime(now.getFullYear(), now.getMonth(), now.getDate());

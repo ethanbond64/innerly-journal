@@ -8,10 +8,10 @@ import { TextCard } from './cards/text-card.jsx';
 import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
+import { DayTags } from './day-tags.jsx';
 
-export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [] }) =>  {
-
-    // TODO date tag subcomponent, get initial state from args
+export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [],
+    dayTags = null, openTags = false }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
     const [showMemories, setShowMemories] = useState(false);
@@ -92,7 +92,7 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                 <div className="col-sm-3">
                     { i > 0 ? 
                         null :
-                        <h3 id="title" className="datelabel" >
+                        <><h3 id="title" className="datelabel" >
                             { linkDay ?
                                 <Link className="datelabel-link" to={dayRoute + dateToString(row.date)}>
                                     {label === null ? formatLongDate(row.date) : label}
@@ -105,6 +105,7 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                                 null
                             }
                         </h3>
+                        <DayTags date={row.date} dayTags={dayTags} open={openTags} /></>
                     }
                 </div>
                 <div className="col-sm-8">

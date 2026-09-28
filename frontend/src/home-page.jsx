@@ -64,8 +64,7 @@ export const HomePage = () => {
             {list.map((row,i) => row.collapse ? 
                 <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} dayTags={dayTags} /> :
                 <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} dayTags={dayTags}
-                    memories={equalsDate(row.date, today) ? memories : []}
-                    openTags={equalsDate(row.date, today)} />
+                    memories={equalsDate(row.date, today) ? memories : []} />
             )}
             {loading && <p>Loading...</p>}
             <div ref={loader}></div>

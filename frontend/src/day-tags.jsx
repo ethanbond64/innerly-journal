@@ -4,7 +4,7 @@ import { capitalize, ClickOutsideTracker, dateToString, getDateNoTime } from "./
 
 //
 // Tags on the day itself, with no entry behind them. The add button is revealed by
-// hovering the row, unless open, which is how today's row and the day page keep it out.
+// hovering the row, unless open, which is how the day page keeps it out.
 //
 export const DayTags = ({ date, dayTags, open = false }) => {
 

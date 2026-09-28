@@ -1330,8 +1330,8 @@ a.activity-cell:hover {
   white-space: nowrap;
 }
 
-/* Only the day being written on offers the button outright. Every other row keeps it
-   until the row is hovered, the way the cards hold back their own delete. */
+/* A row keeps the button until it is hovered, the way the cards hold back their own
+   delete. Only the day page, which is a single row, offers it outright. */
 .day-tag-add {
   display: none;
   cursor: pointer;

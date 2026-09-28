@@ -92,7 +92,7 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                 <div className="col-sm-3">
                     { i > 0 ? 
                         null :
-                        <><h3 id="title" className="datelabel" >
+                        <h3 id="title" className="datelabel" >
                             { linkDay ?
                                 <Link className="datelabel-link" to={dayRoute + dateToString(row.date)}>
                                     {label === null ? formatLongDate(row.date) : label}
@@ -104,8 +104,8 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                                     onClick={() => setShowMemories(true)}>Memories</button> :
                                 null
                             }
+                            <DayTags date={row.date} dayTags={dayTags} open={openTags} />
                         </h3>
-                        <DayTags date={row.date} dayTags={dayTags} open={openTags} /></>
                     }
                 </div>
                 <div className="col-sm-8">

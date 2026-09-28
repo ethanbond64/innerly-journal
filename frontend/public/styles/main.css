@@ -1310,6 +1310,7 @@ a.activity-cell:hover {
    does and are boxed like it, in the grey of a card rather than its gold. */
 .day-tags {
   display: flex;
+  white-space: normal;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;

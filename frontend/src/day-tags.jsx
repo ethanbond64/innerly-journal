@@ -34,7 +34,7 @@ export const DayTags = ({ date, dayTags, open = false }) => {
     };
 
     return (
-        <div className={`day-tags${open ? ' day-tags-open' : ''}`}>
+        <span className={`day-tags${open ? ' day-tags-open' : ''}`}>
             {tags.map((tag) => (
                 <span key={tag.id} className="day-tag">
                     {capitalize(tag.name)}
@@ -45,7 +45,7 @@ export const DayTags = ({ date, dayTags, open = false }) => {
                 <DayTagPicker onPick={onAdd} clear={() => setAdding(false)} /> :
                 <button className="day-tag-add" onClick={() => setAdding(true)}>+ tag</button>
             }
-        </div>
+        </span>
     );
 };
 

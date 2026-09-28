@@ -384,12 +384,6 @@ def date_tag_json(xref, name):
         'functional_datetime': getattr_typed(xref, 'functional_datetime')
     }
 
-def date_tags_in(query):
-
-    rows = query.join(Tag, Tag.id == DateTagXref.tag_id).with_entities(DateTagXref, Tag.name).all()
-
-    return [date_tag_json(xref, name) for xref, name in rows]
-
 @views.route('/insert/date_tags', methods=['POST'])
 @login_required
 def insert_date_tag(current_user):
@@ -435,25 +429,23 @@ def delete_date_tag(current_user, id):
 
     return {'success': True}, 200
 
-# TODO WRONG - This should be ALL tags that are date tags, the source for options when making a new tag on a day
+# The tags offered when tagging a day.
 @views.route('/fetch/date_tags', methods=['GET'])
 @login_required
 def fetch_date_tags(current_user):
 
-    date = request.args.get('date')
+    limit = request.args.get('limit', 30)
+    offset = request.args.get('offset', 0)
+    name = request.args.get('search', None)
 
-    try:
-        anchor = datetime.strptime(date, '%Y-%m-%d')
-    except (TypeError, ValueError):
-        return {'message': 'Bad request. Expected date as YYYY-MM-DD.'}, 400
+    query = Tag.query.filter(Tag.user_id == current_user.id, Tag.day_tag == True)
 
-    query = DateTagXref.query.filter(
-        DateTagXref.user_id == current_user.id,
-        DateTagXref.functional_datetime >= anchor - timedelta(days=1),
-        DateTagXref.functional_datetime <= anchor + timedelta(days=2)
-    ).order_by(DateTagXref.functional_datetime.asc())
+    if name:
+        query = query.filter(Tag.name.ilike(f'%{name}%'))
 
-    return {'data': date_tags_in(query)}, 200
+    tags = query.order_by(Tag.name).limit(limit).offset(offset).all()
+
+    return {'data': [tag.json() for tag in tags]}, 200
 
 
 @views.route('/fetch/entries', methods=['GET'])

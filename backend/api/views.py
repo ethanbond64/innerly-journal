@@ -595,10 +595,6 @@ def fetch_tags(current_user):
 
     query = Tag.query.filter(Tag.user_id == current_user.id)
 
-    # Absent, every tag is listed as before; the day tag typeahead asks for its own.
-    if request.args.get('day_tag', '').lower() == 'true':
-        query = query.filter(Tag.day_tag == True)
-
     if name:
         query = query.filter(Tag.name.ilike(f'%{name}%'))
 

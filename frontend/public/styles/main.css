@@ -965,12 +965,41 @@ a {
 
 .activity-mode:last-child {
   border-radius: 0 6px 6px 0;
+}
+
+.activity-mode + .activity-mode {
   border-left: none;
 }
 
 .activity-mode-on {
   background-color: var(--well-grey);
   color: var(--dm-text);
+}
+
+/* The tags on show in tag mode, picked from the days that have been tagged. */
+.activity-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: -4px 0 12px;
+}
+
+.activity-tag {
+  padding: 4px 10px;
+  border: 1px solid rgba(128, 128, 128, .35);
+  border-radius: 6px;
+  background: none;
+  font-size: 12px;
+  color: var(--dm-muted);
+}
+
+.activity-tag-on {
+  font-weight: 600;
+}
+
+.activity-tag:disabled {
+  opacity: .4;
 }
 
 /* The black backdrop the cells are read against, only as wide as the grid. One
@@ -1087,6 +1116,12 @@ a {
 a.activity-cell:focus,
 a.activity-cell:hover {
   outline: 1px solid rgba(255, 255, 255, .85);
+}
+
+/* In tag mode, a day that was written on or tagged but carries none of the tags on
+   show: lit enough to separate it from a day with nothing on it at all. */
+.activity-cell-quiet {
+  background-color: rgba(255, 255, 255, .32);
 }
 
 /* The tail of December that shares a column with January 1st: the cell is kept

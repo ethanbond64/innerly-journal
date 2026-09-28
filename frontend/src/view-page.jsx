@@ -5,7 +5,7 @@ import { editRoute, homeRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
 import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.jsx";
-import { ClickOutsideTracker, equalsDate } from "./utils.jsx";
+import { capitalize, ClickOutsideTracker, equalsDate } from "./utils.jsx";
 import { PasswordModal } from "./password-modal.jsx";
 import { takeEntry } from "./entry-handoff.js";
 
@@ -326,10 +326,6 @@ export const ViewPage = () => {
         </BasePage>
     );
 };
-
-const capitalize = (string) => {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
 
 const getSentimentColor = (sentiment) => {
     if (sentiment === "Negative") {

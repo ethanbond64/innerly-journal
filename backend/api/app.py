@@ -5,6 +5,7 @@ from werkzeug.exceptions import NotFound
 
 from api.views import views
 from api.extensions import db
+from api.models import apply_column_migrations
 from api.settings import FRONTEND_DIRECTORY
 
 def create_app():
@@ -18,6 +19,9 @@ def create_app():
     with app.app_context():
         # db.drop_all();
         db.create_all()
+        # create_all only ever adds whole tables, so columns added to tables that already
+        # exist are brought in here, for databases created before they were introduced.
+        apply_column_migrations()
 
     app.register_blueprint(views, url_prefix='/api')
 

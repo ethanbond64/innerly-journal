@@ -42,7 +42,7 @@ const daySentiment = (day) => day.negative > 0 ? 'negative' : (day.positive > 0 
 // in to the week December 31st does, so every year is the same width and their
 // columns line up. Days either side of the year, and days after today in the
 // year in progress, keep their cell to hold the rows true but are not drawn.
-export const buildYearWeeks = (rows, year, today = new Date()) => {
+export const buildYearWeeks = (rows, year, today = new Date(), tagsByDay = {}) => {
 
     const byDay = bucketByDay(rows);
 
@@ -73,7 +73,8 @@ export const buildYearWeeks = (rows, year, today = new Date()) => {
                 future: future,
                 entries: totals.entries,
                 words: totals.words,
-                sentiment: daySentiment(totals)
+                sentiment: daySentiment(totals),
+                tags: (outside || future ? null : tagsByDay[key]) || []
             });
         }
 
@@ -161,4 +162,37 @@ export const wordCountMix = (words, scale) => {
     const rank = scale.filter((value) => value <= words).length / scale.length;
 
     return Math.round(lightestMix + (100 - lightestMix) * rank);
+};
+
+// A tag is coloured by its own id, so it keeps its colour across reloads and between years.
+// Chosen to read against the grid's black panel.
+const tagColors = ['#ff7b42', '#3694ff', '#2ec27e', '#c061f7', '#ffd942', '#ff5d8f', '#22d3ee', '#a3e635'];
+
+export const tagColor = (tagId) => tagColors[tagId % tagColors.length];
+
+// The selected tags a day carries, in the order they were selected.
+export const shownTags = (day, selected) => selected
+    .map((tagId) => day.tags.find((tag) => tag.tag_id === tagId))
+    .filter((tag) => tag !== undefined);
+
+// Up to three tags share a cell as vertical stripes. Always a gradient, so one tag and
+// three are drawn the same way.
+export const tagStripes = (tags) => {
+
+    const step = 100 / tags.length;
+
+    const stops = tags.flatMap((tag, i) =>
+        [`${tagColor(tag.tag_id)} ${i * step}%`, `${tagColor(tag.tag_id)} ${(i + 1) * step}%`]);
+
+    return `linear-gradient(to right, ${stops.join(', ')})`;
+};
+
+// Every tag the user has put on a day, for the picker.
+export const tagOptions = (tagsByDay) => {
+
+    const options = new Map();
+
+    Object.values(tagsByDay).forEach((tags) => tags.forEach((tag) => options.set(tag.tag_id, tag)));
+
+    return [...options.values()].sort((a, b) => a.name.localeCompare(b.name));
 };

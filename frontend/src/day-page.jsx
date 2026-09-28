@@ -3,6 +3,7 @@ import { Navigate, useParams } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
 import { ImageModal } from "./image-modal.jsx";
 import { Row } from "./row.jsx";
+import { useDayTags } from "./use-day-tags.js";
 import { fetchDay } from "./requests.js";
 import { formatLongDate, formatWeekday } from "./date-format.js";
 import { homeRoute } from "./constants.js";
@@ -29,6 +30,7 @@ export const DayPage = () => {
 
     const { functionalDate } = useParams();
     const date = parseDate(functionalDate);
+    const dayTags = useDayTags();
 
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -82,6 +84,7 @@ export const DayPage = () => {
                         <>
                             {error && <p>{error}</p>}
                             <Row row={row} setImagePath={setImagePath} minGroups={minGroups} linkDay={false}
+                                dayTags={dayTags} openTags={true}
                                 label={<>{formatWeekday(date)}<br />{formatLongDate(date)}</>} />
                         </>}
                 </div>

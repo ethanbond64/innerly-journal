@@ -8,8 +8,10 @@ import { TextCard } from './cards/text-card.jsx';
 import { BlankCard } from './cards/blank-card.jsx';
 import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
+import { DayTags } from './day-tags.jsx';
 
-export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [] }) =>  {
+export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [],
+    dayTags = null, openTags = false }) =>  {
 
     const [entryGroups, setEntryGroups] = useState([]);
     const [showMemories, setShowMemories] = useState(false);
@@ -102,6 +104,7 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                                     onClick={() => setShowMemories(true)}>Memories</button> :
                                 null
                             }
+                            <DayTags date={row.date} dayTags={dayTags} open={openTags} />
                         </h3>
                     }
                 </div>

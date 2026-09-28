@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
 import { fetchActivity } from "./requests.js";
-import { buildMonthLabels, buildWordScale, buildYearWeeks, isDrawn, lightestMix, wordCountMix, yearWindow } from "./activity-grid.js";
+import { buildMonthLabels, buildWordScale, buildYearWeeks, isDrawn, lightestMix, shownTags, tagColor,
+    tagOptions, tagStripes, wordCountMix, yearWindow } from "./activity-grid.js";
+import { useDayTags } from "./use-day-tags.js";
 import { writeRoute } from "./constants.js";
-import { dateToString } from "./utils.jsx";
+import { capitalize, dateToString } from "./utils.jsx";
 
 // Only every other weekday is labelled, the way GitHub does it, so the labels
 // have room to breathe next to 12px cells.
@@ -14,7 +16,10 @@ const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short' });
 
 const longDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
-const sentimentModes = { sentiment: 'sentiment', words: 'words' };
+const sentimentModes = { sentiment: 'sentiment', words: 'words', tags: 'tags' };
+
+// A cell only has room for so many stripes.
+const maxTags = 3;
 
 // Shades are mixed per day rather than picked from a handful of classes, so the
 // scale is as fine-grained as the year's own spread of entry lengths.
@@ -30,9 +35,19 @@ const entries = (count) => `${count.toLocaleString()} ${count === 1 ? 'entry' : 
 // The sentiment legend, in the order it reads.
 const sentimentKeys = [['negative', 'Negative'], ['positive', 'Positive'], ['neutral', 'Neutral']];
 
+// The legend reads in the order the stripes do.
+const shownTagOptions = (options, selected) =>
+    selected.map((tagId) => options.find((tag) => tag.tag_id === tagId)).filter((tag) => tag !== undefined);
+
 const dayTitle = (day, mode) => {
 
     const date = longDate.format(day.date);
+
+    if (mode === sentimentModes.tags) {
+        return day.tags.length === 0 ?
+            `No tags on ${date}` :
+            `${day.tags.map((tag) => capitalize(tag.name)).join(', ')} on ${date}`;
+    }
 
     if (day.entries === 0) {
         return `No entries on ${date}`;
@@ -47,7 +62,7 @@ const dayTitle = (day, mode) => {
 
 // One calendar year of the grid: its own black panel, captioned with the year
 // and what was written in it.
-const ActivityYear = ({ block, mode, scale, today, current }) => {
+const ActivityYear = ({ block, mode, scale, today, current, selected }) => {
 
     const scroller = useRef(null);
 
@@ -115,13 +130,21 @@ const ActivityYear = ({ block, mode, scale, today, current }) => {
                                     return <div key={day.key} className="activity-cell activity-cell-blank"></div>;
                                 }
 
+                                const shown = mode === sentimentModes.tags ? shownTags(day, selected) : [];
                                 const mix = mode === sentimentModes.words ? wordCountMix(day.words, scale) : null;
-                                const shade = mode === sentimentModes.words || day.entries === 0 ? '' : ` activity-${day.sentiment}`;
-                                const className = `activity-cell${shade}${day.key === todayKey ? ' activity-cell-today' : ''}`;
+
+                                // A day that was written on or tagged, but not with anything on show.
+                                const quiet = mode === sentimentModes.tags && shown.length === 0 &&
+                                    (day.entries > 0 || day.tags.length > 0);
+
+                                const shade = mode === sentimentModes.sentiment && day.entries > 0 ? ` activity-${day.sentiment}` : '';
+                                const className = `activity-cell${shade}${quiet ? ' activity-cell-quiet' : ''}` +
+                                    `${day.key === todayKey ? ' activity-cell-today' : ''}`;
 
                                 return (
                                     <Link key={day.key} to={`${writeRoute}/${day.key}`} className={className}
-                                        style={mix === null ? undefined : { backgroundColor: greenMix(mix) }}
+                                        style={shown.length > 0 ? { backgroundImage: tagStripes(shown) } :
+                                            (mix === null ? undefined : { backgroundColor: greenMix(mix) })}
                                         title={dayTitle(day, mode)}></Link>
                                 );
                             }))}
@@ -140,9 +163,19 @@ export const ActivityPage = () => {
     const today = useMemo(() => new Date(), []);
 
     const [mode, setMode] = useState(sentimentModes.sentiment);
+    const [selected, setSelected] = useState([]);
     const [shown, setShown] = useState(() => [today.getFullYear()]);
     const [loaded, setLoaded] = useState({});
     const requested = useRef(new Set());
+
+    const { byDay } = useDayTags();
+
+    const options = useMemo(() => tagOptions(byDay), [byDay]);
+
+    // Selected in order, because that is the order they are striped in.
+    const toggle = (tagId) => setSelected((current) => current.includes(tagId) ?
+        current.filter((id) => id !== tagId) :
+        [...current, tagId].slice(0, maxTags));
 
     // Each year fetches its own window once. Years already asked for are
     // remembered so a re-render (or a second pass in strict mode) does not
@@ -167,8 +200,8 @@ export const ActivityPage = () => {
     const blocks = useMemo(() => shown.map((year) => ({
         year: year,
         ...loaded[year],
-        weeks: buildYearWeeks(loaded[year]?.rows || [], year, today)
-    })), [shown, loaded, today]);
+        weeks: buildYearWeeks(loaded[year]?.rows || [], year, today, byDay)
+    })), [shown, loaded, today, byDay]);
 
     // One scale across every year on the page, so the same shade means the same
     // thing in all of them.
@@ -189,17 +222,49 @@ export const ActivityPage = () => {
                             onClick={() => setMode(sentimentModes.sentiment)}>Sentiment</button>
                         <button className={`activity-mode${mode === sentimentModes.words ? ' activity-mode-on' : ''}`}
                             onClick={() => setMode(sentimentModes.words)}>Word count</button>
+                        <button className={`activity-mode${mode === sentimentModes.tags ? ' activity-mode-on' : ''}`}
+                            onClick={() => setMode(sentimentModes.tags)}>Tags</button>
                     </div>
                 </div>
 
+                {mode === sentimentModes.tags &&
+                    <div className="activity-tags">
+                        {options.length === 0 ?
+                            <span className="activity-legend-label">No days have been tagged yet.</span> :
+                            options.map((tag) => {
+                                const on = selected.includes(tag.tag_id);
+                                return (
+                                    <button key={tag.tag_id} className={`activity-tag${on ? ' activity-tag-on' : ''}`}
+                                        style={on ? { borderColor: tagColor(tag.tag_id), color: tagColor(tag.tag_id) } : undefined}
+                                        disabled={!on && selected.length === maxTags}
+                                        onClick={() => toggle(tag.tag_id)}>{capitalize(tag.name)}</button>
+                                );
+                            })
+                        }
+                    </div>
+                }
+
                 {blocks.map((block) => (
                     <ActivityYear key={block.year} block={block} mode={mode} scale={scale} today={today}
-                        current={block.year === today.getFullYear()} />
+                        selected={selected} current={block.year === today.getFullYear()} />
                 ))}
 
                 <div className="activity-panel activity-legend-panel">
                     <div className="activity-legend">
-                        {mode === sentimentModes.words ?
+                        {mode === sentimentModes.tags ?
+                            <>
+                                {shownTagOptions(options, selected).map((tag) => (
+                                    <React.Fragment key={tag.tag_id}>
+                                        <span className="activity-cell" style={{ backgroundImage: tagStripes([tag]) }}></span>
+                                        <span className="activity-legend-label">{capitalize(tag.name)}</span>
+                                    </React.Fragment>
+                                ))}
+                                <span className="activity-cell activity-cell-quiet"></span>
+                                <span className="activity-legend-label">Other activity</span>
+                                <span className="activity-cell"></span>
+                                <span className="activity-legend-label">Nothing</span>
+                            </> :
+                        mode === sentimentModes.words ?
                             <>
                                 <span className="activity-cell"></span>
                                 <span className="activity-legend-label">Nothing written</span>

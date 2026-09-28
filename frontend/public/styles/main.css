@@ -965,12 +965,41 @@ a {
 
 .activity-mode:last-child {
   border-radius: 0 6px 6px 0;
+}
+
+.activity-mode + .activity-mode {
   border-left: none;
 }
 
 .activity-mode-on {
   background-color: var(--well-grey);
   color: var(--dm-text);
+}
+
+/* The tags on show in tag mode, picked from the days that have been tagged. */
+.activity-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: -4px 0 12px;
+}
+
+.activity-tag {
+  padding: 4px 10px;
+  border: 1px solid rgba(128, 128, 128, .35);
+  border-radius: 6px;
+  background: none;
+  font-size: 12px;
+  color: var(--dm-muted);
+}
+
+.activity-tag-on {
+  font-weight: 600;
+}
+
+.activity-tag:disabled {
+  opacity: .4;
 }
 
 /* The black backdrop the cells are read against, only as wide as the grid. One
@@ -1087,6 +1116,12 @@ a {
 a.activity-cell:focus,
 a.activity-cell:hover {
   outline: 1px solid rgba(255, 255, 255, .85);
+}
+
+/* In tag mode, a day that was written on or tagged but carries none of the tags on
+   show: lit enough to separate it from a day with nothing on it at all. */
+.activity-cell-quiet {
+  background-color: rgba(255, 255, 255, .32);
 }
 
 /* The tail of December that shares a column with January 1st: the cell is kept
@@ -1304,4 +1339,99 @@ a.activity-cell:hover {
 .memory-year:hover > .memory-year-go,
 .memory-year:focus > .memory-year-go {
   color: #ffd942;
+}
+
+/* Tags on the day itself, under the date on each row. They sit where the memories badge
+   does and are boxed like it, in the grey of a card rather than its gold. */
+.day-tags {
+  display: flex;
+  white-space: normal;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.day-tag,
+.day-tag-add,
+.day-tag-input {
+  padding: 4px 10px;
+  background-color: transparent;
+  border: 1px solid var(--dm-muted);
+  border-radius: 6px;
+  color: var(--dm-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A row keeps the button until it is hovered, the way the cards hold back their own
+   delete. Only the day page, which is a single row, offers it outright. */
+.day-tag-add {
+  display: none;
+  cursor: pointer;
+  border-style: dashed;
+  color: var(--dm-muted);
+}
+
+.owell:hover .day-tag-add,
+.day-tags-open .day-tag-add {
+  display: block;
+}
+
+.day-tag-add:hover {
+  border-style: solid;
+  color: var(--dm-text);
+}
+
+.day-tag-remove {
+  display: none;
+  padding: 0;
+  margin-left: 6px;
+  background: none;
+  border: 0;
+  color: #a40f0f;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.day-tag:hover .day-tag-remove {
+  display: inline;
+}
+
+.day-tag-picker {
+  position: relative;
+}
+
+.day-tag-input {
+  width: 160px;
+  font-weight: 400;
+}
+
+.day-tag-options {
+  position: absolute;
+  z-index: 20;
+  margin-top: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  background-color: var(--bgeb);
+  border: 1px solid var(--dm-muted);
+  border-radius: 6px;
+}
+
+.day-tag-option {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: 0;
+  color: var(--dm-text);
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.day-tag-option:hover {
+  background-color: var(--well-grey);
 }

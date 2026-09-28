@@ -13,7 +13,8 @@ from api.security import authenticated, encrypt_password, get_token, get_user_fr
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
     LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key, is_locked_text
 from api.extensions import db
-from api.models import User, Entry, Tag, getattr_typed, upsert_tags
+from api.models import User, Entry, Tag, DateTagXref, TAG_NAME_LENGTH, clear_day_tag_if_unused, \
+    getattr_typed, upsert_day_tag, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
@@ -361,6 +362,108 @@ def update_entry(current_user, id):
         entry.save()
 
     return {'data': entry_json_with_text(entry, text)}, 200
+
+# A tag on a day carries no entry, so it is identified by the day it is on. The client sends
+# the day the same way it sends a backdated entry's: the local day at 23:59, converted to UTC.
+# Unlike an entry's, it is required rather than defaulted to now, because the uniqueness of a
+# tag on a day rests on every row for that day carrying the identical datetime.
+def parse_functional_datetime(value):
+
+    try:
+        return datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%fZ')
+    except (TypeError, ValueError):
+        return None
+
+# The xref alone says nothing a client can show, so a day tag goes out as the day, the name to
+# draw, and the id to delete it by.
+def date_tag_json(xref, name):
+
+    return {
+        'id': xref.id,
+        'tag_id': xref.tag_id,
+        'name': name,
+        'functional_datetime': getattr_typed(xref, 'functional_datetime')
+    }
+
+@views.route('/insert/date_tags', methods=['POST'])
+@login_required
+def insert_date_tag(current_user):
+
+    body = request.get_json()
+    if body is None:
+        return {'message': 'Bad request'}, 400
+
+    functional_datetime = parse_functional_datetime(body.get('functional_datetime'))
+    if functional_datetime is None:
+        return {'message': 'Bad request. Expected functional_datetime as YYYY-MM-DDTHH:MM:SS.sssZ.'}, 400
+
+    tag = upsert_day_tag(body.get('name'), current_user.id)
+    if tag is None:
+        return {'message': f'Bad request. A tag name is required, up to {TAG_NAME_LENGTH} characters.'}, 400
+
+    # Tagging a day with a tag it already has is the same day in the same state, so it answers
+    # with the tag already there rather than failing on the unique constraint.
+    xref = DateTagXref.query.filter(
+        DateTagXref.user_id == current_user.id,
+        DateTagXref.functional_datetime == functional_datetime,
+        DateTagXref.tag_id == tag.id
+    ).first()
+
+    if xref is not None:
+        return {'data': date_tag_json(xref, tag.name)}, 200
+
+    xref = DateTagXref(user_id=current_user.id, functional_datetime=functional_datetime, tag_id=tag.id).save()
+
+    return {'data': date_tag_json(xref, tag.name)}, 201
+
+# Only the tag's place on this day goes. The tag itself stays, but stops being offered for
+# days once it is on none.
+@views.route('/delete/date_tags/<int:id>', methods=['POST'])
+@login_required
+def delete_date_tag(current_user, id):
+
+    xref = DateTagXref.query.filter(DateTagXref.id == id, DateTagXref.user_id == current_user.id).first()
+    if xref is None:
+        return {'message': 'Day tag not found'}, 404
+
+    tag_id = xref.tag_id
+    xref.delete()
+
+    clear_day_tag_if_unused(tag_id, current_user.id)
+
+    return {'success': True}, 200
+
+# Every tag on every day, for the client to key by day.
+@views.route('/fetch/tagged_days', methods=['GET'])
+@login_required
+def fetch_tagged_days(current_user):
+
+    rows = DateTagXref.query.filter(DateTagXref.user_id == current_user.id) \
+        .join(Tag, Tag.id == DateTagXref.tag_id) \
+        .with_entities(DateTagXref, Tag.name) \
+        .order_by(DateTagXref.functional_datetime.desc()).all()
+
+    return {'data': [date_tag_json(xref, name) for xref, name in rows]}, 200
+
+
+# The tags offered when tagging a day.
+@views.route('/fetch/date_tags', methods=['GET'])
+@login_required
+def fetch_date_tags(current_user):
+
+    limit = request.args.get('limit', 30)
+    offset = request.args.get('offset', 0)
+    name = request.args.get('search', None)
+
+    query = Tag.query.filter(Tag.user_id == current_user.id, Tag.day_tag == True)
+
+    if name:
+        query = query.filter(Tag.name.ilike(f'%{name}%'))
+
+    tags = query.order_by(Tag.name).limit(limit).offset(offset).all()
+
+    return {'data': [tag.json() for tag in tags]}, 200
+
 
 @views.route('/fetch/entries', methods=['GET'])
 @login_required

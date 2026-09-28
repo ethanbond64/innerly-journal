@@ -505,8 +505,6 @@ def fetch_entries(current_user):
 
     entries = query.order_by(Entry.functional_datetime.desc()).limit(limit).offset(offset).all()
 
-    # TODO fetch date tags in entry date range. TODO include in payload (breaking change). TODO fix all consumers.
-
     return {'data': [entry.short_json(signer=sign_filename) for entry in entries]}, 200
 
 # The activity page needs a whole year of entries at once, but only the three
@@ -527,8 +525,6 @@ def fetch_activity(current_user):
     # The window ends today unless the client asks for an earlier one, which is
     # how it pages back a year at a time.
     before = request.args.get('before')
-
-    # TODO filter mode + tags
 
     if before is None:
         anchor = datetime.utcnow()

@@ -429,7 +429,7 @@ def delete_date_tag(current_user, id):
     tag_id = xref.tag_id
     xref.delete()
 
-    clear_day_tag_if_unused(tag_id)
+    clear_day_tag_if_unused(tag_id, current_user.id)
 
     return {'success': True}, 200
 

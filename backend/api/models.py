@@ -164,6 +164,18 @@ def upsert_day_tag(name, user_id):
     return tag
 
 
+def clear_day_tag_if_unused(tag_id):
+
+    if DateTagXref.query.filter(DateTagXref.tag_id == tag_id).first() is not None:
+        return
+
+    tag = Tag.query.filter(Tag.id == tag_id).first()
+
+    if tag is not None and tag.day_tag:
+        tag.update(day_tag=False)
+        tag.save()
+
+
 def upsert_tags(tags, user_id, entry_id):
 
     if tags is not None and len(tags) > 0:

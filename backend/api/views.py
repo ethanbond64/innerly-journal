@@ -13,7 +13,8 @@ from api.security import authenticated, encrypt_password, get_token, get_user_fr
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
     LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key, is_locked_text
 from api.extensions import db
-from api.models import User, Entry, Tag, DateTagXref, TAG_NAME_LENGTH, getattr_typed, upsert_day_tag, upsert_tags
+from api.models import User, Entry, Tag, DateTagXref, TAG_NAME_LENGTH, clear_day_tag_if_unused, \
+    getattr_typed, upsert_day_tag, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
 from api.processors.link_processor import process_link_entry
@@ -415,8 +416,8 @@ def insert_date_tag(current_user):
 
     return {'data': date_tag_json(xref, tag.name)}, 201
 
-# Only the tag's place on this day goes. The tag itself stays, day_tag flag included, so it is
-# still offered by the typeahead after the last day it was on loses it.
+# Only the tag's place on this day goes. The tag itself stays, but stops being offered for
+# days once it is on none.
 @views.route('/delete/date_tags/<int:id>', methods=['POST'])
 @login_required
 def delete_date_tag(current_user, id):
@@ -425,7 +426,10 @@ def delete_date_tag(current_user, id):
     if xref is None:
         return {'message': 'Day tag not found'}, 404
 
+    tag_id = xref.tag_id
     xref.delete()
+
+    clear_day_tag_if_unused(tag_id)
 
     return {'success': True}, 200
 

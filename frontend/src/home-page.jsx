@@ -49,6 +49,7 @@ export const HomePage = () => {
     };
     const observer = new IntersectionObserver(handleObserver, option);
     if (loader.current) observer.observe(loader.current);
+    return () => observer.disconnect();
   }, [handleObserver]);
 
   return (

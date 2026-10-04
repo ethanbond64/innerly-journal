@@ -557,9 +557,10 @@ def fetch_activity(current_user):
     } for entry in entries]}, 200
 
 # The home page badges today with the other years it has been written on, newest
-# first. The date's own year is not one of its memories, so it is left out. Only
-# the years themselves are needed, so they are picked out in the database rather
-# than the entries being shipped.
+# first. Like the day page, this is given a day of slack on either end, because
+# the stored datetimes are UTC and the day itself is only a day in local time, so
+# the years are picked out from these candidates by the caller. Nothing but the
+# datetimes is needed, so the entries themselves are not shipped.
 @views.route('/fetch/memories', methods=['GET'])
 @login_required
 def fetch_memories(current_user):
@@ -571,15 +572,16 @@ def fetch_memories(current_user):
     except (TypeError, ValueError):
         return {'message': 'Bad request. Expected date as YYYY-MM-DD.'}, 400
 
-    years = func.strftime('%Y', Entry.functional_datetime)
+    # Only the month and day are matched, so that every year is a candidate. The
+    # year each candidate belongs to is whatever its local date turns out to be.
+    month_days = [(anchor + timedelta(days=days)).strftime('%m-%d') for days in (-1, 0, 1)]
 
-    rows = Entry.query.with_entities(years).filter(
+    rows = Entry.query.with_entities(Entry.functional_datetime).filter(
         Entry.user_id == current_user.id,
-        func.strftime('%m-%d', Entry.functional_datetime) == anchor.strftime('%m-%d'),
-        years != anchor.strftime('%Y')
-    ).distinct().order_by(years.desc()).all()
+        func.strftime('%m-%d', Entry.functional_datetime).in_(month_days)
+    ).distinct().order_by(Entry.functional_datetime.desc()).all()
 
-    return {'data': {'years': [row[0] for row in rows]}}, 200
+    return {'data': {'datetimes': [row[0].isoformat() + 'Z' for row in rows]}}, 200
 
 # Text entries carry their own length, taken before any encryption. Entries
 # written before that field existed are counted from their text, which is only

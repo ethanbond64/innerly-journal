@@ -165,7 +165,7 @@ export const deleteDateTag = (id, callback, onError = (e) => {}) =>
 export const fetchMemories = (date, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/memories?date=${date}`, {
         headers: getHeaders()
-    }), { onResult: (response) => response.data.data.years, onError });
+    }), { onResult: (response) => response.data.data.datetimes, onError });
 
 export const fetchActivity = (days, before, onError = (e) => {}) =>
     apiRequest(() => fetch(`/api/fetch/activity?days=${days}&before=${before}`, {

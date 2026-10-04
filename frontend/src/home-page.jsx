@@ -10,6 +10,24 @@ import { BasePage } from "./base-page.jsx";
 
 const limit = 30;
 
+// The endpoint hands back a day of slack on either end, because the stored
+// datetimes are UTC, so a candidate only counts as a memory when its local date
+// lands on the same month and day in another year. That is the same local match
+// the day page makes when it picks out the entries for the year being opened, so
+// a badged year always has something on it.
+const memoryYears = (today, datetimes) => {
+
+  const years = datetimes
+    .map((datetime) => new Date(datetime))
+    .filter((date) =>
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate() &&
+      date.getFullYear() !== today.getFullYear())
+    .map((date) => String(date.getFullYear()));
+
+  return [...new Set(years)].sort().reverse();
+};
+
 export const HomePage = () => {
     
   const [search, setSearch] = useState("");
@@ -30,7 +48,8 @@ export const HomePage = () => {
 
   // The other years today has been written on, for the badge on today's row.
   useEffect(() => {
-    fetchMemories(dateToString(today)).then((years) => years === undefined || setMemories(years));
+    fetchMemories(dateToString(today)).then((datetimes) =>
+      datetimes === undefined || setMemories(memoryYears(today, datetimes)));
   }, [today]);
 
   const handleObserver = useCallback((entries) => {

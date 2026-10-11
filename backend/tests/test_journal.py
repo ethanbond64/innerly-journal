@@ -157,6 +157,38 @@ class JournalTests(unittest.TestCase):
         self.assertEqual([row['id'] for row in page], [older['id']])
         self.assertEqual(self.request('GET', '/fetch/entries?search=absent')['data'], [])
 
+    def test_search_entry_tags(self):
+        """Entry-tag search includes locked entries once, preserves pagination, and excludes day-only tags and other users."""
+        older = self.create('Private text', locked=True, date='2020-01-01T12:00:00.000Z')
+        newer = self.create('Travel notes', title='Travel', date='2020-01-02T12:00:00.000Z')
+        foreign = self.create(user=self.other)
+        self.create('Unrelated text', date='2020-01-03T12:00:00.000Z')
+        with closing(sqlite3.connect(DATA / 'database.db')) as connection, connection:
+            for entry, user, names in [(older, self.owner, ['travel']),
+                                       (newer, self.owner, ['travel', 'travelogue']),
+                                       (foreign, self.other, ['travel'])]:
+                for name in names:
+                    connection.execute('INSERT OR IGNORE INTO tags (name, user_id) VALUES (?, ?)',
+                                       (name, user['user']['id']))
+                    tag_id = connection.execute('SELECT id FROM tags WHERE name = ? AND user_id = ?',
+                                                (name, user['user']['id'])).fetchone()[0]
+                    connection.execute('INSERT INTO entry_tag_xref (entry_id, tag_id) VALUES (?, ?)',
+                                       (entry['id'], tag_id))
+        self.request('POST', '/insert/date_tags', status=201,
+                     json={'name': 'travel', 'functional_datetime': '2020-01-03T23:59:00.000Z'})
+        ciphertext = self.stored(older)['text']
+        rows = self.request('GET', '/fetch/entries?search=RAV')['data']
+        self.assertEqual([row['id'] for row in rows], [newer['id'], older['id']])
+        self.assertTrue(rows[1]['entry_data']['locked'])
+        self.assertEqual(rows[1]['entry_data']['text'], ciphertext[:64])
+        self.assertEqual(self.stored(older)['text'], ciphertext)
+        for offset, entry in enumerate([newer, older]):
+            page = self.request('GET', f'/fetch/entries?search=RAV&limit=1&offset={offset}')['data']
+            self.assertEqual([row['id'] for row in page], [entry['id']])
+        self.assertEqual(self.request('GET', '/fetch/entries?search=RAV&limit=1&offset=2')['data'], [])
+        rows = self.request('GET', '/fetch/entries?search=RAV', self.other)['data']
+        self.assertEqual([row['id'] for row in rows], [foreign['id']])
+
     def test_text_counts_and_sentiment(self):
         """Saved text retains Unicode and computes representative word counts and sentiment outcomes."""
         for text, count, sentiment in [('', 0, 'neutral'), ('hello\t世界\n café', 3, 'neutral'),

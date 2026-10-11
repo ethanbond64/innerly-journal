@@ -13,7 +13,7 @@ from api.security import authenticated, encrypt_password, get_token, get_user_fr
     sign_filename, validate_email, validate_password, lock_entry_data, unlock_entry_data, get_scrypt_key, \
     LOCK_AUTH_EXPIRED, LOCK_TTL_VALUE, LOCK_TTL_UNIT, parse_lock_ttl, entry_relocker, clear_scrypt_key, is_locked_text
 from api.extensions import db
-from api.models import User, Entry, Tag, DateTagXref, TAG_NAME_LENGTH, clear_day_tag_if_unused, \
+from api.models import User, Entry, Tag, EntryTagXref, DateTagXref, TAG_NAME_LENGTH, clear_day_tag_if_unused, \
     getattr_typed, upsert_day_tag, upsert_tags
 from api.processors.text_processor import count_words, process_text_entry
 from api.processors.file_processor import delete_file, get_user_directory, process_file_entry
@@ -490,8 +490,13 @@ def fetch_entries(current_user):
         )
 
     if search:
-        # Search titles and tags
+        matching_tags = db.session.query(EntryTagXref.id).join(Tag, Tag.id == EntryTagXref.tag_id).filter(
+            EntryTagXref.entry_id == Entry.id,
+            Tag.user_id == current_user.id,
+            Tag.name.ilike(f'%{search}%')
+        ).exists()
         query = query.filter(or_(
+            matching_tags,
             cast(Entry.entry_data.op('->>')('title'), String).ilike(f'%{search}%'),
             and_(
                     or_(

@@ -1,9 +1,11 @@
-import random
+import http.client
+import ipaddress
+import socket
 import time
-import traceback
 from io import BytesIO
-from urllib.parse import urlparse
-from urllib.request import (HTTPDefaultErrorHandler, HTTPErrorProcessor, HTTPHandler,
+from urllib.error import HTTPError
+from urllib.parse import urljoin, urlsplit
+from urllib.request import (HTTPDefaultErrorHandler, HTTPErrorProcessor,
                             HTTPRedirectHandler, HTTPSHandler, OpenerDirector, ProxyHandler,
                             Request, UnknownHandler)
 from werkzeug.datastructures import FileStorage
@@ -11,120 +13,159 @@ from werkzeug.datastructures import FileStorage
 from api.security import json_abort
 from api.processors.entry_models import LinkEntryData
 from api.processors.opengraph import decode_html, parse_open_graph
-from api.processors.file_processor import save_file
+from api.processors.file_processor import save_file, validate_image
 
 PAGE_TIMEOUT = 10
 DOWNLOAD_TIMEOUT = 20
 MAX_RESPONSE_BYTES = 30 * 1024 * 1024
 
-ALLOWED_SCHEMES = {'http', 'https'}
 
-# urlopen's default opener also handles file://, ftp:// and data://, which would
-# let a submitted link read local files. This is the stdlib's default handler set
-# with those three left out, so redirects and HTTP error codes behave normally.
+def validate_url(url):
+    if not isinstance(url, str) or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in url):
+        raise ValueError('Invalid URL')
+    if '\\' in url:
+        raise ValueError('Invalid URL')
+    parts = urlsplit(url)
+    if (parts.scheme.lower() != 'https' or not parts.hostname
+            or parts.username is not None or parts.password is not None
+            or '%' in parts.hostname or parts.port == 0):
+        raise ValueError('Invalid URL')
+    return parts
+
+
+def public_address(address):
+    ip = ipaddress.ip_address(address)
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped:
+            return public_address(str(ip.ipv4_mapped))
+        if ip.sixtofour or ip.teredo:
+            return False
+    return ip.is_global and not (ip.is_multicast or ip.is_reserved or ip.is_unspecified)
+
+
+def connect_public(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+    host, port = address
+    addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    if not addresses or any(not public_address(item[4][0]) for item in addresses):
+        raise ValueError('Destination is not public')
+    family, kind, protocol, _, destination = addresses[0]
+    connection = socket.socket(family, kind, protocol)
+    try:
+        connection.settimeout(timeout)
+        if source_address:
+            connection.bind(source_address)
+        connection.connect(destination)
+        return connection
+    except Exception:
+        connection.close()
+        raise
+
+
+class PublicHTTPSConnection(http.client.HTTPSConnection):
+    def connect(self):
+        self._create_connection = connect_public
+        super().connect()
+
+
+class PublicHTTPSHandler(HTTPSHandler):
+    def https_open(self, request):
+        return self.do_open(PublicHTTPSConnection, request, context=self._context)
+
+
+class PublicRedirectHandler(HTTPRedirectHandler):
+    max_redirections = 5
+    max_repeats = 2
+
+    def redirect_request(self, request, response, code, message, headers, new_url):
+        try:
+            validate_url(new_url)
+        except ValueError:
+            response.close()
+            raise
+        return super().redirect_request(request, response, code, message, headers, new_url)
+
+
 def build_url_opener():
     opener = OpenerDirector()
-    for handler in (ProxyHandler(), UnknownHandler(), HTTPHandler(), HTTPSHandler(),
-                    HTTPDefaultErrorHandler(), HTTPRedirectHandler(), HTTPErrorProcessor()):
+    for handler in (ProxyHandler({}), UnknownHandler(), PublicHTTPSHandler(),
+                    HTTPDefaultErrorHandler(), PublicRedirectHandler(), HTTPErrorProcessor()):
         opener.add_handler(handler)
     return opener
 
+
 url_opener = build_url_opener()
 
-user_agents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
-]
 
-def process_link_entry(user_id, link: str) -> tuple:
-
-    data = do_opengraph(link)
-
-    if data is None:
-        json_abort(400)
-
-    title, original_path = data
-
-    new_path = original_path
-
-    file = download_file(original_path)
-    file_type = 'external'
-
-    if file is not None:
-        path, _original_filename_, file_type = save_file(user_id, file)
-        new_path = path
-
-    return LinkEntryData(title, new_path, original_path, file_type, link).json(), []
-
-
-def site_allowed(link):
-    # TODO validate link
-    return scheme_allowed(link)
-
-def scheme_allowed(url):
-    return isinstance(url, str) and urlparse(url).scheme.lower() in ALLOWED_SCHEMES
-
-# Fetches a URL, returning the body and its content type. Raises on HTTP errors.
 def fetch(url, timeout):
-    if not scheme_allowed(url):
-        raise ValueError(f"refusing to fetch non-HTTP(S) url: {url!r}")
+    validate_url(url)
+    deadline = time.monotonic() + timeout
+    request = Request(url, headers={'User-Agent': 'Innerly/1.0', 'Accept-Encoding': 'identity'})
+    try:
+        response = url_opener.open(request, timeout=timeout)
+    except HTTPError as error:
+        error.close()
+        raise
+    with response:
+        encoding = response.headers.get('Content-Encoding', 'identity').strip().lower()
+        if encoding not in ('', 'identity'):
+            raise ValueError('Unsupported content encoding')
+        declared_length = response.headers.get('Content-Length')
+        if declared_length is not None and (int(declared_length) < 0 or int(declared_length) > MAX_RESPONSE_BYTES):
+            raise ValueError('Response too large')
+        body = bytearray()
+        while True:
+            if time.monotonic() > deadline:
+                raise TimeoutError('Response timed out')
+            chunk = response.read1(min(65536, MAX_RESPONSE_BYTES + 1 - len(body)))
+            if not chunk:
+                break
+            body.extend(chunk)
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise ValueError('Response too large')
+        return bytes(body), response.headers.get('Content-Type', ''), response.geturl()
 
-    request = Request(url, headers={'User-Agent': random.choice(user_agents)})
-    with url_opener.open(request, timeout=timeout) as response:
-
-        declared_length = (response.headers.get('Content-Length') or '').strip()
-        if declared_length.isdigit() and int(declared_length) > MAX_RESPONSE_BYTES:
-            raise ValueError(f"declared size {declared_length} exceeds {MAX_RESPONSE_BYTES} byte cap: {url!r}")
-
-        # Read one byte past the cap so a missing or dishonest Content-Length is
-        # still caught, rather than trusting the header alone.
-        body = response.read(MAX_RESPONSE_BYTES + 1)
-        if len(body) > MAX_RESPONSE_BYTES:
-            raise ValueError(f"response exceeds {MAX_RESPONSE_BYTES} byte cap: {url!r}")
-
-        return body, response.headers.get('Content-Type', '')
 
 def do_opengraph(link):
-
-    if not site_allowed(link):
-        return None
-
     try:
-        if 'wikipedia.org' in link:
-            time.sleep(0.33)
-
-        body, content_type = fetch(link, PAGE_TIMEOUT)
+        body, content_type, final_url = fetch(link, PAGE_TIMEOUT)
         data = parse_open_graph(decode_html(body, content_type))
+    except (OSError, ValueError, http.client.HTTPException):
+        return None
+    image = data.get('image')
+    try:
+        image = urljoin(final_url, image) if image else None
+    except ValueError:
+        image = None
+    return data.get('title'), image
 
-        title = data.get("title")
-        image = data.get("image")
-
-        return title, image
-    except Exception as e:
-        traceback.print_exc()
-        pass
-
-    return None
 
 def download_file(url):
-    try:
-        # Send a GET request to the URL to download the image
-        body, _content_type_ = fetch(url, DOWNLOAD_TIMEOUT)
-
-        # Create a BytesIO object to hold the image data
-        image_data = BytesIO(body)
-
-        # Extract filename from URL
-        filename = url.split('/')[-1]
-
-        # Create a FileStorage instance
-        file_storage = FileStorage(image_data, filename=filename)
-
-        return file_storage
-    except Exception:
+    if not url:
         return None
+    try:
+        body, _, _ = fetch(url, DOWNLOAD_TIMEOUT)
+        stream = BytesIO(body)
+        extension = validate_image(stream)
+        if extension is None:
+            return None
+        return FileStorage(stream, filename='preview.' + extension)
+    except (OSError, ValueError, http.client.HTTPException):
+        return None
+
+
+def process_link_entry(user_id, link: str) -> tuple:
+    data = do_opengraph(link)
+    if data is None:
+        json_abort(400, {'message': 'Unable to fetch this link safely.'})
+    title, original_path = data
+    path = None
+    file_type = 'external'
+    file = download_file(original_path)
+    if file is not None:
+        try:
+            path, _, file_type = save_file(user_id, file)
+        except OSError:
+            pass
+    if path is None:
+        original_path = None
+    return LinkEntryData(title, path, original_path, file_type, link).json(), []

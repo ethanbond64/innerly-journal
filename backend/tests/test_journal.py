@@ -7,10 +7,11 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import ssl
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import zipfile
 
 from cryptography.fernet import Fernet
@@ -366,6 +367,7 @@ class JournalTests(unittest.TestCase):
         def response(body, content_type):
             result = io.BytesIO(body)
             result.headers = {'Content-Type': content_type}
+            result.geturl = lambda: 'https://example.com/page'
             return result
         with patch.object(link_processor.url_opener, 'open', side_effect=[response(page, 'text/html'), response(PNG, 'image/png')]):
             entry = self.request('POST', '/insert/entries', status=201,
@@ -455,10 +457,140 @@ class JournalTests(unittest.TestCase):
                      json={'name': 'legacy', 'functional_datetime': '2020-01-01T23:59:00.000Z'})
         self.assertEqual(len(self.request('GET', '/fetch/tags')['data']), 1)
 
+    def test_link_security_blocks_unsafe_destinations(self):
+        """Unsafe URLs and non-public DNS answers are rejected before opening a socket or saving an entry."""
+        for url in ['file:///etc/passwd', 'ftp://example.com/file', 'http://example.com/', 'https://',
+                    'https://user:pass@example.com', 'https://example.com:bad',
+                    'https://example.com/\nheader', 'https://[::1%25lo0]/']:
+            with self.subTest(url=url), patch.object(link_processor.socket, 'getaddrinfo') as dns:
+                self.request('POST', '/insert/entries', status=400,
+                             json={'entry_type': 'link', 'entry_data': {'link': url}})
+                dns.assert_not_called()
+        for addresses in [['127.0.0.1'], ['10.0.0.1'], ['169.254.169.254'], ['192.168.1.1'],
+                          ['172.16.0.1'], ['0.0.0.0'], ['224.0.0.1'], ['::1'], ['fc00::1'],
+                          ['fe80::1'], ['::ffff:127.0.0.1'], ['93.184.216.34', '127.0.0.1']]:
+            with self.subTest(addresses=addresses):
+                answers = [(2, 1, 6, '', (address, 443)) for address in addresses]
+                with patch.object(link_processor.socket, 'getaddrinfo', return_value=answers), \
+                     patch.object(link_processor.socket, 'socket') as connect:
+                    result = self.request('POST', '/insert/entries', status=400,
+                                          json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/'}})
+                    self.assertEqual(result['message'], 'Unable to fetch this link safely.')
+                    connect.assert_not_called()
+        self.assertEqual(self.request('GET', '/fetch/entries')['data'], [])
+
+    def test_link_redirects_pin_public_addresses(self):
+        """Redirects and relative thumbnails use validated pinned addresses without following proxy environment settings."""
+        page = b'<meta property="og:title" content="Redirected"><meta property="og:image" content="../image.png">'
+        bodies = [b'HTTP/1.1 302 Found\r\nLocation: /folder/page\r\nContent-Length: 0\r\n\r\n',
+                  b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: ' + str(len(page)).encode() + b'\r\n\r\n' + page,
+                  b'HTTP/1.1 200 OK\r\nContent-Length: ' + str(len(PNG)).encode() + b'\r\n\r\n' + PNG]
+        sockets = [Mock() for _ in bodies]
+        for connection, body in zip(sockets, bodies):
+            connection.makefile.return_value = io.BytesIO(body)
+        answers = [(2, 1, 6, '', ('93.184.216.34', 443))]
+        with patch.dict(os.environ, {'https_proxy': 'http://127.0.0.1:9999'}), \
+             patch.object(link_processor.socket, 'getaddrinfo', return_value=answers) as dns, \
+             patch.object(link_processor.socket, 'socket', side_effect=sockets), \
+             patch.object(ssl.SSLContext, 'wrap_socket', lambda context, sock, **kwargs: sock):
+            with patch.object(link_processor, 'url_opener', link_processor.build_url_opener()):
+                entry = self.request('POST', '/insert/entries', status=201,
+                                     json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/start'}})['data']
+        self.assertEqual(entry['entry_data']['title'], 'Redirected')
+        self.assertEqual(entry['entry_data']['original_path'], 'https://example.com/image.png')
+        self.assertEqual(dns.call_count, 3)
+        for connection in sockets:
+            connection.connect.assert_called_once_with(('93.184.216.34', 443))
+            self.assertIn(b'Host: example.com', connection.sendall.call_args_list[0].args[0])
+        image = self.client.get(entry['entry_data']['path'])
+        self.assertEqual(image.data, PNG)
+        image.close()
+
+    def test_link_redirect_to_private_host_is_blocked(self):
+        """A public HTTPS page cannot redirect to an internal address or downgrade to HTTP."""
+        for target in ['https://internal.example', 'https://example.com', 'http://example.com']:
+            with self.subTest(target=target):
+                connection = Mock()
+                connection.makefile.return_value = io.BytesIO(
+                    f'HTTP/1.1 302 Found\r\nLocation: {target}/secret\r\nContent-Length: 0\r\n\r\n'.encode())
+                addresses = [[(2, 1, 6, '', ('93.184.216.34', 443))], [(2, 1, 6, '', ('127.0.0.1', 443))]]
+                with patch.object(link_processor.socket, 'getaddrinfo', side_effect=addresses), \
+                     patch.object(link_processor.socket, 'socket', return_value=connection) as sockets, \
+                     patch.object(ssl.SSLContext, 'wrap_socket', lambda context, sock, **kwargs: sock):
+                    self.request('POST', '/insert/entries', status=400,
+                                 json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/'}})
+                    sockets.assert_called_once()
+        self.assertEqual(self.request('GET', '/fetch/entries')['data'], [])
+
+    def test_unusable_previews_do_not_break_bookmarks(self):
+        """Missing, unsafe, unsupported, and failed thumbnails leave a usable bookmark without external image fallbacks."""
+        for image in [None, 'https://[broken', 'http://example.com/image', 'https://internal.example/image',
+                      'https://example.com/unsupported', 'https://example.com/failure']:
+            with self.subTest(image=image):
+                page = '<meta property="og:title" content="Bookmark">'
+                if image:
+                    page += f'<meta property="og:image" content="{image}">'
+                body = page.encode()
+                first = Mock()
+                first.makefile.return_value = io.BytesIO(
+                    b'HTTP/1.1 200 OK\r\nContent-Length: ' + str(len(body)).encode() + b'\r\n\r\n' + body)
+                second = Mock()
+                second.makefile.return_value = io.BytesIO(b'HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nsvg')
+                public = [(2, 1, 6, '', ('93.184.216.34', 443))]
+                private = [(2, 1, 6, '', ('127.0.0.1', 443))]
+                answers = [public, private if image and 'internal' in image else public]
+                if image and 'failure' in image:
+                    second.connect.side_effect = TimeoutError
+                with patch.object(link_processor.socket, 'getaddrinfo', side_effect=answers), \
+                     patch.object(link_processor.socket, 'socket', side_effect=[first, second]) as sockets, \
+                     patch.object(ssl.SSLContext, 'wrap_socket', lambda context, sock, **kwargs: sock):
+                    entry = self.request('POST', '/insert/entries', status=201,
+                                         json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/'}})['data']
+                    if image is None or 'internal' in image or image == 'https://[broken' or image.startswith('http://'):
+                        self.assertEqual(sockets.call_count, 1)
+                data = self.fetch(entry)['entry_data']
+                self.assertEqual(data['title'], 'Bookmark')
+                self.assertEqual(data['link'], 'https://example.com/')
+                self.assertIsNone(data['path'])
+                self.assertIsNone(data['original_path'])
+
+    def test_https_keeps_hostname_verification(self):
+        """HTTPS pins the public connection address while preserving certificate verification and the original TLS hostname."""
+        connection = Mock()
+        connection.makefile.return_value = io.BytesIO(b'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n')
+        hostnames = []
+        def wrap(context, sock, server_hostname=None, **kwargs):
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            hostnames.append(server_hostname)
+            return sock
+        with patch.object(link_processor.socket, 'getaddrinfo', return_value=[(2, 1, 6, '', ('93.184.216.34', 443))]), \
+             patch.object(link_processor.socket, 'socket', return_value=connection), \
+             patch.object(ssl.SSLContext, 'wrap_socket', wrap):
+            self.request('POST', '/insert/entries', status=201,
+                         json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/'}})
+        connection.connect.assert_called_once_with(('93.184.216.34', 443))
+        self.assertEqual(hostnames, ['example.com'])
+
+    def test_link_redirect_loop_is_bounded(self):
+        """Repeated redirects are stopped instead of making unbounded outbound requests."""
+        connection = Mock()
+        connection.makefile.side_effect = lambda *args: io.BytesIO(
+            b'HTTP/1.1 302 Found\r\nLocation: /loop\r\nContent-Length: 0\r\n\r\n')
+        with patch.object(link_processor.socket, 'getaddrinfo', return_value=[(2, 1, 6, '', ('93.184.216.34', 443))]), \
+             patch.object(link_processor.socket, 'socket', return_value=connection) as sockets, \
+             patch.object(ssl.SSLContext, 'wrap_socket', lambda context, sock, **kwargs: sock):
+            self.request('POST', '/insert/entries', status=400,
+                         json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/loop'}})
+            self.assertLessEqual(sockets.call_count, 6)
+        self.assertEqual(self.request('GET', '/fetch/entries')['data'], [])
+
     def test_link_response_limits(self):
         """Oversized page responses fail without inserting a bookmark, regardless of advertised length."""
         for headers, body in [({'Content-Length': '100'}, b'x'), ({}, b'x' * 33),
-                              ({'Content-Length': '1'}, b'x' * 33)]:
+                              ({'Content-Length': '1'}, b'x' * 33),
+                              ({'Content-Encoding': 'gzip'}, b'compressed'),
+                              ({'Content-Length': 'invalid'}, b'x')]:
             with self.subTest(headers=headers):
                 response = io.BytesIO(body)
                 response.headers = headers

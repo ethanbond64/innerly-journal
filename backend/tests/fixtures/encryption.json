@@ -1,0 +1,9 @@
+{
+  "email": "owner@example.com",
+  "password": "journal-password",
+  "text": "Legacy journal 世界\nStill private.",
+  "key_hex": "82eee2b1293eeaecc5dd223003702d5dfcc73fc038acf7ae57a4f991d62e2955",
+  "password_hash": "pbkdf2:sha256:1000000$BKTgeCAv94fqjwvh$98000f74790211078a0faff78cff51a8a50d6f75930d7d87982af2b7cb0c6b4f",
+  "v0": "b'gAAAAABqy_QjZCxL0PAmi_EWWPBR5cksCeIVDHVwhw2fOV4kUI3WxIkh_FD4N4G_0m98Mt2aCII0zfaeb6LCv44-4nzGVSkl-KKvsmOeVRS25iuf3Tea4EzCCvkqgBlFXaVcoS25yuZT'",
+  "v1": "b'gAAAAABqy_QjdiygjmxndSQf7L6ns_LaX2PU4P3jm0-VWko-bBODCWqvez2OhJmupN4MAEyDZb0G3dwGdU49TG9su8m_H7VJ1Wu1v5KaVs9TqK9GlRxFcJaJ2tYXE0oY2U1yjQgfDKMr'"
+}

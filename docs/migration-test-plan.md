@@ -4,19 +4,25 @@
 
 Build a Python regression suite first, then port the behavioral assertions and fixtures to Go so the Wails migration can be driven by tests.
 
-This is a proposed inventory based on the current source, not an implemented or executed suite. The main checklist describes behavior supported by the implementation and expected to pass today; implementation may uncover additional defects. No item is marked passing until it has actually run.
+This is a proposed inventory based on the current source, not an implemented or executed suite. Unmarked scenarios describe current behavior expected to pass today; items marked **Approved change** require a future product fix and are not part of the passing baseline yet. No item is marked passing until it has actually run. This revision updates the plan only, on branch `tests`; it does not authorize making code changes as part of this documentation task.
 
 Use Python tests for backend/domain behavior. React rendering, autosave timing, typewriter scrolling, browser-local settings, and navigation need a separate JavaScript or end-to-end suite; Python backend tests cannot adequately certify them.
 
 ## Test strategy and shared fixtures
 
+**Production code should remain untouched to accommodate tests, ideally with zero changes.** Do not add dependency-injection interfaces, clock abstractions, test-only flags, exported helpers, or refactors just to fit a testing framework. The approved search, password-validation, and link-security fixes below are product changes, not test-enabling changes; keep them separate from baseline test work.
+
+**Prefer higher-level end-to-end behavior scenarios.** Drive signup/login, settings, entry creation/editing, locking, search, media retrieval, and password changes through the application's public boundary with real SQLite and filesystem storage. Flask's test client exercises the backend stack, not browser UI; reserve actual server/browser smoke tests for behaviors that need them. Port workflows and observable outcomes to the Go application boundary, not Python's internal call structure.
+
+The checklists below are coverage outcomes to combine into workflows, not instructions to write one unit test per helper or assertion. Prefer representative journeys and parameterized input/output cases over exhaustive internal branches. Do not assert ORM methods, dictionary layout, function call counts, cache implementation, thread classes, or exact sentiment algorithm mechanics. Small direct compatibility tests are justified only where the persisted cryptographic/data format requires them.
+
 - [ ] Use pytest with isolated temporary SQLite databases and temporary media/import directories; never read or modify a real journal.
-- [ ] Supply a test configuration before importing application modules (settings currently reads `~/.innerly/config.json` at import time).
-- [ ] Exercise HTTP behavior with Flask's test client; test processing and encryption functions directly where appropriate.
+- [ ] Supply a temporary HOME and config before importing application modules (settings currently reads `~/.innerly/config.json` at import time); use a fresh process where import-time configuration/global state makes isolation difficult.
+- [ ] Start from public operations wherever possible; seed only legacy/edge-case datasets that cannot be created through supported user workflows, then assert through public reads and persisted data.
 - [ ] Create two ordinary users and an admin for authorization/isolation cases.
-- [ ] Reset the global lock-key cache, import job manager, and invitation/share state between tests.
-- [ ] Use a controlled clock for token expiry, file-signature expiry, and lock-key expiry instead of sleeping.
-- [ ] Mock outbound HTTP, thread launching where needed, and network failures; no public websites required.
+- [ ] Prefer fresh application processes for independent scenarios rather than production reset hooks for global state.
+- [ ] Use test-side clock patching or synthetic expired fixtures only for timeout cases; no production clock refactoring or long sleeps.
+- [ ] Stub only external network/time boundaries when needed. Keep application processing, database writes, and file handling real; use controlled responses for network failures, never public websites.
 - [ ] Use tiny valid JPEG, PNG, and GIF fixtures plus invalid/non-image payloads.
 - [ ] Commit synthetic, non-sensitive compatibility fixtures: SQLite journal, legacy password hash, Fernet v0/v1 ciphertext, legacy AES-GCM import archive, and expected decoded records.
 - [ ] Give portable behavioral cases stable identifiers/names that can be reused in Go.
@@ -31,9 +37,8 @@ Sources: `backend/api/models.py`, `backend/api/app.py`, `backend/api/settings.py
 - [ ] Repeated initialization preserves existing users and entries.
 - [ ] An old tags table without `day_tag` gets the column added with a false default.
 - [ ] Reapplying column migrations does not change existing data or fail.
-- [ ] Saving a model persists it and assigns an ID and creation/update timestamps.
-- [ ] Updating JSON data persists the changes across sessions.
-- [ ] Deleting a model removes its row.
+- [ ] Create, edit, read back, and delete an entry through the API; verify IDs/timestamps and that results survive a fresh application session.
+- [ ] Reopen a synthetic legacy journal through normal startup and verify its entries/settings remain readable.
 - [ ] User serialization excludes `password_hash`.
 - [ ] Entry serialization includes attached tag names and the stored entry type/data.
 - [ ] Serialized SQLite timestamps use the existing ISO-8601 UTC convention, including `Z`.
@@ -123,7 +128,7 @@ Source: entry routes in `backend/api/views.py`.
 - [ ] Deleting one's own entry removes its database row.
 - [ ] Deleting a missing or another user's entry returns not found.
 
-Physical-file cleanup and tag-replacement behavior need decisions; see the gaps section below.
+Entry-tag replacement is out of scope: entry tags are not created/edited by hand in the supported UI. Physical-file cleanup is awaiting clarification; see decision 3 below. Do not add production fixes for either as part of baseline testing.
 
 ## 6. Entry listing, search, activity, and memories
 
@@ -135,6 +140,12 @@ Source: fetch routes in `backend/api/views.py`.
 - [ ] List results use short text previews and signed local media URLs.
 - [ ] An empty journal returns an empty list.
 - [ ] Search matches titles and unlocked text case-insensitively.
+- [ ] **Approved change:** search also matches entry-level tag names case-insensitively by substring, combined with title/unlocked-text matching using OR.
+- [ ] **Approved change:** a tagged entry is returned once even when several tags or its title/text match; pagination and chronological ordering remain correct.
+- [ ] **Approved change:** entry-tag search finds locked entries without decrypting their text and never returns another user's entries.
+- [ ] **Approved change:** a tag attached only to a day does not make that day's entries match entry-tag search.
+
+Seed existing entry/tag associations in a synthetic fixture (no manual tag-creation feature or importer change). The unused separate `tag` filter parameter is not part of this requested search fix.
 - [ ] Search does not inspect the plaintext contents of locked text.
 - [ ] Locked entries can still be found by unencrypted title.
 - [ ] Date filtering includes the current UTC slack window (anchor minus one day through anchor plus two days).
@@ -157,9 +168,7 @@ Exact local-day grouping and exclusion of the current year from memories happen 
 
 Source: tag models/helpers and tag routes.
 
-- [ ] Entry-tag insertion lowercases and deduplicates names within a single call.
-- [ ] Existing tags are reused for that user rather than duplicated.
-- [ ] Empty/absent entry-tag lists create no associations.
+Entry tags are not manually created/edited in the supported UI. Do not add helper-level insertion/replacement tests or implement a new workflow. Use preexisting fixture associations to verify display, ownership, and the approved entry-tag search behavior.
 - [ ] Day-tag names are trimmed and lowercased.
 - [ ] Blank, missing, and over-255-character day-tag names are rejected; a 255-character name is accepted.
 - [ ] A tag already used on an entry can be promoted to a day tag without creating a second tag row.
@@ -184,7 +193,7 @@ Source: `backend/api/security.py` and lock/fetch/update routes.
 - [ ] Fixed Python-produced version-1 ciphertext decrypts to the expected text.
 - [ ] Fixed legacy version-0 ciphertext decrypts using the legacy email-based key.
 - [ ] Unsupported lock versions and tampered ciphertext fail rather than silently returning text.
-- [ ] Locking copies entry data, preserves metadata, and adds the lock flag/version without mutating the supplied data object.
+- [ ] Locking an entry preserves its title, sentiment, word count, and tags across subsequent reads.
 - [ ] Locked creation stores ciphertext, never the submitted plaintext, while returning plaintext to the writer with `text_unlocked: true`.
 - [ ] Locking an unlocked text entry persists ciphertext; locking an already locked entry leaves it unchanged.
 - [ ] File/link entries cannot be locked through the lock endpoint.
@@ -192,7 +201,7 @@ Source: `backend/api/security.py` and lock/fetch/update routes.
 - [ ] A valid cached key permits locking without resubmitting a password.
 - [ ] A missing/expired key with no valid password returns the `lock-auth-expired` marker.
 - [ ] Re-authentication with the correct password refreshes the cache; a wrong password does not provide a usable key.
-- [ ] Cache entries are isolated by user and clearing one user's key leaves the other user's key intact.
+- [ ] Authenticating one user's lock access does not allow another user to write locked entries without their own authentication.
 - [ ] Valid account settings control newly cached key expiration.
 - [ ] Fetching locked text with a password returns plaintext but leaves the database encrypted.
 - [ ] Fetching locked text without a password returns ciphertext; password fetch rejects missing/wrong passwords.
@@ -200,7 +209,7 @@ Source: `backend/api/security.py` and lock/fetch/update routes.
 - [ ] Editing locked plaintext re-encrypts it at rest, preserves lock metadata, and returns the updated plaintext to the writer.
 - [ ] Submitting ciphertext back as an edit to a locked entry is rejected, leaving persisted data unchanged.
 - [ ] Permanently unlocking an entry writes plaintext and sets `locked: false`.
-- [ ] Ciphertext-prefix detection recognizes the existing stored format without misidentifying ordinary text.
+- [ ] Ordinary plaintext edits remain readable after saving; accidentally resubmitted stored ciphertext is rejected through the edit endpoint.
 - [ ] A known Werkzeug PBKDF2 hash verifies correctly with the matching password (future Go compatibility fixture).
 
 ## 9. Password changes and transactional re-encryption
@@ -218,7 +227,11 @@ Source: password-change route and `entry_relocker`.
 - [ ] Failure to decrypt/re-encrypt any selected entry rolls back both password and entry changes, including entries processed before the failure.
 - [ ] Successful changes refresh the write-key cache with the new password-derived key.
 
-New-password strength validation is currently missing from this endpoint; do not assume it matches signup validation.
+- [ ] **Approved change:** password changes reject a new password shorter than eight characters, using the same minimum-length rule as signup.
+- [ ] **Approved change:** a valid eight-character password is accepted with the correct current password.
+- [ ] **Approved change:** a rejected weak password leaves the old login, locked entries, and persisted account data unchanged, including when `lock_all` is requested.
+
+Validate these through password-change/login/read workflows, not assertions that a particular validation helper was called. These scenarios require a future production fix; they are not expected-pass baseline tests yet.
 
 ## 10. Image validation, storage, and access
 
@@ -233,12 +246,12 @@ Source: `backend/api/processors/file_processor.py`, file route, signing helpers.
 - [ ] Missing user directories are created automatically.
 - [ ] Stored bytes match the uploaded bytes.
 - [ ] Public stored paths use the existing `static/<filename>` convention.
-- [ ] Direct deletion of an existing filename in a user directory succeeds; a nonexistent filename returns false.
+Physical-file deletion assertions are deferred pending clarification of decision 3; do not substitute a passing low-level helper test for the actual delete-entry workflow.
 - [ ] A valid file signature resolves to its user; one older than twelve hours does not.
 - [ ] File serving requires a signature and serves the correct file from the resolved user's directory.
 - [ ] A valid signature with a nonexistent filename returns not found.
 
-Malformed signatures, filename binding, and route-driven deletion require fixes/decisions below rather than optimistic passing assertions.
+Existing signature behavior is accepted as-is; do not add filename-binding or malformed-signature hardening requirements. Route-driven physical deletion is explained under decision 3 and is not approved for a fix yet.
 
 ## 11. Open Graph parsing and HTTP link processing
 
@@ -262,11 +275,30 @@ Sources: `opengraph.py`, `link_processor.py`.
 - [ ] A failed download preserves the external thumbnail URL and marks it external.
 - [ ] Failure to fetch the page causes link creation to fail without inserting an entry.
 
-Use mocked HTTP responses and a small injected response cap for boundary tests. Avoid real network requests and Wikipedia sleeps.
+Exercise these outcomes through link creation and subsequent entry/media reads using controlled network responses. Do not add production injection points or assert parser/HTTP helper call sequences. Use test-side patching for response limits if needed; avoid public network requests and Wikipedia sleeps.
+
+### Approved change: link security and graceful failures
+
+These are future product fixes, not passing-baseline claims. Keep changes confined to the shared link-fetching/processing boundary; do not alter importer code or its workflow.
+
+- [ ] Reject unsafe URL schemes, malformed URLs, embedded credentials, and missing/invalid hosts with a controlled error and no inserted entry.
+- [ ] Block loopback, private, link-local (including cloud metadata), multicast, unspecified, reserved, and other non-public destinations for both page and thumbnail requests, including IPv4, IPv6, and mapped-address representations.
+- [ ] Validate all resolved addresses and the actual connection destination so hostname tricks, mixed public/private DNS answers, and DNS rebinding cannot bypass the policy. Do not let ambient proxy settings bypass it.
+- [ ] Apply the same checks to every redirect hop for pages and images; cap redirects and reject loops/unsafe redirects before contacting the blocked destination.
+- [ ] Maintain TLS certificate verification and bounded network timeouts/response sizes, including absent or misleading Content-Length and any decoded content.
+- [ ] Resolve relative thumbnail URLs against the final page URL and validate the resolved destination before fetching.
+- [ ] Invalid, missing, unsupported, oversized, or unreachable thumbnails do not turn an otherwise valid bookmark into a server error; retain the title/link and omit the unusable preview.
+- [ ] Never return a blocked/unsafe thumbnail URL as a browser-loaded fallback; this would bypass server-side restrictions.
+- [ ] Page fetch failures return a controlled user-facing error, leave no entry behind, and do not expose sensitive internal details.
+- [ ] Successful public pages and supported image previews still save and can be read back normally.
+
+Use a controlled transport/DNS boundary to simulate these cases without reaching private networks. Assert observable rejection, persisted results, and absence of blocked outbound connections, not a particular security library or validation implementation.
 
 ## 12. Legacy import parsing and archive compatibility
 
 Source: `backend/api/imports.py`.
+
+**Frozen feature:** no importer production changes, security fixes, cleanup changes, encryption-policy changes, timestamp expansion, or testability refactors. Existing behavior may be characterized with synthetic archives through the current import API. Consolidate the outcomes below into a few archive-to-journal scenarios; they are not a mandate for parser/decryption helper unit tests. If a test uncovers an import bug, document it rather than changing the feature.
 
 - [ ] Archives containing all six required root CSVs pass validation; missing CSVs are reported.
 - [ ] CSV parsing preserves quoted delimiters, multiline values, and Unicode.
@@ -310,7 +342,7 @@ Sources: import job manager and import routes.
 - [ ] Malformed `secret.json` returns an error.
 - [ ] Status returns the requesting user's job or not found; cancel reports whether cancellation was requested.
 
-Test most worker behavior synchronously with deterministic cancellation events. Reserve a small integration test for real background-thread/application-context execution.
+Prefer start → poll → read imported entries and start → cancel → poll workflows through the current API, using bounded polling and controlled fixtures. Do not replace the worker with mocks or test job-manager internals as the migration contract. The counters/state items above describe visible progress outcomes; internal event, thread, and clear/reset mechanics do not need dedicated tests. No importer production changes are in scope.
 
 ## 14. Flask hosting behavior (Python-only adapter tests)
 
@@ -340,32 +372,32 @@ These reuse the Python cases above, rather than introducing a second unrelated s
 
 Compare domain records and outcomes, not Flask response codes, Wails-generated wrapper types, randomized cryptographic output, or implementation-specific error strings.
 
-## Known gaps / decisions — not expected-pass requirements today
+## Known-gap decisions (reviewed)
 
-Review these before implementing tests. Fix them in Python first if they should become part of the migration contract; do not enshrine unsafe behavior merely to obtain a green baseline.
+The numbering below matches the original fourteen gaps. Only items 1, 5, and 7 are approved future fixes. Keep their new tests separate from the existing passing baseline until those fixes are made. Deferred/accepted behavior does not need new tests locking in bugs.
 
-- [ ] **Tag filtering/search:** the list endpoint reads `tag` but does not apply it; search currently matches title/unlocked text, not tags despite its comment.
-- [ ] **Entry-tag editing:** updates append associations rather than replacing old ones; adding an already-associated tag can violate the uniqueness constraint. Empty tags do not currently clear old associations.
-- [ ] **Media deletion:** stored paths include `static/`, but deletion joins that path inside an already user-specific static directory, so route-driven physical-file deletion appears incorrect.
-- [ ] **File signatures:** signing embeds a filename, but validation only extracts user/time, so a signature is not bound to the requested filename. Malformed signatures may raise exceptions rather than return a clean authorization error.
-- [ ] **New password strength:** password-change validation does not enforce signup's minimum length.
-- [ ] **Malformed inputs:** unknown entry types, malformed insert datetimes, missing Content-Type, non-object JSON, invalid field types, empty filenames, and extreme TTL values are not consistently handled as clean client errors.
-- [ ] **Link safety:** HTTP(S)-only checks do not block private/internal hosts; URL/redirect restrictions need an SSRF policy. Relative thumbnail URLs and unsupported downloaded image formats also need defined behavior.
-- [ ] **Archive safety:** required-file validation is not a complete policy for untrusted ZIPs (paths, symlinks, decompression size, and resource limits). Import source paths should be explicitly confined to the imports directory.
-- [ ] **Cleanup/atomicity:** malformed archive secrets can leave extracted temporary directories; import file/tag side effects and deleted entry associations need cleanup guarantees.
-- [ ] **Signup and sessions:** decide whether open signup, admin/share behavior, five-day tokens, and existing tokens after password changes belong in a local desktop app.
-- [ ] **Day normalization:** day-tag uniqueness is based on exact timestamps; local-day-at-23:59 normalization currently relies on the client rather than server enforcement.
-- [ ] **Lock cache:** expired keys are removed on access rather than proactively; process restarts clear caches. Decide desktop lock/logout and key-memory cleanup semantics explicitly.
-- [ ] **Import data protection:** imported text is not automatically locked, even with lock-by-default enabled. Decide whether this is acceptable for the migrated app.
-- [ ] **Timestamp importer:** the legacy parser assumes supported UTC input rather than generally converting arbitrary timezone offsets. Decide whether to expand support.
+1. **Entry-tag search — approved fix.** Extend free-text search to entry-level tags as specified in section 6. Do not expand scope to the unused separate tag-filter parameter.
+2. **Entry-tag editing — no-op/out of scope.** Tags cannot be created by hand in the supported workflow. Do not implement replacement/clearing or new manual entry-tag editing.
+3. **Media deletion — explanation; awaiting direction, no fix approved.** An uploaded image lives at `~/.innerly/static/user-1/abc.png`. Its entry stores `static/abc.png`. Deleting the entry currently appears to join that stored path to the user directory, looking for `~/.innerly/static/user-1/static/abc.png` instead. The database entry disappears but the real image can remain on disk, consuming space and retaining data the user may have expected to delete. This is about physical-file cleanup, not whether the journal card disappears. Do not fix or require cleanup tests without further direction.
+4. **File signatures — accepted as-is.** No filename-binding or malformed-signature hardening work.
+5. **New password strength — approved fix.** Add the signup-equivalent eight-character minimum to password changes; planned workflow assertions are in section 9.
+6. **Malformed client inputs — leave alone.** No broad validation/hardening campaign. Existing clean-error behavior may be covered, but do not add requirements for currently unhandled malformed inputs.
+7. **Link safety — approved fix.** Use security best practices for SSRF prevention, redirects/DNS, relative previews, bounded fetches, and graceful errors as specified in section 11. Do not change importer orchestration or data semantics; it continues to use the shared link processor.
+8. **Archive safety — frozen.** Do not touch the imports feature or add archive-hardening work.
+9. **Cleanup/atomicity — no action.** Do not add cleanup/transaction fixes for import side effects or deleted associations.
+10. **Signup and sessions — leave as-is.** Existing Python behavior may have lightweight regression coverage, but it is not a mandatory Go parity contract; signup/token behavior is expected to go away.
+11. **Day normalization — accepted as-is.** Exact-timestamp uniqueness and client normalization remain unchanged.
+12. **Lock cache — TODO only.** TODO: purge expired lock keys in the background on a recurring timer. No timer implementation or new timer-specific tests in this scope; existing access-time expiration behavior remains the baseline.
+13. **Import data protection — frozen.** Do not change imported-entry locking behavior.
+14. **Timestamp importer — frozen.** Do not change supported import timestamp formats or offset handling.
 
 ## Suggested implementation order
 
-1. Encryption/hash golden fixtures, locked persistence, and transactional password changes.
-2. SQLite/schema compatibility, user isolation, and basic entry CRUD.
-3. Text processing, queries, tags/day tags, settings, and activity/memories.
-4. Images, signatures, Open Graph, and deterministic HTTP failure cases.
-5. Legacy importer and progress/cancellation.
-6. Thin Flask adapter tests, then Go/Wails adapter replacements.
+1. Establish an isolated test harness without changing production code; implement a few real journal workflows (create/edit/read/delete, lock/read/rekey, cross-user isolation).
+2. Add persisted compatibility fixtures, restart/readback checks, and password-change rollback scenarios.
+3. Cover search, day tags, settings, activity/memories, and media through public operations with representative datasets.
+4. Separately implement the approved search, password-validation, and link-security fixes in a future task, with behavior tests for each; do not confuse these with test-harness refactors.
+5. Characterize the frozen importer through existing archive-to-journal workflows without modifying it.
+6. Port these same scenarios to Go/Wails boundaries, retaining data-format compatibility checks and replacing only transport-specific setup/assertions. Signup/token behavior need not survive the migration.
 
-The unchecked items are a review checklist, not a claim that each must become a separate test function. Parameterize closely related cases and keep fixture datasets small.
+The unchecked items are coverage notes, not a required unit-test count. Combine them into higher-level scenarios, parameterize meaningful input/output examples, and avoid making implementation details part of the contract. If testing appears to require a production refactor, first use an external fixture/process boundary or narrow the test; discuss any unavoidable code change before proceeding.

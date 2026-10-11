@@ -268,6 +268,35 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.plaintext(public, 'final-password'), 'public')
         self.assertTrue(self.stored(public)['locked'])
 
+    def test_password_change_minimum_length(self):
+        """Weak new passwords leave account data and entries unchanged, while an eight-character password can rekey them."""
+        private = self.create('Private journal', locked=True)
+        public = self.create('Public journal')
+        before = [self.stored(private), self.stored(public)]
+        with closing(sqlite3.connect(DATA / 'database.db')) as connection:
+            account = connection.execute('SELECT * FROM users WHERE id = ?', (self.owner['user']['id'],)).fetchone()
+        for password in ['', 'short', '1234567']:
+            for lock_all in [False, True]:
+                with self.subTest(password=password, lock_all=lock_all):
+                    self.request('POST', '/update_password', status=400,
+                                 json={'current_password': PASSWORD, 'new_password': password, 'lock_all': lock_all})
+                    self.assertEqual([self.stored(private), self.stored(public)], before)
+                    with closing(sqlite3.connect(DATA / 'database.db')) as connection:
+                        self.assertEqual(connection.execute('SELECT * FROM users WHERE id = ?',
+                                                           (self.owner['user']['id'],)).fetchone(), account)
+        login = self.client.post('/api/login', json={'email': 'owner@example.com', 'password': PASSWORD})
+        self.assertEqual(login.status_code, 200)
+        self.assertEqual(self.plaintext(private), 'Private journal')
+        result = self.request('POST', '/update_password',
+                              json={'current_password': PASSWORD, 'new_password': '12345678', 'lock_all': True})
+        self.assertEqual(result['reencrypted'], 2)
+        for entry, text in [(private, 'Private journal'), (public, 'Public journal')]:
+            self.assertTrue(self.stored(entry)['locked'])
+            self.assertEqual(self.plaintext(entry, '12345678'), text)
+        for password, status in [(PASSWORD, 401), ('12345678', 200)]:
+            self.assertEqual(self.client.post('/api/login',
+                                             json={'email': 'owner@example.com', 'password': password}).status_code, status)
+
     def test_password_change_rolls_back_on_corrupt_entry(self):
         """An unreadable encrypted entry prevents a password change without partially rekeying earlier entries."""
         first = self.create('first', locked=True)

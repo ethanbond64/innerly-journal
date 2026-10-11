@@ -126,7 +126,10 @@ def reset_password(current_user):
     
     if not authenticated(current_user, current_password):
         return {'message': 'Current password incorrect.'}, 401
-    
+
+    if not validate_password(new_password):
+        return {'message': 'Invalid Password. Password must be at least 8 characters.'}, 400
+
     relock = entry_relocker(current_user, current_password, new_password)
 
     clear_scrypt_key(current_user)

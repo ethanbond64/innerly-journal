@@ -79,6 +79,9 @@ func publicTime(s string) string {
 	}
 	return t.Format(time.RFC3339Nano)
 }
+
+// TODO move to sql files + add a migration version so data model modifications can be shipped later -
+// build in a NON BREAKING FASHION - so existing users can have it run and they will treat no version as version 0 (current version) and then apply any changes that were introduced after that.
 func (a *App) applyColumnMigrations() error {
 	_, err := a.db.Exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,email VARCHAR(128) NOT NULL UNIQUE,password_hash VARCHAR(512) NOT NULL,admin BOOLEAN,settings JSON NOT NULL DEFAULT '"{}"',usage JSON NOT NULL DEFAULT '"{}"',created_on DATETIME,updated_on DATETIME);
  CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id),functional_datetime DATETIME,entry_type VARCHAR(64) NOT NULL,entry_data JSON NOT NULL,created_on DATETIME,updated_on DATETIME);
@@ -157,6 +160,8 @@ func (a *App) entry(id, userID int64) (Entry, error) {
 	}
 	return e, rows.Err()
 }
+
+// TODO move each usage of this to its own query fn with bound args. NO passing raw sql where clauses in as strings.
 func (a *App) entries(where string, args ...any) ([]Entry, error) {
 	rows, err := a.db.Query("SELECT id FROM entries WHERE "+where, args...)
 	if err != nil {

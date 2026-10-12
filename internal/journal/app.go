@@ -13,6 +13,7 @@ type App struct {
 	mu      sync.Mutex
 	db      *sql.DB
 	config  Config
+	// TODO ideally support multiuser separation on a single machine concurrently, the way python impl did.
 	userID  int64
 	keys    map[int64]cachedKey
 	jobs    map[int64]*importJob

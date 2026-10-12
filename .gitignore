@@ -7,3 +7,6 @@ __pycache__
 *.spec
 .DS_Store
 .idea
+.work/
+frontend/wailsjs/
+frontend/package.json.md5

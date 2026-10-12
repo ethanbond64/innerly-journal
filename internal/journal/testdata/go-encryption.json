@@ -1,0 +1,7 @@
+{
+  "email": "owner@example.com",
+  "password": "updated-password",
+  "password_hash": "pbkdf2:sha256:1000000$58213eac3410e8e3fbd65a791584b45a$45fe8fe394b96483c056c63a602f105b1d011d9230e9f658d6879249e60bc271",
+  "text": "Edited in Go 世界",
+  "v1": "b'gAAAAABqzIHnm4w077WDevBp2vRkEIkRZmK5su3k2vJBhoDrm_Hdc3Z-v4KYbqTNXlEdH5tMI71Mzod4dQU8ws415161Igfm0bGRg4nipkWPw3YkPVK6bVo='"
+}

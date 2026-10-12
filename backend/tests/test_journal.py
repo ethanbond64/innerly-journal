@@ -600,6 +600,43 @@ class JournalTests(unittest.TestCase):
                                  json={'entry_type': 'link', 'entry_data': {'link': 'https://example.com/large'}})
                 self.assertEqual(self.request('GET', '/fetch/entries')['data'], [])
 
+    def test_go_encryption_fixture(self):
+        """Python can verify a Go-created password hash and decrypt text rekeyed by the desktop implementation."""
+        path = Path(__file__).resolve().parents[2] / 'internal/journal/testdata/go-encryption.json'
+        fixture = json.loads(path.read_text())
+        entry = self.create('placeholder')
+        data = {**self.stored(entry), 'text': fixture['v1'], 'locked': True, 'lock_version': 1}
+        with closing(sqlite3.connect(DATA / 'database.db')) as connection, connection:
+            connection.execute('UPDATE users SET password_hash = ? WHERE id = ?',
+                               (fixture['password_hash'], self.owner['user']['id']))
+            connection.execute('UPDATE entries SET entry_data = ? WHERE id = ?',
+                               (json.dumps(data), entry['id']))
+        response = self.client.post('/api/login', json={'email': fixture['email'], 'password': fixture['password']})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.plaintext(entry, fixture['password']), fixture['text'])
+
+    def test_shared_legacy_archive_fixture(self):
+        """The Go migration's archive fixture imports identically in Python, including encrypted text, images, tags, and one bad row."""
+        fixture = Path(__file__).resolve().parents[2] / 'internal/journal/testdata/legacy.zip'
+        directory = DATA / 'imports'
+        directory.mkdir(exist_ok=True)
+        (directory / 'legacy.zip').write_bytes(fixture.read_bytes())
+        self.request('POST', '/import', json={'path': 'legacy.zip', 'passcode': 'archive-passcode'})
+        deadline = time.monotonic() + 10
+        while True:
+            progress = self.request('GET', '/import/status')
+            if progress['status'] != 'running':
+                break
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.01)
+        self.assertEqual((progress['processed'], progress['failures']), (3, 1))
+        entries = self.request('GET', '/fetch/entries')['data']
+        by_id = {entry['entry_data']['import_id']: entry for entry in entries}
+        self.assertEqual(by_id['1']['tags'], ['travel'])
+        self.assertEqual(by_id['2']['entry_data']['text'], 'Legacy encrypted 世界')
+        self.assertFalse(by_id['2']['entry_data'].get('locked', False))
+        self.assertEqual(by_id['3']['entry_type'], 'file')
+
     def test_frontend_and_unknown_api_routes(self):
         """Frontend deep links receive the app shell while unknown API routes remain genuine errors."""
         with tempfile.TemporaryDirectory() as directory:

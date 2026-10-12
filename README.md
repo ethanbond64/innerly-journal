@@ -1,11 +1,40 @@
 ## Innerly
-An open source multimedia journal that can be self hosted. Features include secured notes, autosaving while typinh, link saving with automatic thumbnail downloads, and uploaded file hosting. A screenshot of the main journal page layout is shown below.
+An open source multimedia journal with a Go/Wails desktop app and a retained Python self-hosted version. Features include secured notes, autosaving while typing, HTTPS link saving with automatic thumbnail downloads, and image uploads. A screenshot of the main journal page layout is shown below.
 
 ![Example innerly homepage showing entries in chronological order](/innerly-example.png)
 
 ![Innerly writing page](/innerly-write.png)
 
-### Quickstart
+### Desktop (macOS)
+
+Requires Go, Node/npm, and Xcode Command Line Tools. Project tooling pins Go 1.24.13 and Wails 2.11.0; the helper keeps downloaded tools, caches, and development data inside `.work/`.
+
+```bash
+./scripts/desktop.sh setup
+./scripts/desktop.sh dev
+```
+
+Development uses a disposable journal at `.work/dev-journal`, not your existing journal. Create a local account on first launch. Desktop login is in-memory; restarting requires login again. The existing email/password and encrypted entry formats are retained.
+
+```bash
+./scripts/desktop.sh test    # Go, frontend adapter, and Python reference tests
+./scripts/desktop.sh race    # Slower Go race checks (real password hashing)
+./scripts/desktop.sh build   # build/bin/Innerly.app
+```
+
+The Python reference tests require `backend/.venv` with dependencies from `backend/uv.lock`. If needed, create it with `cd backend && UV_CACHE_DIR=../.work/uv-cache uv sync --frozen`.
+
+A packaged app normally opens `~/.innerly`. **Back up your journal and test on a copy first**, with both the Python and desktop apps closed while copying:
+
+```bash
+INNERLY_DATA_DIR="$PWD/.work/journal-copy" build/bin/Innerly.app/Contents/MacOS/Innerly
+```
+
+The desktop app does not require Python, Docker, or a local API server. Imports still read ZIP files from the selected data directory's `imports/` folder. Do not run both versions against the same database simultaneously.
+
+See [implementation and validation notes](docs/wails-implementation.md) and the [migration plan](docs/wails-migration-plan.md).
+
+### Self-hosted quickstart
 Requires docker-compose. First run the setup script, then docker-compose:
 ```
 ./setup.sh

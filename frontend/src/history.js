@@ -1,7 +1,8 @@
 // The only module that touches window.location / window.history. Switch `mode` to
 // 'hash' if the host cannot serve index.html for unknown paths (e.g. a Wails asset
 // server); every href and path read below follows from it.
-const mode = 'browser';
+import { isDesktop } from './desktop.js';
+const mode = isDesktop() ? 'hash' : 'browser';
 
 const listeners = new Set();
 

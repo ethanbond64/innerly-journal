@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { journalFetch as fetch, isDesktop } from './desktop.js';
 import { Link, useNavigate } from './router.jsx';
 import { setToken, setUserData } from './utils.jsx';
 import { homeRoute, signupRoute } from './constants.js';
@@ -26,8 +27,8 @@ export const LoginPage = () => {
             }
             return data;
          }).then((data) => {
-            if (data.token && data.user) {
-                setToken(data.token);
+            if (data.user && (isDesktop() || data.token)) {
+                if (!isDesktop()) setToken(data.token);
                 setUserData(data.user);
                 navigate(homeRoute);
             } else {

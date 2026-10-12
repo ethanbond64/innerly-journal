@@ -1,3 +1,4 @@
+import { journalFetch as fetch, isDesktop } from "./desktop.js";
 import { clearLocalStorage, getLockByDefault, getToken } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { replace } from "./history.js";
@@ -12,13 +13,16 @@ const lockAuthSubscribers = new Set();
 
 // Requests that died on a lapsed lock key, waiting for authenticateLock to re-prime the cache.
 const pendingLockRetries = [];
+window.addEventListener('innerly-session-ended', () => {
+    pendingLockRetries.splice(0).forEach(({ cancel }) => cancel());
+});
 
 export const onLockAuthExpired = (subscriber) => {
     lockAuthSubscribers.add(subscriber);
     return () => lockAuthSubscribers.delete(subscriber);
 };
 
-const flushLockRetries = () => pendingLockRetries.splice(0).forEach((retry) => retry());
+const flushLockRetries = () => pendingLockRetries.splice(0).forEach(({ retry }) => retry());
 
 const getAuthorizationHeader = () => {
     let token = getToken();
@@ -32,13 +36,12 @@ const getAuthorizationHeader = () => {
 
 const getHeaders = (contentType = "application/json") => {
     return {
-        "Authorization": getAuthorizationHeader(),
+        ...(isDesktop() ? {} : { "Authorization": getAuthorizationHeader() }),
         "Content-Type": contentType
     };
 };
 
 const handleUnauthorized = () => {
-    pendingLockRetries.length = 0; // the session is gone, so nothing queued can succeed
     clearLocalStorage();
     replace(loginRoute);
 };
@@ -84,7 +87,7 @@ const apiRequest = (send, {
                 if (error.lockAuthExpired) {
                     // One retry only, so a password that never fixes it cannot loop.
                     if (retryOnLockAuth && canRetry) {
-                        pendingLockRetries.push(() => attempt(false));
+                        pendingLockRetries.push({ retry: () => attempt(false), cancel: () => resolve(undefined) });
                         return;
                     }
                 } else if (error.response && error.response.status === 401 && logoutOn401) {
@@ -127,7 +130,7 @@ export const updateUser = (userId, data, callback, onError = (e) => {}) =>
 
 
 export const fetchEntries = (search, offset, limit, onError = (e) => {}) =>
-    apiRequest(() => fetch(`/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
+    apiRequest(() => fetch(`/api/fetch/entries?search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}`, {
         headers: getHeaders()
     }), { onError });
 
@@ -215,7 +218,7 @@ export const insertFileEntry = (file, callback, functional_datetime = null, onEr
     // No Content-Type header: the browser sets the multipart boundary itself.
     return apiRequest(() => fetch('/api/insert/entries', {
         method: 'POST',
-        headers: { 'Authorization': getAuthorizationHeader() },
+        headers: isDesktop() ? {} : { 'Authorization': getAuthorizationHeader() },
         body: formData
     }), { onResult: (response) => callback(response.data.data), onError });
 };

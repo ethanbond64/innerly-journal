@@ -60,9 +60,9 @@ export const Navbar = ({ setSearch, user }) => {
             submit();
         }
     }
-    const logOut = (e) => {
+    const logOut = async (e) => {
         e.preventDefault();
-        clearLocalStorage();
+        await clearLocalStorage();
         navigate(loginRoute);
     };
 

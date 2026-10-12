@@ -1,4 +1,7 @@
 import React, { useEffect, useRef } from 'react';
+import { isDesktop, desktopApp } from './desktop.js';
+import { putEntry } from './entry-handoff.js';
+let desktopUser = null;
 import { innerlyToken, innerlyUser, LOCK_TTL_DEFAULT, LOCK_TTL_UNIT_SECONDS } from './constants.js';
 
 export const getToken = () => {
@@ -10,11 +13,13 @@ export const setToken = (token) => {
 }
 
 export const getUserData = () => {
+    if (isDesktop()) return desktopUser;
     let userData = localStorage.getItem(innerlyUser);
     return userData ? JSON.parse(userData) : null;
 }
 
 export const setUserData = (userData) => {
+    if (isDesktop()) { desktopUser = userData; return; }
     localStorage.setItem(innerlyUser, JSON.stringify(userData));
 }
 
@@ -33,9 +38,13 @@ export const getLockTtl = (userData = getUserData()) => {
     return { value, unit };
 }
 
-export const clearLocalStorage = () => {
+export const clearLocalStorage = async () => {
+    desktopUser = null;
+    putEntry(null);
     localStorage.removeItem(innerlyUser);
     localStorage.removeItem(innerlyToken);
+    window.dispatchEvent(new Event('innerly-session-ended'));
+    if (isDesktop()) await desktopApp().Logout();
 }
 
 export const capitalize = (string) => string.charAt(0).toUpperCase() + string.slice(1);

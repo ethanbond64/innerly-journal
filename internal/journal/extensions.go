@@ -2,12 +2,16 @@ package journal
 
 import (
 	"database/sql"
-	_ "modernc.org/sqlite"
+	"net/url"
 	"path/filepath"
+
+	_ "modernc.org/sqlite"
 )
 
 func openDatabase(config Config) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", filepath.Join(config.DataDir, "database.db"))
+	// Immediate write transactions serialize migration/rekey work across windows.
+	location := url.URL{Scheme: "file", Path: filepath.ToSlash(filepath.Join(config.DataDir, "database.db"))}
+	db, err := sql.Open("sqlite", location.String()+"?_txlock=immediate")
 	if err != nil {
 		return nil, err
 	}

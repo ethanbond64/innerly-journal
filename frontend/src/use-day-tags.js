@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { fetchTaggedDays } from "./requests.js";
 import { dateToString } from "./utils.jsx";
 
@@ -36,5 +36,5 @@ export const useDayTags = () => {
     const remove = useCallback((key, id) =>
         setByDay((prev) => ({ ...prev, [key]: (prev[key] || []).filter((tag) => tag.id !== id) })), []);
 
-    return { byDay, add, remove };
+    return useMemo(() => ({ byDay, add, remove }), [byDay, add, remove]);
 };

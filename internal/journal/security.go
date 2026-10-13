@@ -18,8 +18,9 @@ import (
 )
 
 type cachedKey struct {
-	Key     []byte
-	Expires time.Time
+	PasswordHash string
+	Key          []byte
+	Expires      time.Time
 }
 
 var emailPattern = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,7}$`)
@@ -98,7 +99,7 @@ func getLockTTL(u User) time.Duration {
 	return ttl
 }
 func (a *App) getScryptKey(u User, password string, readCache bool) ([]byte, error) {
-	if cached, ok := a.keys[u.ID]; readCache && ok && a.now().Before(cached.Expires) {
+	if cached, ok := a.keys[u.ID]; readCache && ok && cached.PasswordHash == u.PasswordHash && a.now().Before(cached.Expires) {
 		return cached.Key, nil
 	}
 	delete(a.keys, u.ID)
@@ -107,7 +108,7 @@ func (a *App) getScryptKey(u User, password string, readCache bool) ([]byte, err
 	}
 	key, err := deriveScryptKey(u, password)
 	if err == nil {
-		a.keys[u.ID] = cachedKey{key, a.now().Add(getLockTTL(u))}
+		a.keys[u.ID] = cachedKey{Key: key, Expires: a.now().Add(getLockTTL(u)), PasswordHash: u.PasswordHash}
 	}
 	return key, err
 }

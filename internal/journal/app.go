@@ -5,15 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"os"
+	"os/exec"
 	"sync"
 	"time"
 )
 
 type App struct {
-	mu      sync.Mutex
-	db      *sql.DB
-	config  Config
-	// TODO ideally support multiuser separation on a single machine concurrently, the way python impl did.
+	mu     sync.Mutex
+	db     *sql.DB
+	config Config
+	// Each desktop process owns its session and keys; independent windows share only storage.
 	userID  int64
 	keys    map[int64]cachedKey
 	jobs    map[int64]*importJob
@@ -96,6 +98,24 @@ func (a *App) run(fn func(User) (any, error)) Result {
 	data, err := fn(u)
 	return outcome(data, err)
 }
+
+// OpenWindow starts a separate session without passing credentials or derived keys.
+func (a *App) OpenWindow() Result {
+	return a.run(func(User) (any, error) {
+		executable, err := os.Executable()
+		if err != nil {
+			return nil, err
+		}
+		cmd := exec.Command(executable)
+		cmd.Env = append(os.Environ(), "INNERLY_DATA_DIR="+a.config.DataDir)
+		if err = cmd.Start(); err != nil {
+			return nil, err
+		}
+		go func() { _ = cmd.Wait() }()
+		return nil, nil
+	})
+}
+
 func (a *App) Version() string     { return "1.0.0" }
 func (a *App) CurrentUser() Result { return a.run(func(u User) (any, error) { return u, nil }) }
 func (a *App) Logout() Result {

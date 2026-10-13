@@ -34,27 +34,39 @@ func (a *App) Signup(input Credentials) Result {
 	if !emailPattern.MatchString(input.Email) || !validatePassword(input.Password) {
 		return outcome(nil, failure("invalid-input", "A valid email and password of at least 8 characters are required."))
 	}
+	hash, err := encryptPassword(input.Password)
+	if err != nil {
+		return outcome(nil, err)
+	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		return outcome(nil, err)
+	}
+	defer tx.Rollback()
 	var count int
-	if err := a.db.QueryRow("SELECT count(*) FROM users WHERE email=?", input.Email).Scan(&count); err != nil {
+	if err = tx.QueryRow("SELECT count(*) FROM users WHERE email=?", input.Email).Scan(&count); err != nil {
 		return outcome(nil, err)
 	}
 	if count > 0 {
 		return outcome(nil, failure("conflict", "Account already exists."))
 	}
-	hash, err := encryptPassword(input.Password)
-	if err != nil {
-		return outcome(nil, err)
-	}
-	if err := a.db.QueryRow("SELECT count(*) FROM users").Scan(&count); err != nil {
+	if err = tx.QueryRow("SELECT count(*) FROM users").Scan(&count); err != nil {
 		return outcome(nil, err)
 	}
 	now := timestamp(a.now())
-	r, err := a.db.Exec("INSERT INTO users(email,password_hash,admin,settings,usage,created_on,updated_on) VALUES(?,?,?,'{}','{}',?,?)", input.Email, hash, count == 0, now, now)
+	r, err := tx.Exec("INSERT INTO users(email,password_hash,admin,settings,usage,created_on,updated_on) VALUES(?,?,?,'{}','{}',?,?)", input.Email, hash, count == 0, now, now)
 	if err != nil {
 		return outcome(nil, err)
 	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return outcome(nil, err)
+	}
+	if err = tx.Commit(); err != nil {
+		return outcome(nil, err)
+	}
 	delete(a.keys, a.userID)
-	a.userID, _ = r.LastInsertId()
+	a.userID = id
 	u, err := a.user(a.userID)
 	return outcome(u, err)
 }
@@ -111,7 +123,12 @@ func (a *App) InsertEntry(input EntryInput) Result {
 		submitted := ""
 		switch input.EntryType {
 		case "text":
-			data = processTextEntry(data)
+			if input.Draft {
+				value := text(data["text"])
+				data = map[string]any{"title": data["title"], "text": value, "word_count": countWords(value), "sentiment": "neutral"}
+			} else {
+				data = processTextEntry(data)
+			}
 			submitted = text(data["text"])
 			locked := true
 			if value, ok := u.Settings["lock_by_default"].(bool); ok {
@@ -148,9 +165,18 @@ func (a *App) InsertEntry(input EntryInput) Result {
 			}
 		}
 		now := timestamp(a.now())
-		result, err := a.db.Exec("INSERT INTO entries(user_id,functional_datetime,entry_type,entry_data,created_on,updated_on) VALUES(?,?,?,?,?,?)", u.ID, timestamp(when), input.EntryType, jsonString(data), now, now)
+		result, err := a.db.Exec(`INSERT INTO entries(user_id,functional_datetime,entry_type,entry_data,created_on,updated_on)
+            SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM users WHERE id=? AND password_hash=?)`,
+			u.ID, timestamp(when), input.EntryType, jsonString(data), now, now, u.ID, u.PasswordHash)
 		if err != nil {
 			return nil, err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		if changed == 0 {
+			return nil, failure("lock-auth-expired", "Account changed in another window. Please enter your password.")
 		}
 		id, _ := result.LastInsertId()
 		e, err := a.entry(id, u.ID)
@@ -185,13 +211,18 @@ func (a *App) UpdateEntry(id int64, input EntryInput) Result {
 			}
 			e.EntryData["text"] = text(submitted)
 			e.EntryData["word_count"] = countWords(text(submitted))
+			if !input.Draft {
+				if _, specified := input.EntryData["sentiment"]; !specified {
+					e.EntryData["sentiment"] = getSentiment(text(submitted))
+				}
+			}
 			if flag(e.EntryData["locked"]) {
 				if err = a.lockEntryData(u, "", e.EntryData); err != nil {
 					return nil, err
 				}
 			}
 		}
-		if err = a.saveEntry(e); err != nil {
+		if err = a.saveEntry(e, u); err != nil {
 			return nil, err
 		}
 		if changed && flag(e.EntryData["locked"]) {
@@ -247,7 +278,7 @@ func (a *App) LockEntry(id int64, password string) Result {
 			if err = a.lockEntryData(u, password, e.EntryData); err != nil {
 				return nil, err
 			}
-			err = a.saveEntry(e)
+			err = a.saveEntry(e, u)
 		}
 		return e, err
 	})
@@ -272,7 +303,7 @@ func (a *App) UnlockEntry(id int64, password string) Result {
 			}
 			e.EntryData["text"] = plain
 			e.EntryData["locked"] = false
-			err = a.saveEntry(e)
+			err = a.saveEntry(e, u)
 			return e, err
 		}
 		return e, nil
@@ -289,10 +320,6 @@ func (a *App) UpdatePassword(input PasswordInput) Result {
 		}
 		if !validatePassword(input.NewPassword) {
 			return nil, failure("invalid-input", "Password must be at least 8 characters.")
-		}
-		entries, err := a.entries("user_id=? AND entry_type='text'", u.ID)
-		if err != nil {
-			return nil, err
 		}
 		oldKey, err := deriveScryptKey(u, input.CurrentPassword)
 		if err != nil {
@@ -311,6 +338,19 @@ func (a *App) UpdatePassword(input PasswordInput) Result {
 			return nil, err
 		}
 		defer tx.Rollback()
+		var currentHash string
+		if err = tx.QueryRow("SELECT password_hash FROM users WHERE id=?", u.ID).Scan(&currentHash); err != nil {
+			return nil, err
+		}
+		if currentHash != u.PasswordHash {
+			return nil, failure("conflict", "Password changed in another window. Please try again.")
+		}
+		// Load under the same write transaction that changes the hash. Entries
+		// inserted by another window must not slip between the snapshot and rekey.
+		entries, err := textEntries(tx, u.ID)
+		if err != nil {
+			return nil, err
+		}
 		for _, e := range entries {
 			if !flag(e.EntryData["locked"]) && !input.LockAll {
 				continue
@@ -340,7 +380,7 @@ func (a *App) UpdatePassword(input PasswordInput) Result {
 		if err = tx.Commit(); err != nil {
 			return nil, err
 		}
-		a.keys[u.ID] = cachedKey{newKey, a.now().Add(getLockTTL(u))}
+		a.keys[u.ID] = cachedKey{Key: newKey, Expires: a.now().Add(getLockTTL(u)), PasswordHash: hash}
 		return nil, nil
 	})
 	if r.Error == nil {
@@ -350,30 +390,7 @@ func (a *App) UpdatePassword(input PasswordInput) Result {
 }
 func (a *App) FetchEntries(q Query) Result {
 	return a.run(func(u User) (any, error) {
-		where := "user_id=?"
-		args := []any{u.ID}
-		if q.Date != "" {
-			date, err := time.Parse("2006-01-02", q.Date)
-			if err != nil {
-				return nil, failure("invalid-input", "Invalid date.")
-			}
-			where += " AND functional_datetime>=? AND functional_datetime<=?"
-			args = append(args, timestamp(date.AddDate(0, 0, -1)), timestamp(date.AddDate(0, 0, 2)))
-		}
-		if q.Search != "" {
-			where += ` AND (lower(json_extract(entry_data,'$.title')) LIKE lower(?) OR (coalesce(json_extract(entry_data,'$.locked'),0)=0 AND lower(json_extract(entry_data,'$.text')) LIKE lower(?)) OR EXISTS(SELECT 1 FROM entry_tag_xref x JOIN tags t ON t.id=x.tag_id WHERE x.entry_id=entries.id AND t.user_id=? AND lower(t.name) LIKE lower(?)))`
-			pattern := "%" + q.Search + "%"
-			args = append(args, pattern, pattern, u.ID, pattern)
-		}
-		if q.Limit <= 0 {
-			q.Limit = 10
-		}
-		if q.Offset < 0 {
-			q.Offset = 0
-		}
-		where += " ORDER BY functional_datetime DESC LIMIT ? OFFSET ?"
-		args = append(args, q.Limit, q.Offset)
-		entries, err := a.entries(where, args...)
+		entries, err := a.searchEntries(u.ID, q)
 		for i, e := range entries {
 			entries[i] = a.responseEntry(e, true)
 		}
@@ -400,13 +417,11 @@ func (a *App) FetchActivity(q Query) Result {
 				return nil, failure("invalid-input", "Invalid date.")
 			}
 		}
-		where := "user_id=? AND functional_datetime>=?"
-		args := []any{u.ID, timestamp(anchor.AddDate(0, 0, -days-1))}
+		end := ""
 		if q.Before != "" {
-			where += " AND functional_datetime<=?"
-			args = append(args, timestamp(anchor.AddDate(0, 0, 2)))
+			end = timestamp(anchor.AddDate(0, 0, 2))
 		}
-		entries, err := a.entries(where+" ORDER BY functional_datetime", args...)
+		entries, err := a.activityEntries(u.ID, timestamp(anchor.AddDate(0, 0, -days-1)), end)
 		if err != nil {
 			return nil, err
 		}

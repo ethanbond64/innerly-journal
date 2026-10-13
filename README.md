@@ -30,9 +30,19 @@ A packaged app normally opens `~/.innerly`. **Back up your journal and test on a
 INNERLY_DATA_DIR="$PWD/.work/journal-copy" build/bin/Innerly.app/Contents/MacOS/Innerly
 ```
 
+Settings includes **Exit fullscreen** and **Open another window**. Each desktop window runs an independent session; different accounts can use the same data directory concurrently. Database migrations are embedded SQL files tracked with SQLite `user_version`; unversioned journals are adopted without replacing their data.
+
+UI regression tests run the actual React screens in WebKit and Chromium against synthetic Wails responses:
+
+```bash
+cd frontend
+PLAYWRIGHT_BROWSERS_PATH="$PWD/../.work/playwright" npx playwright install webkit chromium
+npm run test:ui
+```
+
 The desktop app does not require Python, Docker, or a local API server. Imports still read ZIP files from the selected data directory's `imports/` folder. Do not run both versions against the same database simultaneously.
 
-See [implementation and validation notes](docs/wails-implementation.md) and the [migration plan](docs/wails-migration-plan.md).
+See [implementation and validation notes](docs/wails-implementation.md) and the [migration plan](docs/wails-migration-plan.md). For code review, open the nine-page [Python → Go architecture diagram](docs/architecture.drawio) in draw.io, with its [reading guide and file map](docs/architecture-review.md).
 
 ### Self-hosted quickstart
 Requires docker-compose. First run the setup script, then docker-compose:

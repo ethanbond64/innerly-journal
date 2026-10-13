@@ -398,7 +398,7 @@ func TestImageUploadAndRetrieval(t *testing.T) {
 func TestLegacySchemaUpgradePreservesJournal(t *testing.T) {
 	a := testApp(t)
 	e := createText(t, a, "old journal", false)
-	if _, err := a.db.Exec("ALTER TABLE tags DROP COLUMN day_tag; INSERT INTO tags(name,user_id) VALUES('legacy',1)"); err != nil {
+	if _, err := a.db.Exec("PRAGMA user_version=0; ALTER TABLE tags DROP COLUMN day_tag; INSERT INTO tags(name,user_id) VALUES('legacy',1)"); err != nil {
 		t.Fatal(err)
 	}
 	dir := a.config.DataDir

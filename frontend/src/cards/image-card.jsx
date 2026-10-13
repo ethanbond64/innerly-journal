@@ -1,5 +1,5 @@
-import React from "react";
-import { deleteEntry } from "../requests.js";
+import React, { useState } from "react";
+import { DeleteEntryDialog } from '../delete-entry-dialog.jsx';
 import { Icon } from "../icon.jsx";
 
 
@@ -7,6 +7,7 @@ export const ImageCard = ({ entry, setPath, replace, heading = null, footer = nu
     
     // Either an external URL, or an already-signed '/api/static/...' path on this origin.
     const url = entry.entry_data.path;
+    const [showDelete, setShowDelete] = useState(false);
 
     const onClick = () => {
         if (setPath) {
@@ -17,16 +18,13 @@ export const ImageCard = ({ entry, setPath, replace, heading = null, footer = nu
     const onClickDelete = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (replace && window.confirm("Are you sure you want to delete this entry?")) {
-            deleteEntry(entry.id, (resp) => {
-                if (resp) {
-                    replace({ entry_type: 'blank' });
-                }
-            });
-        }
+        if (replace) setShowDelete(true);
     }
     
     return (
+        <>
+        {showDelete && <DeleteEntryDialog entryId={entry.id} onCancel={() => setShowDelete(false)}
+            onDeleted={() => { setShowDelete(false); replace({ entry_type: 'blank' }); }} />}
         <div className={`col-xs-4 itemactive`} style={{ cursor: 'pointer'}} onClick={onClick}>
             <div style={{
                 backgroundImage: `url(${url})`, padding: '0px', backgroundPosition: 'center', backgroundSize: 'cover'
@@ -42,5 +40,6 @@ export const ImageCard = ({ entry, setPath, replace, heading = null, footer = nu
                 </div>}
             </div>
         </div>
+        </>
     );
 }

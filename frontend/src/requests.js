@@ -176,7 +176,7 @@ export const fetchActivity = (days, before, onError = (e) => {}) =>
     }), { onError });
 
 // locked travels with the very first save, so the text is encrypted before it is ever stored.
-export const insertTextEntry = (text, functional_datetime, callback, onError = (e) => {}) =>
+export const insertTextEntry = (text, functional_datetime, callback, onError = (e) => {}, { draft = false } = {}) =>
     apiRequest(() => fetch('/api/insert/entries', {
         method: 'POST',
         headers: getHeaders(),
@@ -184,15 +184,16 @@ export const insertTextEntry = (text, functional_datetime, callback, onError = (
             entry_type: 'text',
             entry_data: { text },
             functional_datetime,
-            locked: getLockByDefault()
+            locked: getLockByDefault(),
+            draft
         })
     }), { onResult: (response) => callback(response.data.data), onError });
 
-export const updateTextEntry = (id, entry_data, tags, callback, onError = (e) => {}) =>
+export const updateTextEntry = (id, entry_data, tags, callback, onError = (e) => {}, { draft = false } = {}) =>
     apiRequest(() => fetch(`/api/update/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ entry_data, tags })
+        body: JSON.stringify({ entry_data, tags, draft })
     }), { onResult: (response) => callback(response.data.data), onError });
 
 export const insertLinkEntry = (link, callback, functional_datetime = null, onError = (e) => {}) =>

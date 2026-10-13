@@ -79,62 +79,28 @@ func publicTime(s string) string {
 	}
 	return t.Format(time.RFC3339Nano)
 }
-
-// TODO move to sql files + add a migration version so data model modifications can be shipped later -
-// build in a NON BREAKING FASHION - so existing users can have it run and they will treat no version as version 0 (current version) and then apply any changes that were introduced after that.
-func (a *App) applyColumnMigrations() error {
-	_, err := a.db.Exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,email VARCHAR(128) NOT NULL UNIQUE,password_hash VARCHAR(512) NOT NULL,admin BOOLEAN,settings JSON NOT NULL DEFAULT '"{}"',usage JSON NOT NULL DEFAULT '"{}"',created_on DATETIME,updated_on DATETIME);
- CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id),functional_datetime DATETIME,entry_type VARCHAR(64) NOT NULL,entry_data JSON NOT NULL,created_on DATETIME,updated_on DATETIME);
- CREATE INDEX IF NOT EXISTS ix_entries_functional_datetime ON entries(functional_datetime);
- CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY,name VARCHAR(255) NOT NULL,user_id INTEGER NOT NULL REFERENCES users(id),day_tag BOOLEAN NOT NULL DEFAULT 0,created_on DATETIME,updated_on DATETIME,UNIQUE(name,user_id));
- CREATE TABLE IF NOT EXISTS entry_tag_xref (id INTEGER PRIMARY KEY,entry_id INTEGER NOT NULL REFERENCES entries(id),tag_id INTEGER NOT NULL REFERENCES tags(id),created_on DATETIME,updated_on DATETIME,UNIQUE(entry_id,tag_id));
- CREATE TABLE IF NOT EXISTS date_tag_xref (id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id),functional_datetime DATETIME,tag_id INTEGER NOT NULL REFERENCES tags(id),created_on DATETIME,updated_on DATETIME,UNIQUE(user_id,functional_datetime,tag_id));`)
-	if err != nil {
-		return err
-	}
-	rows, err := a.db.Query("PRAGMA table_info(tags)")
-	if err != nil {
-		return err
-	}
-	found := false
-	for rows.Next() {
-		var cid, notnull, pk int
-		var name, kind string
-		var def any
-		if err = rows.Scan(&cid, &name, &kind, &notnull, &def, &pk); err != nil {
-			rows.Close()
-			return err
-		}
-		if name == "day_tag" {
-			found = true
-		}
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return err
-	}
-	if !found {
-		_, err = a.db.Exec("ALTER TABLE tags ADD COLUMN day_tag BOOLEAN NOT NULL DEFAULT 0")
-	}
-	return err
-}
 func (a *App) user(id int64) (User, error) {
 	var u User
 	var settings, usage string
 	var created, updated sql.NullString
 	err := a.db.QueryRow("SELECT id,email,password_hash,admin,settings,usage,created_on,updated_on FROM users WHERE id=?", id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Admin, &settings, &usage, &created, &updated)
-	u.Settings = object(settings)
-	u.Usage = object(usage)
-	u.CreatedOn = publicTime(created.String)
-	u.UpdatedOn = publicTime(updated.String)
+	u.Settings, u.Usage = object(settings), object(usage)
+	u.CreatedOn, u.UpdatedOn = publicTime(created.String), publicTime(updated.String)
 	return u, err
 }
-func (a *App) entry(id, userID int64) (Entry, error) {
+
+// A single query returns entries and their tags, avoiding two extra DB queries per card.
+const entryColumns = `e.id,e.user_id,e.functional_datetime,e.entry_type,e.entry_data,e.created_on,e.updated_on,
+    (SELECT json_group_array(t.name) FROM entry_tag_xref x JOIN tags t ON t.id=x.tag_id
+     WHERE x.entry_id=e.id AND t.user_id=e.user_id)`
+
+type rowScanner interface{ Scan(...any) error }
+
+func scanEntry(row rowScanner) (Entry, error) {
 	var e Entry
-	var data, when string
+	var data, when, tags string
 	var created, updated sql.NullString
-	err := a.db.QueryRow("SELECT id,user_id,functional_datetime,entry_type,entry_data,created_on,updated_on FROM entries WHERE id=? AND user_id=?", id, userID).Scan(&e.ID, &e.UserID, &when, &e.EntryType, &data, &created, &updated)
+	err := row.Scan(&e.ID, &e.UserID, &when, &e.EntryType, &data, &created, &updated, &tags)
 	if err == sql.ErrNoRows {
 		return e, failure("not-found", "Entry not found.")
 	}
@@ -143,56 +109,74 @@ func (a *App) entry(id, userID int64) (Entry, error) {
 	}
 	e.EntryData = object(data)
 	e.FunctionalDatetime = publicTime(when)
-	e.CreatedOn = publicTime(created.String)
-	e.UpdatedOn = publicTime(updated.String)
+	e.CreatedOn, e.UpdatedOn = publicTime(created.String), publicTime(updated.String)
 	e.Tags = []string{}
-	rows, err := a.db.Query("SELECT tags.name FROM tags JOIN entry_tag_xref x ON x.tag_id=tags.id WHERE x.entry_id=?", id)
+	err = json.Unmarshal([]byte(tags), &e.Tags)
+	return e, err
+}
+func readEntries(rows *sql.Rows, err error) ([]Entry, error) {
 	if err != nil {
-		return e, err
+		return nil, err
 	}
 	defer rows.Close()
+	entries := []Entry{}
 	for rows.Next() {
-		var name string
-		if err = rows.Scan(&name); err != nil {
-			return e, err
-		}
-		e.Tags = append(e.Tags, name)
-	}
-	return e, rows.Err()
-}
-
-// TODO move each usage of this to its own query fn with bound args. NO passing raw sql where clauses in as strings.
-func (a *App) entries(where string, args ...any) ([]Entry, error) {
-	rows, err := a.db.Query("SELECT id FROM entries WHERE "+where, args...)
-	if err != nil {
-		return nil, err
-	}
-	ids := []int64{}
-	for rows.Next() {
-		var id int64
-		if err = rows.Scan(&id); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return nil, err
-	}
-	result := []Entry{}
-	for _, id := range ids {
-		e, err := a.entry(id, a.userID)
+		entry, err := scanEntry(rows)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, e)
+		entries = append(entries, entry)
 	}
-	return result, nil
+	return entries, rows.Err()
 }
-func (a *App) saveEntry(e Entry) error {
-	_, err := a.db.Exec("UPDATE entries SET entry_data=?,updated_on=? WHERE id=? AND user_id=?", jsonString(e.EntryData), timestamp(a.now()), e.ID, e.UserID)
+func (a *App) entry(id, userID int64) (Entry, error) {
+	return scanEntry(a.db.QueryRow("SELECT "+entryColumns+" FROM entries e WHERE e.id=? AND e.user_id=?", id, userID))
+}
+func textEntries(tx *sql.Tx, userID int64) ([]Entry, error) {
+	return readEntries(tx.Query("SELECT "+entryColumns+" FROM entries e WHERE e.user_id=? AND e.entry_type='text'", userID))
+}
+func (a *App) searchEntries(userID int64, q Query) ([]Entry, error) {
+	start, end := "", ""
+	if q.Date != "" {
+		date, err := time.Parse("2006-01-02", q.Date)
+		if err != nil {
+			return nil, failure("invalid-input", "Invalid date.")
+		}
+		start, end = timestamp(date.AddDate(0, 0, -1)), timestamp(date.AddDate(0, 0, 2))
+	}
+	if q.Limit <= 0 {
+		q.Limit = 10
+	}
+	if q.Offset < 0 {
+		q.Offset = 0
+	}
+	pattern := "%" + q.Search + "%"
+	return readEntries(a.db.Query("SELECT "+entryColumns+` FROM entries e
+        WHERE e.user_id=? AND (?='' OR e.functional_datetime BETWEEN ? AND ?)
+        AND (?='' OR lower(json_extract(e.entry_data,'$.title')) LIKE lower(?)
+        OR (coalesce(json_extract(e.entry_data,'$.locked'),0)=0 AND lower(json_extract(e.entry_data,'$.text')) LIKE lower(?))
+        OR EXISTS(SELECT 1 FROM entry_tag_xref x JOIN tags t ON t.id=x.tag_id
+            WHERE x.entry_id=e.id AND t.user_id=e.user_id AND lower(t.name) LIKE lower(?)))
+        ORDER BY e.functional_datetime DESC,e.id DESC LIMIT ? OFFSET ?`,
+		userID, start, start, end, q.Search, pattern, pattern, pattern, q.Limit, q.Offset))
+}
+func (a *App) activityEntries(userID int64, start, end string) ([]Entry, error) {
+	return readEntries(a.db.Query("SELECT "+entryColumns+` FROM entries e
+        WHERE e.user_id=? AND e.functional_datetime>=? AND (?='' OR e.functional_datetime<=?)
+        ORDER BY e.functional_datetime`, userID, start, end, end))
+}
+func (a *App) saveEntry(e Entry, u User) error {
+	// Another window may have rekeyed after this operation read its User/Entry.
+	result, err := a.db.Exec(`UPDATE entries SET entry_data=?,updated_on=? WHERE id=? AND user_id=?
+        AND EXISTS(SELECT 1 FROM users WHERE id=? AND password_hash=?)`,
+		jsonString(e.EntryData), timestamp(a.now()), e.ID, u.ID, u.ID, u.PasswordHash)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err == nil && changed == 0 {
+		return failure("lock-auth-expired", "Account changed in another window. Please enter your password.")
+	}
 	return err
 }
 func (a *App) responseEntry(e Entry, short bool) Entry {

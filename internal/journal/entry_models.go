@@ -1,6 +1,7 @@
 package journal
 
 type EntryInput struct {
+	Draft              bool           `json:"draft"`
 	EntryType          string         `json:"entry_type"`
 	EntryData          map[string]any `json:"entry_data"`
 	FunctionalDatetime string         `json:"functional_datetime"`

@@ -9,6 +9,7 @@ import { ImageModal } from "./image-modal.jsx";
 import { BasePage } from "./base-page.jsx";
 
 const limit = 30;
+const noMemories = [];
 
 // The endpoint hands back a day of slack on either end, because the stored
 // datetimes are UTC, so a candidate only counts as a memory when its local date
@@ -31,20 +32,16 @@ const memoryYears = (today, datetimes) => {
 export const HomePage = () => {
     
   const [search, setSearch] = useState("");
-  const [offset, setOffset] = useState(0);
   const [imagePath, setImagePath] = useState(null);
   const [memories, setMemories] = useState([]);
 
   // Fixed for the life of the page, so the badge does not move rows at midnight.
   const today = useMemo(() => getTodaysDate(), []);
 
-  const { loading, list } = useFetch(search, offset, limit);
+  const { loading, list, allLoaded, error, loadMore } = useFetch(search, limit);
   const dayTags = useDayTags();
   const loader = useRef(null);
 
-  useEffect(() => {
-    setOffset(0);
-  }, [search]);
 
   // The other years today has been written on, for the badge on today's row.
   useEffect(() => {
@@ -54,17 +51,14 @@ export const HomePage = () => {
 
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
-    if (loading) return;
-    if (target.isIntersecting) {
-      setOffset(o => o + limit);
-    }
-  }, [loading]);
+    if (!loading && !allLoaded && !error && target.isIntersecting) loadMore();
+  }, [loading, allLoaded, error, loadMore]);
 
   useEffect(() => {
     const option = {
       root: null,
-      rootMargin: "20px",
-      threshold: 0.5
+      rootMargin: "1000px",
+      threshold: 0
     };
     const observer = new IntersectionObserver(handleObserver, option);
     if (loader.current) observer.observe(loader.current);
@@ -82,11 +76,13 @@ export const HomePage = () => {
         <div className={`container`}>
           <div id="scroller" className="mb-3">
             {list.map((row,i) => row.collapse ? 
-                <Collapse key={`top-row-${i}`} row={row} setImagePath={setImagePath} dayTags={dayTags} /> :
-                <Row key={`top-row-${i}`} row={row} setImagePath={setImagePath} dayTags={dayTags}
-                    memories={equalsDate(row.date, today) ? memories : []} />
+                <Collapse key={dateToString(row.date)} row={row} setImagePath={setImagePath} dayTags={dayTags} /> :
+                <Row key={dateToString(row.date)} row={row} setImagePath={setImagePath} dayTags={dayTags}
+                    memories={equalsDate(row.date, today) ? memories : noMemories} />
             )}
             {loading && <p>Loading...</p>}
+            {error && <p role="alert">{error} <button onClick={loadMore}>Retry</button></p>}
+            {allLoaded && <button className="btn btn-default" onClick={loadMore}>Show older days</button>}
             <div ref={loader}></div>
           </div>
         </div>

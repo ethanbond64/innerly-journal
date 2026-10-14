@@ -1,26 +1,53 @@
-## Innerly
-An open source multimedia journal that can be self hosted. Features include secured notes, autosaving while typinh, link saving with automatic thumbnail downloads, and uploaded file hosting. A screenshot of the main journal page layout is shown below.
+# Innerly
 
-![Example innerly homepage showing entries in chronological order](/innerly-example.png)
+A local multimedia journal built with Go, Wails, and React. Includes encrypted notes, autosave, images, HTTPS link previews, search, and day tags.
 
-![Innerly writing page](/innerly-write.png)
+## Build and run on macOS
 
-### Quickstart
-Requires docker-compose. First run the setup script, then docker-compose:
+Install **Go**, **Node.js 20+ with npm**, and **Xcode Command Line Tools** (`xcode-select --install`). The setup script installs Wails 2.11.0 and uses Go 1.24.13.
+
+```bash
+./scripts/desktop.sh setup
+./scripts/desktop.sh dev       # Run with live reload
 ```
-./setup.sh
-docker-compose up --build
-```
-Then open http://localhost:8000. A single container builds the frontend and serves
-it alongside the API, so there is no separate frontend service or port.
 
-### Development
-The image has to be rebuilt to pick up frontend changes, so for iterative work run
-the Vite dev server against the container instead. It proxies `/api` to the backend,
-keeping requests same-origin:
-```
-docker-compose up            # API + built frontend on :8000
-cd frontend && npm install && npm run start   # dev server with hot reload on :3000
-```
-Set `VITE_API_TARGET` if the backend is not on `http://localhost:8000`.
+Development data and tool caches stay under `.work/`. Create a local account on first launch.
 
+To build and run the standalone app:
+
+```bash
+./scripts/desktop.sh build
+open build/bin/Innerly.app
+```
+
+## Journal data
+
+- Development: `.work/dev-journal`
+- Standalone app: `~/.innerly`
+- Override either with `INNERLY_DATA_DIR`.
+
+Back up an existing journal and test a copy before upgrading:
+
+```bash
+INNERLY_DATA_DIR="$PWD/.work/journal-copy" build/bin/Innerly.app/Contents/MacOS/Innerly
+```
+
+Close applications using the journal before copying its data. Existing journal databases and encrypted entries remain supported; schema upgrades run automatically. Place legacy ZIP imports in the selected data directory's `imports/` folder.
+
+Login is local and held in memory. Settings includes **Exit fullscreen** and **Open another window**; each window logs in independently.
+
+## Tests
+
+```bash
+./scripts/desktop.sh test      # Go behavior tests and frontend unit tests
+./scripts/desktop.sh race      # Go race detector
+```
+
+For UI tests, install the test browsers once:
+
+```bash
+(cd frontend && PLAYWRIGHT_BROWSERS_PATH="$PWD/../.work/playwright" npx playwright install webkit chromium)
+./scripts/desktop.sh test-ui
+```
+
+Tests use synthetic data and disposable databases, not your journal. The frontend runs inside Wails; there is no separate HTTP API server.

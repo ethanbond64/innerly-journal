@@ -1,4 +1,5 @@
-import { clearLocalStorage, getLockByDefault, getToken } from "./utils.jsx";
+import { journalFetch as fetch } from "./desktop.js";
+import { logout, getLockByDefault } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { replace } from "./history.js";
 
@@ -12,34 +13,21 @@ const lockAuthSubscribers = new Set();
 
 // Requests that died on a lapsed lock key, waiting for authenticateLock to re-prime the cache.
 const pendingLockRetries = [];
+window.addEventListener('innerly-session-ended', () => {
+    pendingLockRetries.splice(0).forEach(({ cancel }) => cancel());
+});
 
 export const onLockAuthExpired = (subscriber) => {
     lockAuthSubscribers.add(subscriber);
     return () => lockAuthSubscribers.delete(subscriber);
 };
 
-const flushLockRetries = () => pendingLockRetries.splice(0).forEach((retry) => retry());
+const flushLockRetries = () => pendingLockRetries.splice(0).forEach(({ retry }) => retry());
 
-const getAuthorizationHeader = () => {
-    let token = getToken();
-
-    if (!token || token.length === 0) {
-        replace(loginRoute);
-    }
-
-    return `Bearer ${token}`;
-};
-
-const getHeaders = (contentType = "application/json") => {
-    return {
-        "Authorization": getAuthorizationHeader(),
-        "Content-Type": contentType
-    };
-};
+const getHeaders = () => ({ 'Content-Type': 'application/json' });
 
 const handleUnauthorized = () => {
-    pendingLockRetries.length = 0; // the session is gone, so nothing queued can succeed
-    clearLocalStorage();
+    logout();
     replace(loginRoute);
 };
 
@@ -84,7 +72,7 @@ const apiRequest = (send, {
                 if (error.lockAuthExpired) {
                     // One retry only, so a password that never fixes it cannot loop.
                     if (retryOnLockAuth && canRetry) {
-                        pendingLockRetries.push(() => attempt(false));
+                        pendingLockRetries.push({ retry: () => attempt(false), cancel: () => resolve(undefined) });
                         return;
                     }
                 } else if (error.response && error.response.status === 401 && logoutOn401) {
@@ -127,7 +115,7 @@ export const updateUser = (userId, data, callback, onError = (e) => {}) =>
 
 
 export const fetchEntries = (search, offset, limit, onError = (e) => {}) =>
-    apiRequest(() => fetch(`/api/fetch/entries?search=${search}&limit=${limit}&offset=${offset}`, {
+    apiRequest(() => fetch(`/api/fetch/entries?search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}`, {
         headers: getHeaders()
     }), { onError });
 
@@ -173,7 +161,7 @@ export const fetchActivity = (days, before, onError = (e) => {}) =>
     }), { onError });
 
 // locked travels with the very first save, so the text is encrypted before it is ever stored.
-export const insertTextEntry = (text, functional_datetime, callback, onError = (e) => {}) =>
+export const insertTextEntry = (text, functional_datetime, callback, onError = (e) => {}, { draft = false } = {}) =>
     apiRequest(() => fetch('/api/insert/entries', {
         method: 'POST',
         headers: getHeaders(),
@@ -181,15 +169,16 @@ export const insertTextEntry = (text, functional_datetime, callback, onError = (
             entry_type: 'text',
             entry_data: { text },
             functional_datetime,
-            locked: getLockByDefault()
+            locked: getLockByDefault(),
+            draft
         })
     }), { onResult: (response) => callback(response.data.data), onError });
 
-export const updateTextEntry = (id, entry_data, tags, callback, onError = (e) => {}) =>
+export const updateTextEntry = (id, entry_data, tags, callback, onError = (e) => {}, { draft = false } = {}) =>
     apiRequest(() => fetch(`/api/update/entries/${id}`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ entry_data, tags })
+        body: JSON.stringify({ entry_data, tags, draft })
     }), { onResult: (response) => callback(response.data.data), onError });
 
 export const insertLinkEntry = (link, callback, functional_datetime = null, onError = (e) => {}) =>
@@ -212,10 +201,9 @@ export const insertFileEntry = (file, callback, functional_datetime = null, onEr
         formData.append('functional_datetime', functional_datetime);
     }
 
-    // No Content-Type header: the browser sets the multipart boundary itself.
+    // Uploaded files are converted to base64 by the Wails adapter.
     return apiRequest(() => fetch('/api/insert/entries', {
         method: 'POST',
-        headers: { 'Authorization': getAuthorizationHeader() },
         body: formData
     }), { onResult: (response) => callback(response.data.data), onError });
 };

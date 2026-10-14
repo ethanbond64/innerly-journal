@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
-import { getUserData, setUserData, clearLocalStorage, getLockTtl } from "./utils.jsx";
+import { getUserData, setUserData, logout, getLockTtl } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
 import { updatePassword, updateUser, importEntries, getImportStatus, getImportFiles, cancelImport } from "./requests.js";
 import { useDarkMode } from "./dark-mode.js";
 import { getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
+import { DesktopSettings } from './desktop-settings.jsx';
 import { TYPEWRITER_LINE_MIN, TYPEWRITER_LINE_MAX, LOCK_TTL_UNIT_SECONDS, lockTtlMax } from "./constants.js";
 
 export const SettingsPage = () => {
@@ -146,7 +147,7 @@ export const SettingsPage = () => {
         if (localUserData) {
             setUserDataComponent(localUserData);
         } else {
-            clearLocalStorage();
+            logout();
             navigate(loginRoute);
         }
         // Check for an existing import job on mount
@@ -185,6 +186,7 @@ export const SettingsPage = () => {
                 <div class="col-md-4"></div>
                 <div class="col-md-4 md-margin-top">
                     <h2>Settings</h2>
+                    <DesktopSettings />
                     <h4 class="text-muted margin-bottom">{userData.email}</h4>
                     <div class="well" style={{ height: '65px' }}>
                         <h4 style={{ display: 'inline-block', float: 'left', marginTop: '0px'}}>Dark Mode</h4>

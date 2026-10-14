@@ -1,15 +1,9 @@
-// The only module that touches window.location / window.history. Switch `mode` to
-// 'hash' if the host cannot serve index.html for unknown paths (e.g. a Wails asset
-// server); every href and path read below follows from it.
-const mode = 'browser';
+// Hash routes stay inside the Wails asset server.
 
 const listeners = new Set();
 
-export const toHref = (path) => (mode === 'hash' ? '#' + path : path);
-
-export const readPath = () => (mode === 'hash'
-    ? window.location.hash.slice(1) || '/'
-    : window.location.pathname + window.location.search);
+export const toHref = (path) => '#' + path;
+export const readPath = () => window.location.hash.slice(1) || '/';
 
 export const getState = () => window.history.state;
 

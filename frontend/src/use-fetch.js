@@ -1,120 +1,49 @@
-import { useState, useEffect } from "react";
-import { equalsDate, getPreviousDate, getNextDate, getTodaysDate, clearLocalStorage } from "./utils.jsx";
-import { fetchEntries } from "./requests.js";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { getTodaysDate } from './utils.jsx';
+import { fetchEntries } from './requests.js';
+import { appendEntries, appendOlderDays } from './timeline.js';
 
-export const useFetch = (search, offset, limit) => {
-
+export const useFetch = (search, limit) => {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [lastRow, setLastRow] = useState(newRow(getTodaysDate()));
     const [allLoaded, setAllLoaded] = useState(false);
+    const [error, setError] = useState(null);
+    const cursor = useRef(null);
 
-    const appender = (row) => {
-        setList((prev) => {
-            if (prev.length > 0 && (equalsDate(prev[prev.length - 1].date, row.date) || 
-                equalsDate(prev[prev.length - 1].date, row.date))) {
-                return prev;
-            }
-            return [...prev, row];
-        });
-    };
-
-    useEffect(() => {
-        setLoading(true);
-        setLastRow(newRow(getTodaysDate()));
-        setList([]);
-        setAllLoaded(false);
-    }, [search]);
-
-    useEffect(() => {
-
-        if (loading && list.length > 0) {
+    const loadMore = useCallback(async () => {
+        const page = cursor.current;
+        if (!page || page.busy) return;
+        if (page.done) {
+            page.rows = appendOlderDays(page.rows);
+            setList(page.rows);
             return;
         }
-
+        // Set the guard synchronously: observer callbacks can precede React's next render.
+        page.busy = true;
         setLoading(true);
-
-        const refresh = async () => {
-
-            const results = await fetchEntries(search, offset, limit);
-
-            if (results === undefined) {
-                clearLocalStorage();
-                return;
-            }
-    
-            let stagedRow = {...lastRow};
-            let allLoadedLocal = false;
-            if (results.length < limit) {
-                allLoadedLocal = true;
-                setAllLoaded(allLoadedLocal);
-            }
-    
-            results.forEach((entry) => {
-                const functionalDate = new Date(entry.functional_datetime);
-                
-                if (equalsDate(functionalDate, stagedRow.date)) {
-                    stagedRow.entries.push(entry);
-                } else {
-                    
-                    // Append the staged row
-                    appender(stagedRow);
-                    const startDate = getPreviousDate(stagedRow.date);
-                    
-                    // Append the gap row
-                    if (!equalsDate(startDate, functionalDate)) {
-                        let nextDate = getNextDate(functionalDate);
-                        if (equalsDate(startDate, nextDate)) {
-                            nextDate = null;
-                        }
-                        appender(newRow(startDate, nextDate, true));
-                    }
-    
-                    // Stage the new day row
-                    stagedRow = newRow(functionalDate, null, false, [entry]);
-                }
-            });
-
-            if (allLoadedLocal) {
-                appender(stagedRow);
-            } else {
-                setLastRow(stagedRow);
-            }
-
-            setLoading(false);
-        };
-
-        if (allLoaded) {
-            let localLastRow = list[list.length - 1];
-            get90Days(localLastRow.date, appender);
-            setLoading(false);
+        setError(null);
+        const results = await fetchEntries(search, page.offset, limit);
+        if (cursor.current !== page) return; // search changed or component unmounted
+        if (results === undefined) {
+            setError('Unable to load entries. Please try again.');
         } else {
-            refresh();
+            page.rows = appendEntries(page.rows, results, page.today);
+            page.offset += results.length;
+            page.done = results.length < limit;
+            setList(page.rows);
+            setAllLoaded(page.done);
         }
-    }, 
-    // eslint-disable-next-line
-    [offset, limit, allLoaded]);
+        page.busy = false;
+        setLoading(false);
+    }, [search, limit]);
 
-    return {loading, list};
-};
+    useEffect(() => {
+        cursor.current = { offset: 0, rows: [], today: getTodaysDate(), done: false, busy: false };
+        setList([]);
+        setAllLoaded(false);
+        loadMore();
+        return () => { cursor.current = null; };
+    }, [loadMore]);
 
-const get90Days = (start, consumer) => {
-    let date = start;
-    for (let i = 0; i < 90; i++) {
-        date = new Date(date);
-        date.setDate(date.getDate() - 1);
-        consumer(newRow(date));
-    }
-    date = new Date(date);
-    date.setDate(date.getDate() - 1);
-    return newRow(date);
-};
-
-const newRow = (date, endDate = null, collapse = false, entries = []) => {
-    return {
-        date: date,
-        endDate: endDate,
-        collapse: collapse,
-        entries: entries
-    };
+    return { loading, list, allLoaded, error, loadMore };
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "./router.jsx";
-import { clearLocalStorage } from "./utils.jsx";
+import { logout } from "./utils.jsx";
 import { activityRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
 import { Icon } from "./icon.jsx";
@@ -60,9 +60,9 @@ export const Navbar = ({ setSearch, user }) => {
             submit();
         }
     }
-    const logOut = (e) => {
+    const logOut = async (e) => {
         e.preventDefault();
-        clearLocalStorage();
+        await logout();
         navigate(loginRoute);
     };
 

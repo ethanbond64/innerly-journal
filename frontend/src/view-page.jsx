@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "./router.jsx";
 import { formatShortOrdinalDate, formatShortOrdinalDateTime } from './date-format.js';
 import { editRoute, homeRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
-import { deleteEntry, fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
+import { fetchEntry, fetchLockedEntry, lockEntry, unlockEntry, updateTextEntry } from "./requests.js";
 import { BasePage } from "./base-page.jsx";
 import { capitalize, ClickOutsideTracker, equalsDate } from "./utils.jsx";
 import { PasswordModal } from "./password-modal.jsx";
 import { takeEntry } from "./entry-handoff.js";
+import { DeleteEntryDialog } from './delete-entry-dialog.jsx';
 
 export const ViewPage = () => {
 
@@ -22,6 +23,7 @@ export const ViewPage = () => {
     const [locked, setLocked] = useState(false);
     const [passwordModalParams, setPasswordModalParams] = useState(null);
 
+    const [showDelete, setShowDelete] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
     const [editingSentiment, setEditingSentiment] = useState(false);
 
@@ -71,12 +73,12 @@ export const ViewPage = () => {
 
     const onClickCurrentTitle = () => {
         setEditingTitle(true);
-        setTimeout(() => {
-            if (titleRef.current) {
-                titleRef.current.focus();
-            }
-        }, 800); // TODO - is there a less hacky way to do this?
+
     }
+
+    useEffect(() => {
+        if (editingTitle) titleRef.current?.focus();
+    }, [editingTitle]);
 
     const onChangeTitle = (e) => {
         setTitle(e.target.value);
@@ -101,15 +103,7 @@ export const ViewPage = () => {
         updateTextEntry(entryId, { sentiment }, null, resp => {});
     }
 
-    const onClickDelete = () => {
-        if (window.confirm('Are you sure you want to delete this entry?')) {
-            deleteEntry(entryId, resp => {
-                if (resp) {
-                    navigate(homeRoute);
-                }
-            });
-        }
-    };
+    const onClickDelete = () => setShowDelete(true);
 
     const openLockedEntry = (password) => {
         fetchLockedEntry(entryId, password, data => {
@@ -323,6 +317,8 @@ export const ViewPage = () => {
                     &nbsp; <b>Delete this Entry</b>
                 </button>
             </div>
+            {showDelete && <DeleteEntryDialog entryId={entryId} onCancel={() => setShowDelete(false)}
+                onDeleted={() => navigate(homeRoute)} />}
         </BasePage>
     );
 };

@@ -78,8 +78,6 @@ function smoothScrollTo(element, targetScrollTop, duration = 350, onComplete) {
 
 
 export const WritePage = () => {
-
-    const navigate = useNavigate();
     const { functionalDate } = useParams();
 
     let functionalDatetime = null;
@@ -89,17 +87,10 @@ export const WritePage = () => {
         functionalDatetime = getDateNoTime(dateParts[0], dateParts[1] - 1, dateParts[2]);
     }
 
-    const onSubmit = (text) => {
-        insertTextEntry(text, functionalDatetime, (data) => {
-            putEntry(data);
-            navigate(viewRoute + data.id);
-        });
-    };
-
     const heading = functionalDatetime ? (<> Write an entry for the date {formatLongDateNoComma(functionalDatetime)}</>) :
         "Write about any thoughts, experiences, or ideas";
 
-    return <WritePageBase onSumbit={onSubmit} heading={heading} functionalDatetime={functionalDatetime} />;
+    return <WritePageBase heading={heading} functionalDatetime={functionalDatetime} />;
 };
 
 export const EditPage = () => {
@@ -149,25 +140,16 @@ export const EditPage = () => {
 
     }, [entryId, navigate]);
 
-    const onSubmit = (text) => {
-        if (entryId) {
-            updateTextEntry(entryId, { text }, null, (data) => {
-                putEntry(data);
-                navigate(viewRoute + data.id);
-            });
-        }
-    };
-
     const heading = (<>Editing: <i><b>{title ? title : "Untitled"}</b></i>{functionalDate ? <> from {formatLongDateNoComma(new Date(functionalDate))}</> : null}</>);
 
     if (text === null) {
         return passwordModalParams ? <PasswordModal {...passwordModalParams} /> : null;
     }
 
-    return <WritePageBase onSumbit={onSubmit} heading={heading} initialId={entryId} text={text} />;
+    return <WritePageBase heading={heading} initialId={entryId} text={text} />;
 };
 
-export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
+export const WritePageBase = ({ heading, functionalDatetime = null,
                                 initialId = null, text = '' }) => {
 
     const navigate = useNavigate();
@@ -175,7 +157,8 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
 
     const entryIdRef = useRef(initialId);
     const dirtyRef = useRef(false);   // text differs from what the server has
-    const savingRef = useRef(false);  // a save request is in flight
+    const savingRef = useRef(null);  // promise for the in-flight save
+    const [submitting, setSubmitting] = useState(false);
 
     const [saveState, setSaveState] = useState('saved'); // drives the status dot only
     const textareaRef = useRef(null);
@@ -189,15 +172,15 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     const [dragging, setDragging] = useState(false);
     const dragStateRef = useRef(null);
 
-    let timeoutId;
+    const headerTimeout = useRef(null);
 
     const handleMouseEnter = () => {
-        clearTimeout(timeoutId);
+        clearTimeout(headerTimeout.current);
         setShowHeader(true);
     };
 
     const handleMouseLeave = () => {
-        timeoutId = setTimeout(() => {
+        headerTimeout.current = setTimeout(() => {
             setShowHeader(false);
         }, 3500);
     };
@@ -205,12 +188,18 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
     useEffect(() => {
         handleMouseLeave();
         return () => {
-            clearTimeout(timeoutId);
+            clearTimeout(headerTimeout.current);
         };
     }, []);
 
     useEffect(() => {
         const positionArrow = () => {
+            const textarea = textareaRef.current;
+            if (textarea) {
+                // Keep room for a visible first line. A fixed 75vh padding could
+                // consume the entire textarea in WebKit, clipping the empty caret.
+                textarea.style.paddingBottom = typewriter.enabled ? `${Math.max(0, textarea.clientHeight - 64)}px` : '12px';
+            }
             if (textareaRef.current && arrowRef.current) {
                 const left = textareaRef.current.getBoundingClientRect().left;
                 arrowRef.current.style.left = `${left - 38}px`;
@@ -219,7 +208,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
         positionArrow();
         window.addEventListener('resize', positionArrow);
         return () => window.removeEventListener('resize', positionArrow);
-    }, []);
+    }, [typewriter.enabled]);
 
 
     // Any scroll within 500ms of a programmatic scroll is considered programmatic.
@@ -292,10 +281,9 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
             savingRef.current = true;
 
             if (entryIdRef.current === null) {
-                // TODO need to suspend tags and sentiment analysis until the user clicks save.
-                insertTextEntry(writeTo.value, functionalDatetime, onSaved, onFailed);
+                savingRef.current = insertTextEntry(writeTo.value, functionalDatetime, onSaved, onFailed, { draft: true });
             } else {
-                updateTextEntry(entryIdRef.current, { text: writeTo.value }, null, onSaved, onFailed);
+                savingRef.current = updateTextEntry(entryIdRef.current, { text: writeTo.value }, null, onSaved, onFailed, { draft: true });
             }
         }, 3000);
 
@@ -389,17 +377,31 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
         modeRef.current = 'typewriter';
     };
 
-    const onSubmitInner = (e) => {
+    const onSubmitInner = async (e) => {
         e.preventDefault();
-        const text = textareaRef.current.value;
-        if (entryIdRef.current === null) {
-            onSumbit(text);
-        } else {
-            updateTextEntry(entryIdRef.current, { text }, null, (data) => {
-                putEntry(data);
-                navigate(viewRoute + data.id);
-            });
-        }
+        if (submitting) return;
+        setSubmitting(true);
+        // Wait for an autosave (possibly awaiting a password) to obtain its ID.
+        // Otherwise Save could insert the same new entry a second time.
+        await savingRef.current;
+        if (!textareaRef.current) return;
+        const value = textareaRef.current.value;
+        dirtyRef.current = false;
+        const onSaved = (data) => {
+            if (!textareaRef.current) return;
+            putEntry(data);
+            navigate(viewRoute + data.id);
+        };
+        const onFailed = () => {
+            dirtyRef.current = true;
+            setSaveState('failed');
+        };
+        savingRef.current = entryIdRef.current === null
+            ? insertTextEntry(value, functionalDatetime, onSaved, onFailed)
+            : updateTextEntry(entryIdRef.current, { text: value }, null, onSaved, onFailed);
+        await savingRef.current;
+        savingRef.current = null;
+        setSubmitting(false);
     };
 
     return (
@@ -468,7 +470,7 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
                                 <span>Back</span>
                             </Link>
                             <span className={`disappear hidden-xs`} style={{ padding: '12px', opacity: showHeader ? 1 : 0 }}>{heading}</span>
-                            <button id="submitbtn" type="submit" onClick={onSubmitInner} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
+                            <button id="submitbtn" disabled={submitting} type="submit" onClick={onSubmitInner} className="btn btn-info btn-block" style={{ width: 'auto', float: 'right', color: 'white', marginRight: '12px' }}>
                                 <span className="nremove hidden-xs">{showHeader ? 'Save ' : null}</span>
                                 <b><Icon name="chevron-right" /></b>
                             </button>
@@ -481,12 +483,18 @@ export const WritePageBase = ({ onSumbit, heading, functionalDatetime = null,
                     <div className="form-group" style={{ height: '97%' }}>
                         <textarea
                             ref={textareaRef}
+                            autoFocus
+                            disabled={submitting}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             className="form-control form-control-inner"
                             id="writeto"
                             name="entry"
                             onChange={onTextChange}
                             onScroll={handleTextareaScroll}
-                            style={{ marginTop: '20px', paddingBottom: '75vh' }}
+                            style={{ marginTop: '20px' }}
                             defaultValue={text}
                         />
                     </div>

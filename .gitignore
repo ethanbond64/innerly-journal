@@ -1,9 +1,11 @@
 .env
-venv
-.venv
-__pycache__
 **/build
+!/build/
+/build/*
+!/build/appicon.png
 **/dist
-*.spec
 .DS_Store
 .idea
+.work/
+frontend/wailsjs/
+frontend/package.json.md5

@@ -1,14 +1,12 @@
 version: 2
 updates:
-  - package-ecosystem: "uv"
-    directory: "/backend"
+  - package-ecosystem: "gomod"
+    directory: "/"
     schedule:
       interval: "weekly"
     groups:
-      python-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+      go-minor-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -16,6 +14,4 @@ updates:
       interval: "weekly"
     groups:
       npm-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+        update-types: ["minor", "patch"]

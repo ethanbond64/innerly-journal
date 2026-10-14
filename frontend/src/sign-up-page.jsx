@@ -1,21 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from './router.jsx';
-import { setToken, setUserData } from './utils.jsx';
+import React, { useState } from 'react';
+import { journalFetch as fetch } from './desktop.js';
+import { Link, useNavigate } from './router.jsx';
+import { setUserData } from './utils.jsx';
 import { homeRoute, loginRoute } from './constants.js';
 import { Notification } from './notification.jsx';
 
 export const SignUpPage = () => {
 
-    // eslint-disable-next-line
-    const [searchParams, _] = useSearchParams();
-    const [share, setShare] = useState(null);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        let shareLocal = searchParams.get('share');
-        setShare(shareLocal);
-    }, [searchParams]);
 
     const onSubmit = (e) => {
         e.preventDefault();
@@ -31,7 +24,7 @@ export const SignUpPage = () => {
          fetch('/api/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, share })
+            body: JSON.stringify({ email, password })
          }).then(async (res) => {
             const data = await res.json();
             if (!res.ok) {
@@ -41,8 +34,7 @@ export const SignUpPage = () => {
             }
             return data;
          }).then((data) => {
-            if (data.token && data.user) {
-                setToken(data.token);
+            if (data.user) {
                 setUserData(data.user);
                 navigate(homeRoute);
             } else {

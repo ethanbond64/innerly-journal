@@ -10,6 +10,7 @@ export const BlankCard = ({ datetime, replace }) => {
     const imageRef = useRef(null);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const onClickWrite = () => {
         let param = "";
@@ -39,17 +40,20 @@ export const BlankCard = ({ datetime, replace }) => {
     }
 
     const insertEntry = (insertFunction, target) => {
+        if (!target) return;
         setLoading(true);
+        setError(null);
         let now = new Date();
         let functional_datetime = equalsDate(now, datetime) ? null : datetime.toISOString();
         insertFunction(target, wrappedReplace, functional_datetime, (e) => {
-            // TODO post eror somwhere
+            setError(e.message || 'Unable to add this entry.');
             setLoading(false);
         });
     }
 
     return (
         <div className={`col-xs-4 blank_unit itemactive`}>
+            {error && <p role="alert">{error}</p>}
             <div className={`well swell ${today ? 'todayblank' : ''}`} id="unit">
                 { loading ? 
                 <img src="/images/innerly-loader.gif" alt="loading gif" /> : 

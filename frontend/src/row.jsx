@@ -10,10 +10,10 @@ import { ImageCard } from './cards/image-card.jsx';
 import { LinkCard } from './cards/link-card.jsx';
 import { DayTags } from './day-tags.jsx';
 
-export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [],
+export const Row = React.memo(({ row, setImagePath, label = null, minGroups = 0, linkDay = true, memories = [],
     dayTags = null, openTags = false }) =>  {
 
-    const [entryGroups, setEntryGroups] = useState([]);
+    const [entryGroups, setEntryGroups] = useState(() => groupEntries(row.entries, minGroups));
     const [showMemories, setShowMemories] = useState(false);
 
     const replace = (entry, index) => {
@@ -32,40 +32,7 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
     };
 
     useEffect(() => {
-
-        let group = []
-        let groups = [];
-        let blanksRequired = true;
-        // Text entries always come first
-        let localEntries = [...row.entries].sort((a, b) => textFirst(a) - textFirst(b));
-
-        for (let i = 0; i < localEntries.length; i++) {
-
-            let entry = localEntries[i];
-            blanksRequired = blanksRequired && entry.entry_type !== 'blank'
-            
-            if (group.length === 3) {
-                groups.push(group);
-                group = [];
-            }
-
-            group.push(entry);
-        }
-
-        //
-        // Pad the final group with blanks if incomplete.
-        //
-        if (group.length > 0 || blanksRequired) {
-            let blanks = 3 - group.length;
-            for (let i = 0; i < blanks; i++) {
-                group.push({ entry_type: 'blank' });
-            }
-            groups.push(group);
-        }
-
-        groups = padGroups(groups, minGroups);
-
-        setEntryGroups(groups);
+        setEntryGroups(groupEntries(row.entries, minGroups));
     }, [row.entries, minGroups]);
 
     const createCard = (entry, replace) => {
@@ -82,13 +49,13 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
     };
 
     return entryGroups.map((entries, i) => (
-        <div className={`well owell`} style={{ marginBottom: "0px" }}>
+        <div key={i} className="well owell" style={{ marginBottom: '0px' }}>
             { i === 0 && showMemories ?
                 <MemoriesModal date={row.date} years={memories}
                     clear={() => setShowMemories(false)} /> :
                 null
             }
-            <div className={`row animated fadeIn shadow-sm`}>
+            <div className="row shadow-sm">
                 <div className="col-sm-3">
                     { i > 0 ? 
                         null :
@@ -110,13 +77,26 @@ export const Row = ({ row, setImagePath, label = null, minGroups = 0, linkDay = 
                 </div>
                 <div className="col-sm-8">
                     <div className="row" id="day_carousel">
-                        {entries.map((entry, j) => createCard(entry, (e) => replace(e, i * 3 + j)))}
+                        {entries.map((entry, j) => <React.Fragment key={entry.id || `blank-${j}`}>
+                            {createCard(entry, (e) => replace(e, i * 3 + j))}
+                        </React.Fragment>)}
                     </div>
                 </div>
             </div>
         </div>
     ));
-}
+});
+
+const groupEntries = (entries, minGroups) => {
+    const sorted = [...entries].sort((a, b) => textFirst(a) - textFirst(b));
+    const groups = [];
+    for (let i = 0; i < sorted.length; i += 3) {
+        const group = sorted.slice(i, i + 3);
+        while (group.length < 3) group.push({ entry_type: 'blank' });
+        groups.push(group);
+    }
+    return padGroups(groups, minGroups);
+};
 
 const textFirst = (entry) => entry.entry_type === 'text' ? 0 : 1;
 

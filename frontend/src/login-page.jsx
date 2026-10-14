@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { journalFetch as fetch } from './desktop.js';
 import { Link, useNavigate } from './router.jsx';
-import { setToken, setUserData } from './utils.jsx';
+import { setUserData } from './utils.jsx';
 import { homeRoute, signupRoute } from './constants.js';
 import { Notification } from './notification.jsx';
 
@@ -26,8 +27,7 @@ export const LoginPage = () => {
             }
             return data;
          }).then((data) => {
-            if (data.token && data.user) {
-                setToken(data.token);
+            if (data.user) {
                 setUserData(data.user);
                 navigate(homeRoute);
             } else {

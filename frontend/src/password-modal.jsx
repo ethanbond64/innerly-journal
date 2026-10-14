@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ClickOutsideTracker, getLockTtl } from "./utils.jsx";
 import { authenticateLock, onLockAuthExpired } from "./requests.js";
+import { Modal } from './modal.jsx';
 
 const LOCK_TIMEOUT_PROMPT = "Enter password to continue.";
 
@@ -65,8 +66,7 @@ export const PasswordModal = ({ prompt = null, callback = (p) => {}, cancel = nu
     }
 
     return (
-            <div className="modal" id="lockModal" style={{ display: 'block', zIndex: '1006', padding: '30px' }}>
-                <div className="modal-dialog" role="document" style={{ padding: '30px' }}>
+            <Modal label={lockTimeout ? LOCK_TIMEOUT_PROMPT : prompt} onCancel={onCancel}>
                     <ClickOutsideTracker callback={onCancel}>
                         <div className="modal-content" >
                             {
@@ -83,7 +83,7 @@ export const PasswordModal = ({ prompt = null, callback = (p) => {}, cancel = nu
                                 }
                             </div>
                             <div className="modal-body" style={{ textAlign: "center", margin: "0 auto", padding: '10px'}}>
-                                <input type="password" id="password" ref={passwordRef} onKeyDown={onKeyDown} className="form-control" style={{width: "50%", margin: '6px', display: 'inline-block'}} />
+                                <input autoFocus autoComplete="current-password" type="password" id="password" ref={passwordRef} onKeyDown={onKeyDown} className="form-control" style={{width: "50%", margin: '6px', display: 'inline-block'}} />
                                 <button type="button" id="passcodeSave" onClick={onSubmit} className="btn btn-info">Go</button>
                                 {
                                     error ?
@@ -93,7 +93,6 @@ export const PasswordModal = ({ prompt = null, callback = (p) => {}, cancel = nu
                             </div>
                         </div>
                     </ClickOutsideTracker>
-                </div>
-            </div>
+            </Modal>
     );
 }

@@ -1,22 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { innerlyToken, innerlyUser, LOCK_TTL_DEFAULT, LOCK_TTL_UNIT_SECONDS } from './constants.js';
+import { desktopApp } from './desktop.js';
+import { putEntry } from './entry-handoff.js';
+import { LOCK_TTL_DEFAULT, LOCK_TTL_UNIT_SECONDS } from './constants.js';
 
-export const getToken = () => {
-    return localStorage.getItem(innerlyToken);
-}
-
-export const setToken = (token) => {
-    localStorage.setItem(innerlyToken, token);
-}
-
-export const getUserData = () => {
-    let userData = localStorage.getItem(innerlyUser);
-    return userData ? JSON.parse(userData) : null;
-}
-
-export const setUserData = (userData) => {
-    localStorage.setItem(innerlyUser, JSON.stringify(userData));
-}
+let currentUser = null;
+export const getUserData = () => currentUser;
+export const setUserData = (userData) => { currentUser = userData; };
 
 // New entries are encrypted before they are first stored unless the user turned this off.
 export const getLockByDefault = () => {
@@ -33,10 +22,12 @@ export const getLockTtl = (userData = getUserData()) => {
     return { value, unit };
 }
 
-export const clearLocalStorage = () => {
-    localStorage.removeItem(innerlyUser);
-    localStorage.removeItem(innerlyToken);
-}
+export const logout = async () => {
+    currentUser = null;
+    putEntry(null);
+    window.dispatchEvent(new Event('innerly-session-ended'));
+    await desktopApp().Logout();
+};
 
 export const capitalize = (string) => string.charAt(0).toUpperCase() + string.slice(1);
 

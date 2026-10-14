@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "./router.jsx";
 import { BasePage } from "./base-page.jsx";
-import { getUserData, setUserData, clearLocalStorage, getLockTtl } from "./utils.jsx";
+import { getUserData, setUserData, logout, getLockTtl } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { PageLoader } from "./page-loader.jsx";
 import { Notification } from "./notification.jsx";
@@ -147,7 +147,7 @@ export const SettingsPage = () => {
         if (localUserData) {
             setUserDataComponent(localUserData);
         } else {
-            clearLocalStorage();
+            logout();
             navigate(loginRoute);
         }
         // Check for an existing import job on mount

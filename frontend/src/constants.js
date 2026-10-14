@@ -11,8 +11,6 @@ export const settingsRoute = '/settings';
 export const activityRoute = '/activity';
 
 // Local Storage
-export const innerlyUser = 'innerly-user';
-export const innerlyToken = 'innerly-token';
 export const innerlyTypewriter = 'innerly-typewriter';
 
 // Typewriter mode

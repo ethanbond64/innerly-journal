@@ -70,7 +70,7 @@ func TestEntryLifecycle(t *testing.T) {
 // TestLegacyEncryption verifies Python password hashes and both stored encryption versions before rekeying.
 func TestLegacyEncryption(t *testing.T) {
 	a := testApp(t)
-	b, err := os.ReadFile(filepath.Join("..", "..", "backend", "tests", "fixtures", "encryption.json"))
+	b, err := os.ReadFile(filepath.Join("testdata", "legacy-encryption.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

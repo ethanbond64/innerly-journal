@@ -15,7 +15,7 @@ const fileBase64 = (file) => new Promise((resolve, reject) => {
 });
 
 export const journalFetch = async (path, options = {}) => {
-    if (!isDesktop()) return window.fetch(path, options);
+    if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
     const app = desktopApp();
     const url = new URL(path, 'https://innerly.local');
     const route = url.pathname;
@@ -65,7 +65,6 @@ export const journalFetch = async (path, options = {}) => {
 };
 
 export const openExternal = (event, link) => {
-    if (!isDesktop()) return;
     event.preventDefault();
     try {
         const url = new URL(link);

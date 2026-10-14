@@ -1,65 +1,53 @@
-## Innerly
-An open source multimedia journal with a Go/Wails desktop app and a retained Python self-hosted version. Features include secured notes, autosaving while typing, HTTPS link saving with automatic thumbnail downloads, and image uploads. A screenshot of the main journal page layout is shown below.
+# Innerly
 
-![Example innerly homepage showing entries in chronological order](/innerly-example.png)
+A local multimedia journal built with Go, Wails, and React. Includes encrypted notes, autosave, images, HTTPS link previews, search, and day tags.
 
-![Innerly writing page](/innerly-write.png)
+## Build and run on macOS
 
-### Desktop (macOS)
-
-Requires Go, Node/npm, and Xcode Command Line Tools. Project tooling pins Go 1.24.13 and Wails 2.11.0; the helper keeps downloaded tools, caches, and development data inside `.work/`.
+Install **Go**, **Node.js 20+ with npm**, and **Xcode Command Line Tools** (`xcode-select --install`). The setup script installs Wails 2.11.0 and uses Go 1.24.13.
 
 ```bash
 ./scripts/desktop.sh setup
-./scripts/desktop.sh dev
+./scripts/desktop.sh dev       # Run with live reload
 ```
 
-Development uses a disposable journal at `.work/dev-journal`, not your existing journal. Create a local account on first launch. Desktop login is in-memory; restarting requires login again. The existing email/password and encrypted entry formats are retained.
+Development data and tool caches stay under `.work/`. Create a local account on first launch.
+
+To build and run the standalone app:
 
 ```bash
-./scripts/desktop.sh test    # Go, frontend adapter, and Python reference tests
-./scripts/desktop.sh race    # Slower Go race checks (real password hashing)
-./scripts/desktop.sh build   # build/bin/Innerly.app
+./scripts/desktop.sh build
+open build/bin/Innerly.app
 ```
 
-The Python reference tests require `backend/.venv` with dependencies from `backend/uv.lock`. If needed, create it with `cd backend && UV_CACHE_DIR=../.work/uv-cache uv sync --frozen`.
+## Journal data
 
-A packaged app normally opens `~/.innerly`. **Back up your journal and test on a copy first**, with both the Python and desktop apps closed while copying:
+- Development: `.work/dev-journal`
+- Standalone app: `~/.innerly`
+- Override either with `INNERLY_DATA_DIR`.
+
+Back up an existing journal and test a copy before upgrading:
 
 ```bash
 INNERLY_DATA_DIR="$PWD/.work/journal-copy" build/bin/Innerly.app/Contents/MacOS/Innerly
 ```
 
-Settings includes **Exit fullscreen** and **Open another window**. Each desktop window runs an independent session; different accounts can use the same data directory concurrently. Database migrations are embedded SQL files tracked with SQLite `user_version`; unversioned journals are adopted without replacing their data.
+Close applications using the journal before copying its data. Existing journal databases and encrypted entries remain supported; schema upgrades run automatically. Place legacy ZIP imports in the selected data directory's `imports/` folder.
 
-UI regression tests run the actual React screens in WebKit and Chromium against synthetic Wails responses:
+Login is local and held in memory. Settings includes **Exit fullscreen** and **Open another window**; each window logs in independently.
+
+## Tests
 
 ```bash
-cd frontend
-PLAYWRIGHT_BROWSERS_PATH="$PWD/../.work/playwright" npx playwright install webkit chromium
-npm run test:ui
+./scripts/desktop.sh test      # Go behavior tests and frontend unit tests
+./scripts/desktop.sh race      # Go race detector
 ```
 
-The desktop app does not require Python, Docker, or a local API server. Imports still read ZIP files from the selected data directory's `imports/` folder. Do not run both versions against the same database simultaneously.
+For UI tests, install the test browsers once:
 
-See [implementation and validation notes](docs/wails-implementation.md) and the [migration plan](docs/wails-migration-plan.md). For code review, open the nine-page [Python → Go architecture diagram](docs/architecture.drawio) in draw.io, with its [reading guide and file map](docs/architecture-review.md).
+```bash
+(cd frontend && PLAYWRIGHT_BROWSERS_PATH="$PWD/../.work/playwright" npx playwright install webkit chromium)
+./scripts/desktop.sh test-ui
+```
 
-### Self-hosted quickstart
-Requires docker-compose. First run the setup script, then docker-compose:
-```
-./setup.sh
-docker-compose up --build
-```
-Then open http://localhost:8000. A single container builds the frontend and serves
-it alongside the API, so there is no separate frontend service or port.
-
-### Development
-The image has to be rebuilt to pick up frontend changes, so for iterative work run
-the Vite dev server against the container instead. It proxies `/api` to the backend,
-keeping requests same-origin:
-```
-docker-compose up            # API + built frontend on :8000
-cd frontend && npm install && npm run start   # dev server with hot reload on :3000
-```
-Set `VITE_API_TARGET` if the backend is not on `http://localhost:8000`.
-
+Tests use synthetic data and disposable databases, not your journal. The frontend runs inside Wails; there is no separate HTTP API server.

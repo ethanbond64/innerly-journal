@@ -5,7 +5,7 @@ import { Icon } from "../icon.jsx";
 
 export const ImageCard = ({ entry, setPath, replace, heading = null, footer = null }) => {
     
-    // Either an external URL, or an already-signed '/api/static/...' path on this origin.
+    // Local images are served through the account-scoped /media/ handler.
     const url = entry.entry_data.path;
     const [showDelete, setShowDelete] = useState(false);
 

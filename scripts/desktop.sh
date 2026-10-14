@@ -21,7 +21,9 @@ case "${1:-test}" in
   test)
     go test -timeout 2m ./internal/journal/...
     (cd frontend && npm test)
-    PYTHONPATH="$ROOT/backend" "$ROOT/backend/.venv/bin/python" -m unittest discover -s backend/tests
+    ;;
+  test-ui)
+    (cd frontend && npm run test:ui)
     ;;
   race)
     go test -race -timeout 10m ./internal/journal/...
@@ -35,5 +37,5 @@ case "${1:-test}" in
   doctor)
     wails doctor
     ;;
-  *) printf 'Usage: %s {setup|test|race|build|dev|doctor}\n' "$0" >&2; exit 2 ;;
+  *) printf 'Usage: %s {setup|test|test-ui|race|build|dev|doctor}\n' "$0" >&2; exit 2 ;;
 esac

@@ -64,8 +64,8 @@ test('desktop external links require HTTPS', () => {
     assert.deepEqual(opened, ['https://example.com/']);
 });
 
-// The same UI retains the original fetch transport when not running inside Wails.
-test('browser transport still works', async () => {
-    globalThis.window = { fetch: async (path) => ({ path }) };
-    assert.deepEqual(await journalFetch('/api/version'), { path: '/api/version' });
+// Missing bindings must not silently send journal operations to an HTTP server.
+test('missing desktop bindings fail explicitly', async () => {
+    globalThis.window = {};
+    await assert.rejects(journalFetch('/api/version'), /desktop app/);
 });

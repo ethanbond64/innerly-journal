@@ -1,5 +1,5 @@
-import { journalFetch as fetch, isDesktop } from "./desktop.js";
-import { clearLocalStorage, getLockByDefault, getToken } from "./utils.jsx";
+import { journalFetch as fetch } from "./desktop.js";
+import { logout, getLockByDefault } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { replace } from "./history.js";
 
@@ -24,25 +24,10 @@ export const onLockAuthExpired = (subscriber) => {
 
 const flushLockRetries = () => pendingLockRetries.splice(0).forEach(({ retry }) => retry());
 
-const getAuthorizationHeader = () => {
-    let token = getToken();
-
-    if (!token || token.length === 0) {
-        replace(loginRoute);
-    }
-
-    return `Bearer ${token}`;
-};
-
-const getHeaders = (contentType = "application/json") => {
-    return {
-        ...(isDesktop() ? {} : { "Authorization": getAuthorizationHeader() }),
-        "Content-Type": contentType
-    };
-};
+const getHeaders = () => ({ 'Content-Type': 'application/json' });
 
 const handleUnauthorized = () => {
-    clearLocalStorage();
+    logout();
     replace(loginRoute);
 };
 
@@ -216,10 +201,9 @@ export const insertFileEntry = (file, callback, functional_datetime = null, onEr
         formData.append('functional_datetime', functional_datetime);
     }
 
-    // No Content-Type header: the browser sets the multipart boundary itself.
+    // Uploaded files are converted to base64 by the Wails adapter.
     return apiRequest(() => fetch('/api/insert/entries', {
         method: 'POST',
-        headers: isDesktop() ? {} : { 'Authorization': getAuthorizationHeader() },
         body: formData
     }), { onResult: (response) => callback(response.data.data), onError });
 };

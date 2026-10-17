@@ -6,5 +6,11 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run start",
   "frontend:dev:serverUrl": "http://localhost:3000",
-  "author": { "name": "Ethan Bond" }
+  "author": { "name": "Ethan Bond" },
+  "info": {
+    "companyName": "Ethan Bond",
+    "productName": "Innerly",
+    "productVersion": "0.0.0",
+    "copyright": "Copyright © 2026 Ethan Bond"
+  }
 }

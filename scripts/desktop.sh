@@ -29,7 +29,8 @@ case "${1:-test}" in
     go test -race -timeout 10m ./internal/journal/...
     ;;
   build)
-    wails build -nocolour
+    shift
+    wails build -nocolour "$@"
     ;;
   dev)
     wails dev

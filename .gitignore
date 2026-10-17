@@ -3,6 +3,14 @@
 !/build/
 /build/*
 !/build/appicon.png
+!/build/darwin/
+/build/darwin/*
+!/build/darwin/Info.plist
+!/build/darwin/Info.dev.plist
+/release/
+*.p12
+*.p8
+*.mobileprovision
 **/dist
 .DS_Store
 .idea

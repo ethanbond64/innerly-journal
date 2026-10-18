@@ -17,19 +17,14 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 TODO use latest version 6 or just checkout with git directly as shell
+      - uses: actions/checkout@v6 # TODO pin the commit of the latest v6 release
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
           persist-credentials: false
-      - name: Test release helpers # TODO remove
-        run: python3 -m unittest discover -s scripts/tests -v
-      - name: Detect and validate new version # TODO rewrite the script and use shell instead of python. Keep it simple and just validate if the release version already exists. No need to overengineer this garbage with the shas.
+      - name: Check release version
         id: version
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: python3 scripts/release-version.py --base "$BASE_SHA" --head "$HEAD_SHA" --notes "$RUNNER_TEMP/release-notes.md"
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/release-version.sh
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         if: steps.version.outputs.release == 'true'
         with:

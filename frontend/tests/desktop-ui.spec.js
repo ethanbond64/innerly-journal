@@ -57,6 +57,27 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
     }, { count, media, expired });
 };
 
+for (const width of [1200, 700]) {
+    test(`logo navigates home, then reloads the document (${width}px)`, async ({ page }) => {
+        await desktop(page);
+        await page.setViewportSize({ width, height: 850 });
+        await page.goto('/#/activity');
+        const logo = page.locator('nav a:visible').filter({ has: page.getByAltText('Innerly') });
+        await expect(logo).toHaveCount(1);
+        await page.evaluate(() => { window.documentMarker = 'original'; });
+        await logo.click();
+        await expect(page).toHaveURL(/#\/$/);
+        expect(await page.evaluate(() => window.documentMarker)).toBe('original');
+        await Promise.all([
+            page.waitForEvent('load'),
+            logo.click(),
+        ]);
+        await expect(page).toHaveURL(/#\/$/);
+        expect(await page.evaluate(() => window.documentMarker)).toBeUndefined();
+        await expect(logo).toBeVisible();
+    });
+}
+
 test('empty editor focuses its caret and opts out of text completion', async ({ page }) => {
     await desktop(page);
     await page.goto('/#/write');

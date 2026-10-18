@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+test('media requests fall through to Wails instead of receiving the app HTML', async ({ request }) => {
+    const response = await request.get('/media/test-image.jpg');
+    expect(response.status()).toBe(404);
+    expect(await response.text()).not.toContain('<html');
+});
+
 // Exercise the real React UI in WebKit and Chromium with an in-memory Wails boundary.
 const desktop = async (page, { count = 1, media = false, expired = false } = {}) => {
     await page.addInitScript(({ count, media, expired }) => {

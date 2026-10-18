@@ -5,7 +5,7 @@ import { fetchActivity } from "./requests.js";
 import { buildMonthLabels, buildWordScale, buildYearWeeks, isDrawn, lightestMix, shownTags, tagColor,
     tagOptions, tagStripes, wordCountMix, yearWindow } from "./activity-grid.js";
 import { useDayTags } from "./use-day-tags.js";
-import { writeRoute } from "./constants.js";
+import { dayRoute } from "./constants.js";
 import { capitalize, dateToString } from "./utils.jsx";
 
 // Only every other weekday is labelled, the way GitHub does it, so the labels
@@ -142,7 +142,7 @@ const ActivityYear = ({ block, mode, scale, today, current, selected }) => {
                                     `${day.key === todayKey ? ' activity-cell-today' : ''}`;
 
                                 return (
-                                    <Link key={day.key} to={`${writeRoute}/${day.key}`} className={className}
+                                    <Link key={day.key} to={`${dayRoute}${day.key}`} className={className}
                                         style={shown.length > 0 ? { backgroundImage: tagStripes(shown) } :
                                             (mix === null ? undefined : { backgroundColor: greenMix(mix) })}
                                         title={dayTitle(day, mode)}></Link>

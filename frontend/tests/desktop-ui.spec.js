@@ -57,6 +57,17 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
     }, { count, media, expired });
 };
 
+test('activity squares open the matching day page', async ({ page }) => {
+    await desktop(page);
+    await page.goto('/#/activity');
+    const square = page.locator('a.activity-cell-today');
+    await expect(square).toHaveAttribute('href', /^#\/day\/\d{4}-\d{2}-\d{2}$/);
+    const href = await square.getAttribute('href');
+    await square.click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.locator('#writeto')).toHaveCount(0);
+});
+
 for (const width of [1200, 700]) {
     test(`logo navigates home, then reloads the document (${width}px)`, async ({ page }) => {
         await desktop(page);

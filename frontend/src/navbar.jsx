@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "./router.jsx";
+import { Link, useLocation, useNavigate } from "./router.jsx";
 import { logout } from "./utils.jsx";
 import { activityRoute, homeRoute, loginRoute, settingsRoute } from "./constants.js";
 import { useDarkMode } from "./dark-mode.js";
@@ -8,6 +8,14 @@ import { Icon } from "./icon.jsx";
 export const Navbar = ({ setSearch, user }) => {
 
     const navigate = useNavigate();
+    const { path } = useLocation();
+    const onLogoClick = (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (path.split('?')[0] === homeRoute) {
+            event.preventDefault();
+            window.location.reload();
+        }
+    };
     const [searchLocal, setSearchLocal] = useState('')
     const [menuOpen, setMenuOpen] = useState(false);
     const { isDarkMode, setDarkMode } = useDarkMode();
@@ -81,11 +89,11 @@ export const Navbar = ({ setSearch, user }) => {
     return (
         <nav className={`navbar navbar-default navbar-fixed-top`} style={{zIndex:1000}}>
             <div className={``} style={{float:'left'}}>
-                <Link to={homeRoute} className={`hidden-sm hidden-xs`} >
+                <Link to={homeRoute} onClick={onLogoClick} className={`hidden-sm hidden-xs`} >
                     <img src="/images/innerly_wordmark_200616_02.png" style={{ marginTop: '0px', marginLeft: '30px' }}
                             className={`img-responsive sm-margin-top`} width="150" height="73" title="Innerly" alt="Innerly" />
                 </Link>
-                <Link to={homeRoute} className={`hidden-xl hidden-lg hidden-md`} >
+                <Link to={homeRoute} onClick={onLogoClick} className={`hidden-xl hidden-lg hidden-md`} >
                         <img src="/images/apple-touch-icon128.png"
                             className={`img-responsive sm-margin-top`} width="40" height="40" title="Innerly" alt="Innerly"
                             style={{ marginTop: '20px', marginLeft: '15px', borderRadius: '5px' }} />

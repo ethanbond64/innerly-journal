@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+test('media requests fall through to Wails instead of receiving the app HTML', async ({ request }) => {
+    const response = await request.get('/media/test-image.jpg');
+    expect(response.status()).toBe(404);
+    expect(await response.text()).not.toContain('<html');
+});
+
 // Exercise the real React UI in WebKit and Chromium with an in-memory Wails boundary.
 const desktop = async (page, { count = 1, media = false, expired = false } = {}) => {
     await page.addInitScript(({ count, media, expired }) => {
@@ -56,6 +62,38 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
         window.runtime = { WindowUnfullscreen: () => state.calls.push(['unfullscreen']), BrowserOpenURL: () => state.calls.push(['external']) };
     }, { count, media, expired });
 };
+
+test('activity squares open the matching day page', async ({ page }) => {
+    await desktop(page);
+    await page.goto('/#/activity');
+    const square = page.locator('a.activity-cell-today');
+    await expect(square).toHaveAttribute('href', /^#\/day\/\d{4}-\d{2}-\d{2}$/);
+    const href = await square.getAttribute('href');
+    await square.click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.locator('#writeto')).toHaveCount(0);
+});
+
+for (const width of [1200, 700]) {
+    test(`logo navigates home, then reloads the document (${width}px)`, async ({ page }) => {
+        await desktop(page);
+        await page.setViewportSize({ width, height: 850 });
+        await page.goto('/#/activity');
+        const logo = page.locator('nav a:visible').filter({ has: page.getByAltText('Innerly') });
+        await expect(logo).toHaveCount(1);
+        await page.evaluate(() => { window.documentMarker = 'original'; });
+        await logo.click();
+        await expect(page).toHaveURL(/#\/$/);
+        expect(await page.evaluate(() => window.documentMarker)).toBe('original');
+        await Promise.all([
+            page.waitForEvent('load'),
+            logo.click(),
+        ]);
+        await expect(page).toHaveURL(/#\/$/);
+        expect(await page.evaluate(() => window.documentMarker)).toBeUndefined();
+        await expect(logo).toBeVisible();
+    });
+}
 
 test('empty editor focuses its caret and opts out of text completion', async ({ page }) => {
     await desktop(page);

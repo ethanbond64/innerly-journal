@@ -5,6 +5,30 @@ html {
   min-height: 100%;
 }
 
+/* Wails extends the webview beneath a transparent macOS title bar.
+   Reserve that space and explicitly make it draggable, leaving controls below. */
+html.mac-titlebar {
+  --window-titlebar-height: 28px;
+}
+
+.mac-titlebar #root {
+  padding-top: var(--window-titlebar-height);
+}
+
+.mac-titlebar .window-titlebar {
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--window-titlebar-height);
+  background-color: var(--bgeb);
+  z-index: 1100;
+  user-select: none;
+  --wails-draggable: drag;
+}
+
+.mac-titlebar .navbar-fixed-top {
+  top: var(--window-titlebar-height);
+}
+
 main {
   padding-top: 50px;
   padding-bottom: 20px;

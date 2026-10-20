@@ -7,12 +7,17 @@ import { setUserData } from './utils.jsx';
 
 const container = document.getElementById("root");
 const root = createRoot(container);
+const hasMacTitlebar = isDesktop() && /Mac/.test(navigator.platform);
+if (hasMacTitlebar) document.documentElement.classList.add('mac-titlebar');
 
 const start = async () => {
     if (isDesktop()) {
         const result = await desktopApp().CurrentUser();
         setUserData(result.error ? null : result.data);
     }
-    root.render(<Router><App /></Router>);
+    root.render(<>
+        {hasMacTitlebar && <div className="window-titlebar" aria-hidden="true" />}
+        <Router><App /></Router>
+    </>);
 };
 start();

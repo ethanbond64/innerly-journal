@@ -51,7 +51,7 @@ func main() {
 	}
 	err = wails.Run(&options.App{
 		Title: "Innerly", Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
-		// Keep native window controls and dragging without a separate title strip.
+		// Keep native window controls over the matching, draggable frontend title strip.
 		Mac: &mac.Options{TitleBar: &mac.TitleBar{
 			TitlebarAppearsTransparent: true,
 			HideTitle:                  true,

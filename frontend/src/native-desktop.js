@@ -1,4 +1,5 @@
 import * as journal from '../bindings/innerly/internal/journal/app.js';
+import { Check } from '../bindings/innerly/updateservice.js';
 import { Browser, System, Window } from '@wailsio/runtime';
 
 // beta.33 injects OS/architecture after WebViewDidFinishNavigation, which
@@ -24,6 +25,7 @@ export const waitForNativeDesktop = () => {
 
 export const nativeDesktop = {
     journal,
+    checkForUpdates: Check,
     isDesktop: () => System.IsDesktop(),
     isMac: () => System.IsMac(),
     openURL: (url) => Browser.OpenURL(url),

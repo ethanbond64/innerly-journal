@@ -123,6 +123,9 @@ export const Navbar = ({ setSearch, user }) => {
                         <li>
                             <Link to={settingsRoute} style={{ fontSize: '15px' }}>Settings</Link>
                         </li>
+                        <li>
+                            <Link to="/about" style={{ fontSize: '15px' }}>About &amp; Updates</Link>
+                        </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
                             <Link to={loginRoute} style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</Link>

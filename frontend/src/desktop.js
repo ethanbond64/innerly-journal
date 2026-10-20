@@ -11,6 +11,10 @@ export const initializeDesktop = async () => {
         setDesktopAdapter(nativeDesktop);
     }
 };
+export const checkForUpdates = () => {
+    if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
+    return adapter.checkForUpdates();
+};
 export const isDesktop = () => !!adapter?.isDesktop();
 export const isMacDesktop = () => isDesktop() && adapter.isMac();
 export const desktopApp = () => {

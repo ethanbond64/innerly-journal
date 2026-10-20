@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/updater"
+	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 	"innerly/internal/journal"
 )
 
@@ -28,6 +30,36 @@ func mediaMiddleware(store func() *journal.App) application.Middleware {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// Wails handles release discovery and semantic version comparison. Installation
+// stays off until signed update packaging and restart safety are in place.
+type UpdateService struct{ app *application.App }
+
+func (u *UpdateService) Check() (string, error) {
+	if u.app.Updater.CurrentVersion() == "development" {
+		return "Development build: use the desktop build script to check a versioned build.", nil
+	}
+	release, err := u.app.Updater.Check(u.app.Context())
+	if err != nil {
+		return "", err
+	}
+	if release == nil {
+		return "You're up to date.", nil
+	}
+	return "Version " + release.Version + " is available. In-app installation is not enabled yet.", nil
+}
+
+func updateAsset(req updater.CheckRequest, assets []github.ReleaseAsset) int {
+	if req.Platform != "darwin" {
+		return -1
+	}
+	for i, asset := range assets {
+		if strings.HasPrefix(asset.Name, "Innerly-") && strings.HasSuffix(asset.Name, "-mac-universal.zip") {
+			return i
+		}
+	}
+	return -1
 }
 
 func main() {
@@ -57,7 +89,17 @@ func main() {
 		return
 	}
 	defer closeJournal() // Also covers errors returned before the run loop starts.
+	provider, err := github.New(github.Config{Repository: "ethanbond64/innerly-once", AssetMatcher: updateAsset})
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	if err := app.Updater.Init(updater.Config{CurrentVersion: store.Version(), Providers: []updater.Provider{provider}}); err != nil {
+		log.Print(err)
+		return
+	}
 	app.RegisterService(application.NewService(store))
+	app.RegisterService(application.NewService(&UpdateService{app: app}))
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name: "main", Title: "Innerly", URL: "/",
 		Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
@@ -72,6 +114,10 @@ func main() {
 	if runtime.GOOS == "darwin" {
 		menu := app.NewMenu()
 		innerly := menu.AddSubmenu("Innerly")
+		innerly.Add("About & Updates").OnClick(func(*application.Context) {
+			window.ExecJS("window.location.hash = '#/about';")
+		})
+		innerly.AddSeparator()
 		innerly.Add("Refresh").SetAccelerator("CmdOrCtrl+r").OnClick(func(*application.Context) {
 			window.ExecJS("window.history.replaceState(null, '', '#/'); window.location.reload();")
 		})

@@ -7,8 +7,8 @@ test('media requests fall through to Wails instead of receiving the app HTML', a
 });
 
 // Exercise the real React UI in WebKit and Chromium with an in-memory Wails boundary.
-const desktop = async (page, { count = 1, media = false, expired = false } = {}) => {
-    await page.addInitScript(({ count, media, expired }) => {
+const desktop = async (page, { count = 1, media = false, expired = false, loggedIn = true } = {}) => {
+    await page.addInitScript(({ count, media, expired, loggedIn }) => {
         const user = { id: 1, email: 'owner@example.com', settings: { lock_by_default: true } };
         const result = (data = null) => ({ data, success: true });
         const state = window.journalTest = { calls: [], expired, entries: [], pending: [], delay: false };
@@ -19,7 +19,8 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
                 entry_data: { title: `Entry ${i + 1}`, text: `Text ${i + 1}`, sentiment: 'neutral', link: 'https://example.com/', path: '/images/apple-touch-icon128.png' } });
         }
         const methods = {
-            CurrentUser: () => result(user),
+            CurrentUser: () => result(loggedIn ? user : null),
+            Version: async () => '0.1.0',
             FetchEntry: (id) => result(state.entries.find(e => e.id === id)),
             FetchEntries: async (q) => {
                 state.calls.push(['fetch', q]);
@@ -58,9 +59,41 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
             OpenWindow: () => { state.calls.push(['window']); return result(); },
             Logout: () => result(),
         };
-        window.__innerlyTestDesktop = { journal: methods, openURL: () => state.calls.push(['external']) };
-    }, { count, media, expired });
+        window.__innerlyTestDesktop = {
+            journal: methods, openURL: () => state.calls.push(['external']),
+            checkForUpdates: async () => {
+                state.calls.push(['check-updates']);
+                if (state.updateError) throw new Error('Offline');
+                return "You're up to date.";
+            },
+        };
+    }, { count, media, expired, loggedIn });
 };
+
+test('About shows the version and master changelog before login', async ({ page }) => {
+    await desktop(page, { loggedIn: false });
+    const notes = '# Changelog\n## v0.2.0\n<b>Plain changelog text</b>';
+    await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ body: notes }));
+    await page.goto('/#/about');
+    await expect(page.getByText('Innerly 0.1.0', { exact: true })).toBeVisible();
+    await expect(page.locator('pre')).toHaveText(notes);
+    await expect(page.locator('pre b')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Check for Updates' }).click();
+    await expect(page.getByRole('status')).toHaveText("You're up to date.");
+    await page.evaluate(() => { window.journalTest.updateError = true; });
+    await page.getByRole('button', { name: 'Check for Updates' }).click();
+    await expect(page.getByRole('status')).toHaveText('Unable to check for updates. Please try again later.');
+});
+
+test('About handles a failed changelog fetch without hiding the installed version', async ({ page }) => {
+    await desktop(page);
+    await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+    await page.goto('/#/');
+    await page.locator('.custom-letter-box').click();
+    await page.getByRole('link', { name: 'About & Updates' }).click();
+    await expect(page.getByText('Innerly 0.1.0', { exact: true })).toBeVisible();
+    await expect(page.locator('pre')).toHaveText('Unable to load the changelog. Please try again later.');
+});
 
 test('activity squares open the matching day page', async ({ page }) => {
     await desktop(page);

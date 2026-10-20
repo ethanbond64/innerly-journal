@@ -2,6 +2,7 @@
 export const testDesktop = {
     get journal() { return window.__innerlyTestDesktop.journal; },
     isDesktop: () => !!window.__innerlyTestDesktop,
+    checkForUpdates: () => window.__innerlyTestDesktop.checkForUpdates(),
     isMac: () => true,
     openURL: (url) => window.__innerlyTestDesktop.openURL(url),
     setBackground: () => {},

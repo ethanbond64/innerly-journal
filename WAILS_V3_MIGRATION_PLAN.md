@@ -196,6 +196,16 @@ A checksum downloaded from the same location detects corruption but is not equiv
 
 Deliverable: a selected version can be safely staged and explicitly installed/restarted; tests prove it is the selected version, not always latest.
 
+### Phase 4 progress — small built-in integration
+
+Following the owner's instruction to fetch master and minimize custom code:
+
+- Added one page, `about-page.jsx`, accessible before login from the app menu and through the account menu. It uses the existing version method and fetches the public repository's `master/CHANGELOG.md` as plain text. No Markdown renderer or sanitization code. The page labels master content as potentially unreleased.
+- Wails' stock GitHub provider handles stable/latest discovery, HTTP, and semantic version comparison. The only custom selection code matches the macOS universal ZIP, excluding DMGs and sidecars. A small bound `UpdateService.Check` returns its result to the page; no custom provider, release catalog or updater UI.
+- **This is check-only, not completion of the original phase 4.** No download, installation, restart, periodic check or update-window action is exposed. Signed payload verification and editor/other-process restart safety are not ready, so installation remains off. The selected-version picker from the original plan is also not implemented; the current check uses Wails' built-in latest-release behavior.
+- Confirmed the repository and master changelog are publicly readable without credentials. Validation passed: Go tests (including ZIP asset selection), 12 frontend unit tests, 32 WebKit/Chromium UI checks, and the unsigned universal build. UI tests mock the adapter and master-changelog request, including before-login access and failures. No native install/restart was attempted.
+- Earlier native acceptance/navigation gates remain open. When installation is enabled, prefer Wails' default update window and pipeline rather than adding a custom UI/framework.
+
 ## Phase 5 — DMG and update packaging
 
 1. Adapt `scripts/release-macos.sh` to pinned v3 build commands while retaining its credential flags and validation checks where applicable. Preserve universal arm64+x86_64 output; verify with `lipo -info` rather than just naming a build universal.

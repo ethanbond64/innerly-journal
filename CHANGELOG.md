@@ -5,10 +5,11 @@
 ### Changed
 - Migrated the desktop shell and journal bindings to Wails v3, retaining the journal, editor, media handling, and macOS title strip.
 - App and macOS bundle versions now come from the highest version heading in this changelog.
+- Added About & Updates with the installed version, master-branch changelog, and manual checks through Wails' GitHub provider.
 - The new webview origin resets local theme/typewriter preferences once; journal data and account settings are unaffected.
 
 ### Not yet included
-- In-app updates and DMG distribution remain future work; this entry does not claim those features are implemented.
+- In-app installation/restart and DMG distribution remain future work; this entry does not claim those features are implemented.
 
 ## v0.0.1 - 2026-10-18
 

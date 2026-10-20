@@ -11,6 +11,15 @@ export const useDarkMode = () => {
         const theme = isDarkMode ? "dark" : "light";
         localStorage.setItem("color-theme", theme);
         document.documentElement.setAttribute("data-theme", theme);
+
+        // The transparent native title bar uses the window background colour.
+        // Read the actual page colour so it stays in sync with both themes.
+        if (window.runtime?.WindowSetBackgroundColour) {
+            const rgb = getComputedStyle(document.body).backgroundColor.match(/\d+/g);
+            if (rgb?.length >= 3) {
+                window.runtime.WindowSetBackgroundColour(...rgb.slice(0, 3).map(Number), 255);
+            }
+        }
     }, [isDarkMode]);
 
     // Toggle function

@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"innerly/internal/journal"
 )
 
@@ -50,11 +51,17 @@ func main() {
 	}
 	err = wails.Run(&options.App{
 		Title: "Innerly", Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
-		AssetServer: &assetserver.Options{Assets: assets, Handler: journal.MediaHandler(app)},
-		Menu:        appMenu,
-		OnStartup:   func(ctx context.Context) { appContext = ctx },
-		OnShutdown:  func(context.Context) { journal.CloseApp(app) },
-		Bind:        []interface{}{app},
+		// Keep native window controls and dragging without a separate title strip.
+		Mac: &mac.Options{TitleBar: &mac.TitleBar{
+			TitlebarAppearsTransparent: true,
+			HideTitle:                  true,
+		}},
+		BackgroundColour: options.NewRGB(255, 255, 255),
+		AssetServer:      &assetserver.Options{Assets: assets, Handler: journal.MediaHandler(app)},
+		Menu:             appMenu,
+		OnStartup:        func(ctx context.Context) { appContext = ctx },
+		OnShutdown:       func(context.Context) { journal.CloseApp(app) },
+		Bind:             []interface{}{app},
 	})
 	if err != nil {
 		log.Print(err)

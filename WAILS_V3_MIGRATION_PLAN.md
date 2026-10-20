@@ -150,6 +150,16 @@ Deliverable: no production imports of Wails v2, `frontend/wailsjs`, or direct v2
 4. Unsigned development builds must not silently update themselves into production; disable installation with a clear development-build explanation while allowing release listing/tests.
 5. Add `v0.1.0` changelog notes documenting v3, updates, DMG and any intentional breaking changes. Do not rewrite existing released tags or assets.
 
+### Phase 3 — owner-scoped implementation
+
+The owner's subsequent instruction supersedes the metadata requirements above: **only the version is wanted**, and the highest numeric `## vX.Y.Z` changelog heading is the authority. No VERSION file, app-info service, build/commit metadata, build ID or updater configuration is being added.
+
+- `release-version.sh --version` selects the highest changelog version offline; release notes are taken from that same heading, even if headings are out of order.
+- Desktop builds inject the value into the existing `journal.App.Version()` and populate both bundle version fields before signing. Existing release artifact naming derives from that bundle version. Frontend package metadata already matches v0.1.0.
+- Prepended v0.1.0 without changing release history. DMG and updater features are explicitly not claimed as implemented.
+- Validation passed: Go tests (including out-of-order/numeric changelog fixtures), 12 frontend unit tests, unsigned universal and arm64 development builds. Both bundle version fields and the injected journal version report `0.1.0`. Release fixtures verified highest-version notes, already-published skip and API-error failure.
+- Phase 1/2 native acceptance gates and later updater/release work remain open.
+
 ## Phase 4 — GitHub releases and selected-version updater
 
 ### User experience

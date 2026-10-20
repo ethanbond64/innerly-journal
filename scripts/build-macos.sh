@@ -9,6 +9,7 @@ dev="${3:-false}"
 case "$arch" in arm64|amd64|universal) ;; *) echo "Unsupported architecture: $arch" >&2; exit 2 ;; esac
 case "$action" in build|package|run) ;; *) exit 2 ;; esac
 out=build/bin
+version="$(./scripts/release-version.sh --version)"
 mkdir -p "$out"
 
 if [[ "$action" != run ]]; then
@@ -22,12 +23,15 @@ if [[ "$action" != run ]]; then
   export CGO_CFLAGS="${CGO_CFLAGS:-} -mmacosx-version-min=12.0"
   export CGO_LDFLAGS="${CGO_LDFLAGS:-} -mmacosx-version-min=12.0"
   export MACOSX_DEPLOYMENT_TARGET=12.0
+  ldflags="-X innerly/internal/journal.version=$version"
   flags=(-trimpath -buildvcs=false)
   if [[ "$dev" == true ]]; then
     flags+=(-gcflags=all=-l)
   else
-    flags+=(-tags production '-ldflags=-w -s')
+    flags+=(-tags production)
+    ldflags="-w -s $ldflags"
   fi
+  flags+=("-ldflags=$ldflags")
   wails3 tool prepare-macos-output --dir "$out"
   if [[ "$arch" == universal ]]; then
     for target in arm64 amd64; do
@@ -54,6 +58,8 @@ mkdir -p "$bundle/Contents/"{MacOS,Resources}
 cp "$out/Innerly" "$bundle/Contents/MacOS/Innerly"
 cp "$out/icons.icns" "$bundle/Contents/Resources/icons.icns"
 cp "$plist" "$bundle/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$bundle/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $version" "$bundle/Contents/Info.plist"
 xattr -cr "$bundle"
 # This shell currently contains one executable and no frameworks or helper bundles.
 codesign --force --sign - "$bundle"

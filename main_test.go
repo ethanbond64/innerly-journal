@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"innerly/internal/journal"
@@ -84,5 +85,39 @@ func TestMediaRoutingBeforeAssetOrDevFallback(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/", nil))
 	if response.Body.String() != "SPA fallback" {
 		t.Fatal("ordinary assets did not reach next handler")
+	}
+}
+
+func TestChangelogVersion(t *testing.T) {
+	script, err := os.ReadFile("scripts/release-version.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ changelog, want string }{
+		{"## v0.9.0\n## v0.10.0 - 2026-01-01\n## v0.1.0\n", "0.10.0"},
+		{"## v1.0.0\n## v0.99.99\n## v0.100.0\n", "1.0.0"},
+		{"## v0.0.9\n## v0.0.10\n", "0.0.10"},
+		{"## v01.0.0\n", ""},
+		{"# No versions\n", ""},
+	} {
+		dir := t.TempDir()
+		if err := os.Mkdir(filepath.Join(dir, "scripts"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "scripts", "release-version.sh")
+		if err := os.WriteFile(path, script, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "CHANGELOG.md"), []byte(tc.changelog), 0600); err != nil {
+			t.Fatal(err)
+		}
+		output, err := exec.Command("bash", path, "--version").CombinedOutput()
+		if tc.want == "" {
+			if err == nil {
+				t.Fatalf("accepted invalid changelog: %q", tc.changelog)
+			}
+		} else if err != nil || strings.TrimSpace(string(output)) != tc.want {
+			t.Fatalf("changelog %q: got %q, %v; want %s", tc.changelog, output, err, tc.want)
+		}
 	}
 }

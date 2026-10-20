@@ -25,9 +25,13 @@ Builds use the v3 `Taskfile.yml` and `build/config.yml`, not `wails.json`. `buil
 
 Bindings are generated (not committed) into `frontend/bindings/` before desktop frontend compilation. On a clean checkout, run `setup`, then `build` or `dev`; for frontend-only work run `./scripts/desktop.sh bindings` before `npm --prefix frontend run build`. Browser UI tests use a test-only adapter and do not call native IPC.
 
-Phase 1 and the phase 2 adapter work in [the v3 migration plan](WAILS_V3_MIGRATION_PLAN.md) are implemented, not the updater release. Phase 2's native navigation-policy requirement remains unresolved: beta.33 has no supported macOS navigation-policy hook; no framework patch or custom native delegate is included. Bundle/version consolidation, About & Updates, signed DMG packaging and release CI hardening remain later phases. Native title-bar dragging and complete dev/packaged workflows still need an interactive macOS smoke test; browser tests cannot certify them.
+Phase 1 and the phase 2 adapter work in [the v3 migration plan](WAILS_V3_MIGRATION_PLAN.md) are implemented, not the updater release. Phase 2's native navigation-policy requirement remains unresolved: beta.33 has no supported macOS navigation-policy hook; no framework patch or custom native delegate is included. About & Updates, signed DMG packaging and release CI hardening remain later phases. Native title-bar dragging and complete dev/packaged workflows still need an interactive macOS smoke test; browser tests cannot certify them.
 
 **Display preferences:** the macOS asset origin changes from `wails://wails/` (v2) to `wails://localhost/` (v3). Theme/typewriter preferences must be set again once; no old storage is deleted or migrated. Their existing localStorage keys persist within v3 at the same origin. Development (`wails://localhost:3000/`) and packaged apps have separate display preferences. Journal data and account settings are unaffected.
+
+## Version
+
+The highest `## vX.Y.Z` heading in `CHANGELOG.md` is authoritative (numeric version ordering, not heading order). `./scripts/release-version.sh --version` prints it without network access. Desktop builds inject it into `journal.App.Version()` and both macOS bundle version fields; release tags, notes and artifact names use the same value. Plain `go build` without the desktop build script reports `development`. No separate version file, metadata service or build ID is used.
 
 ## Journal data
 

@@ -6,8 +6,9 @@
     <key>CFBundleName</key><string>Innerly</string>
     <key>CFBundleExecutable</key><string>Innerly</string>
     <key>CFBundleIdentifier</key><string>co.innerly</string>
-    <key>CFBundleVersion</key><string>0.0.1</string>
-    <key>CFBundleShortVersionString</key><string>0.0.1</string>
+    <!-- Populated from CHANGELOG.md by scripts/build-macos.sh. -->
+    <key>CFBundleVersion</key><string>CHANGELOG_VERSION</string>
+    <key>CFBundleShortVersionString</key><string>CHANGELOG_VERSION</string>
     <key>CFBundleIconFile</key><string>icons</string>
     <key>LSMinimumSystemVersion</key><string>12.0</string>
     <key>NSHighResolutionCapable</key><true/>

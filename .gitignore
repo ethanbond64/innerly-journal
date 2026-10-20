@@ -11,6 +11,7 @@
 /release/
 *.p12
 *.p8
+*.key
 *.mobileprovision
 **/dist
 .DS_Store

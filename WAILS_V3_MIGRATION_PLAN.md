@@ -200,7 +200,7 @@ Deliverable: a selected version can be safely staged and explicitly installed/re
 
 Following the owner's instruction to fetch master and minimize custom code:
 
-- Added one page, `about-page.jsx`, accessible before login from the app menu and through the account menu. It uses the existing version method and fetches the public repository's `master/CHANGELOG.md` as plain text. No Markdown renderer or sanitization code. The page labels master content as potentially unreleased.
+- Added one page, `about-page.jsx`, accessible before login from the app menu and through the account menu, using the shared navbar. It fetches the public repository's `master/CHANGELOG.md` as plain text. No Markdown renderer or sanitization code. Per the owner's later UI instructions, only the Changelog heading and Check for Updates button remain; there is no installed-version display or extra title/subtitle.
 - Wails' stock GitHub provider handles stable/latest discovery, HTTP, and semantic version comparison. The only custom selection code matches the macOS universal ZIP, excluding DMGs and sidecars. A small bound `UpdateService.Check` returns its result to the page; no custom provider, release catalog or updater UI.
 - **This is check-only, not completion of the original phase 4.** No download, installation, restart, periodic check or update-window action is exposed. Signed payload verification and editor/other-process restart safety are not ready, so installation remains off. The selected-version picker from the original plan is also not implemented; the current check uses Wails' built-in latest-release behavior.
 - Confirmed the repository and master changelog are publicly readable without credentials. Validation passed: Go tests (including ZIP asset selection), 12 frontend unit tests, 32 WebKit/Chromium UI checks, and the unsigned universal build. UI tests mock the adapter and master-changelog request, including before-login access and failures. No native install/restart was attempted.
@@ -217,6 +217,18 @@ Following the owner's instruction to fetch master and minimize custom code:
 7. Generate update signature/manifest metadata and checksums from the **final immutable ZIP bytes**. Any repackaging after signing invalidates verification.
 8. Output documented filenames for DMG, updater ZIP, checksums, and per-release update metadata. Keep naming consistent with the app provider and tests.
 9. Clean staging/mounts even on failure, and ensure stale artifacts cannot be mistaken for a successful new release. Never mutate published signed artifacts in place as part of a retry without an explicit policy.
+
+### Phase 5 implementation status
+
+Packaging implementation is in place as a **prerequisite for the remaining phase 4 installer**, not evidence that phase 4 is complete:
+
+- Extended the existing release script, retaining Apple credential flags and release-HOME separation. It uses the pinned Wails CLI to build a basic DMG containing the stapled app and Applications symlink, then signs/notarizes/staples/verifies the DMG separately. The ZIP contains only the same stapled `Innerly.app`.
+- Wails `updater manifest -key` generates SHA-512/Ed25519ph verification data for the final ZIP, and `updater verify -publickey` gates output. The manifest also contains release notes and a version-specific GitHub URL. **Artifact bytes are signed, not arbitrary manifest metadata.** The DMG is not included as an updater candidate. Both formats have SHA-256 checksum sidecars.
+- Requires an owner-provisioned persistent Wails signing keypair via `--update-key` / `--update-public-key`. No production keys were generated or changed. The public key still needs to be pinned in the app before installation is enabled. Private `*.key` files are ignored.
+- Necessary CI overlap: release Actions writes/removes updater key files from two new PEM secrets (`INNERLY_UPDATE_PRIVATE_KEY`, `INNERLY_UPDATE_PUBLIC_KEY`) and uploads the DMG/checksum and manifest alongside the existing ZIP/checksum. No secrets were configured or release published. Broader phase 6 publication/concurrency hardening is not complete.
+- Outputs are staged and moved into `release/` only after all verification succeeds; stale outputs are removed first. Added existing-file tests for success and failed builds, app/DMG notarization, app stapling, and Wails verification. These tests fake signing services and never use credentials.
+- **Passed:** Go tests and 12 frontend unit tests. Actual Wails DMG/ZIP smoke checks using the existing ad-hoc universal app: mounted read-only, Applications target, identical app contents, valid ad-hoc signatures, both architecture slices, plist version/identity, valid Wails artifact verification and rejection of a wrong key and tampered ZIP. Logs: `.work/phase5/tests.log`, `.work/phase5/packaging-smoke.log`. Disposable signing private keys were removed afterward.
+- **Still required:** real Developer ID signing, both Apple notarizations and Gatekeeper acceptance, clean-machine/quarantine launch and interactive drag-to-Applications acceptance. No Apple submission was attempted. Phase 4 still lacks exact-version selection, pinned-key manifest consumption, download/install/restart, autosave and other-process safety.
 
 ## Phase 6 — CI and release publication
 

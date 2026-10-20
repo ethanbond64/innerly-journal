@@ -44,7 +44,15 @@ jobs:
           MACOS_SIGNING_P12_BASE64: ${{ secrets.MACOS_SIGNING_P12_BASE64 }}
           MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
           APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
-        run: ./scripts/ci-macos-keychain.sh setup
+          INNERLY_UPDATE_PRIVATE_KEY: ${{ secrets.INNERLY_UPDATE_PRIVATE_KEY }}
+          INNERLY_UPDATE_PUBLIC_KEY: ${{ secrets.INNERLY_UPDATE_PUBLIC_KEY }}
+        run: |
+          : "${INNERLY_UPDATE_PRIVATE_KEY:?Missing updater signing private key}"
+          : "${INNERLY_UPDATE_PUBLIC_KEY:?Missing updater signing public key}"
+          umask 077
+          printf '%s\n' "$INNERLY_UPDATE_PRIVATE_KEY" > "$RUNNER_TEMP/innerly-update.key"
+          printf '%s\n' "$INNERLY_UPDATE_PUBLIC_KEY" > "$RUNNER_TEMP/innerly-update.key.pub"
+          ./scripts/ci-macos-keychain.sh setup
       - name: Build, sign, notarize, and package
         if: success() && steps.version.outputs.release == 'true'
         env:
@@ -57,10 +65,14 @@ jobs:
             --keychain "$RUNNER_TEMP/innerly-signing.keychain-db" \
             --api-key "$RUNNER_TEMP/innerly-notary.p8" \
             --key-id "$APPLE_NOTARY_KEY_ID" \
-            --issuer "$APPLE_NOTARY_ISSUER_ID"
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --update-key "$RUNNER_TEMP/innerly-update.key" \
+            --update-public-key "$RUNNER_TEMP/innerly-update.key.pub"
       - name: Remove private signing material
         if: always() && steps.version.outputs.release == 'true'
-        run: ./scripts/ci-macos-keychain.sh cleanup
+        run: |
+          rm -f "$RUNNER_TEMP/innerly-update.key" "$RUNNER_TEMP/innerly-update.key.pub"
+          ./scripts/ci-macos-keychain.sh cleanup
       - name: Publish release
         if: success() && steps.version.outputs.release == 'true'
         env:
@@ -74,6 +86,9 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" --clobber \
             "release/Innerly-$RELEASE_VERSION-mac-universal.zip" \
-            "release/Innerly-$RELEASE_VERSION-mac-universal.zip.sha256"
+            "release/Innerly-$RELEASE_VERSION-mac-universal.zip.sha256" \
+            "release/Innerly-$RELEASE_VERSION-mac-universal.dmg" \
+            "release/Innerly-$RELEASE_VERSION-mac-universal.dmg.sha256" \
+            release/manifest.json
           gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG" \
             --notes-file "$RUNNER_TEMP/innerly-release-notes.md" --draft=false

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -101,6 +102,104 @@ func TestUpdateAsset(t *testing.T) {
 		updateAsset(updater.CheckRequest{Platform: "darwin"}, assets[:3]) != -1 ||
 		updateAsset(updater.CheckRequest{Platform: "linux"}, assets) != -1 {
 		t.Fatal("update checks must select only the macOS universal ZIP")
+	}
+}
+
+// This checks release orchestration, not Apple's services or cryptography.
+// All signing, notarization and Wails commands are fakes; no credentials are used.
+func TestMacOSReleaseGates(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("release script uses macOS plist tools")
+	}
+	mock := `#!/usr/bin/env bash
+set -eu
+case "$(basename "$0")" in
+  codesign|spctl) exit 0 ;;
+  xcrun)
+    [[ "$1" != --find ]] || exit 0
+    if [[ "$1 $2" == 'notarytool submit' ]]; then
+      if [[ "${INNERLY_TEST_RELEASE_FAIL:-}" == app-notary && "$3" == */submission.zip ]] ||
+         [[ "${INNERLY_TEST_RELEASE_FAIL:-}" == dmg-notary && "$3" == *.dmg ]]; then
+        printf '{"status":"Invalid","id":"test"}\n'
+      else
+        printf '{"status":"Accepted","id":"test"}\n'
+      fi
+    elif [[ "$1 $2" == 'stapler staple' && "${INNERLY_TEST_RELEASE_FAIL:-}" == staple ]]; then
+      exit 1
+    fi
+    ;;
+  wails3)
+    case "$1 ${2:-}" in
+      'version ') awk '$1 == "github.com/wailsapp/wails/v3" {print $2; exit}' go.mod ;;
+      'tool package')
+        while [[ "$1" != -out ]]; do shift; done
+        touch "$2/Innerly.dmg"
+        ;;
+      'updater manifest')
+        while [[ "$1" != -output ]]; do shift; done
+        printf '{}\n' > "$2"
+        ;;
+      'updater verify') [[ "${INNERLY_TEST_RELEASE_FAIL:-}" != verify ]] ;;
+      *) exit 1 ;;
+    esac
+    ;;
+  *) exit 1 ;;
+esac
+`
+	for _, failure := range []string{"", "build", "app-notary", "dmg-notary", "staple", "verify"} {
+		t.Run("failure="+failure, func(t *testing.T) {
+			dir := t.TempDir()
+			put := func(path string, content []byte, mode os.FileMode) {
+				t.Helper()
+				path = filepath.Join(dir, path)
+				if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, content, mode); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, path := range []string{"scripts/release-macos.sh", "scripts/release-version.sh", "go.mod"} {
+				content, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				put(path, content, 0700)
+			}
+			put("CHANGELOG.md", []byte("## v0.1.0\nFixture release notes\n"), 0600)
+			plist, err := os.ReadFile("build/darwin/Info.plist")
+			if err != nil {
+				t.Fatal(err)
+			}
+			put("build/bin/Innerly.app/Contents/Info.plist", []byte(strings.ReplaceAll(string(plist), "CHANGELOG_VERSION", "0.1.0")), 0600)
+			put("build/bin/Innerly.app/Contents/MacOS/Innerly", []byte("test-only executable\n"), 0700)
+			put("scripts/desktop.sh", []byte("#!/bin/bash\n[[ \"${INNERLY_TEST_RELEASE_FAIL:-}\" != build ]]\n"), 0700)
+			put("updater.key", []byte("test-only private key"), 0600)
+			put("updater.key.pub", []byte("test-only public key"), 0600)
+			put(".work/gopath/bin/wails3", []byte(mock), 0700)
+			for _, tool := range []string{"codesign", "spctl", "xcrun"} {
+				put("mock-bin/"+tool, []byte(mock), 0700)
+			}
+			outputs := []string{"manifest.json", "Innerly-0.1.0-mac-universal.zip", "Innerly-0.1.0-mac-universal.zip.sha256",
+				"Innerly-0.1.0-mac-universal.dmg", "Innerly-0.1.0-mac-universal.dmg.sha256"}
+			for _, name := range outputs {
+				put("release/"+name, []byte("stale output"), 0600)
+			}
+			cmd := exec.Command("bash", "scripts/release-macos.sh", "--identity", "test-only identity",
+				"--keychain-profile", "test-only profile", "--update-key", "updater.key", "--update-public-key", "updater.key.pub")
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), "PATH="+filepath.Join(dir, "mock-bin")+":"+os.Getenv("PATH"), "INNERLY_TEST_RELEASE_FAIL="+failure)
+			output, err := cmd.CombinedOutput()
+			if (err != nil) != (failure != "") {
+				t.Fatalf("unexpected release result: %v\n%s", err, output)
+			}
+			for _, name := range outputs {
+				_, err := os.Stat(filepath.Join(dir, "release", name))
+				if failure == "" && err != nil || failure != "" && !os.IsNotExist(err) {
+					t.Errorf("unexpected output %s: %v", name, err)
+				}
+			}
+		})
 	}
 }
 

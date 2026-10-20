@@ -31,7 +31,7 @@ Phase 1 and the phase 2 adapter work in [the v3 migration plan](WAILS_V3_MIGRATI
 
 ## About & Updates
 
-Open **About & Updates** from the macOS app menu or account menu. It works before login, shows the installed version, and fetches `master/CHANGELOG.md` directly as plain text (which may include unreleased changes). **Check for Updates** uses Wails' built-in GitHub provider to check the latest published stable release for a macOS universal ZIP. No custom release list, Markdown parser or updater UI is used. Download/install/restart are not enabled yet; signed packaging and restart safety must be completed first.
+Open **Updates** from the account menu or **About & Updates** from the macOS app menu. It uses the shared navbar, works before login, and fetches `master/CHANGELOG.md` directly as plain text (which may include unreleased changes). **Check for Updates** uses Wails' built-in GitHub provider to check the latest published stable release for a macOS universal ZIP. No custom release list, Markdown parser or updater UI is used. Download/install/restart are not enabled yet; signed packaging and restart safety must be completed first.
 
 ## Version
 

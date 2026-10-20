@@ -5,11 +5,11 @@ import { Navbar } from "./navbar.jsx";
 import { getUserData } from "./utils.jsx";
 
 
-export const BasePage = ({ setSearch=null, children }) => {
+export const BasePage = ({ setSearch=null, allowGuest=false, children }) => {
     
     let user = getUserData();
 
-    if (!user) {
+    if (!user && !allowGuest) {
         return <Navigate to={loginRoute} />;
     }
     

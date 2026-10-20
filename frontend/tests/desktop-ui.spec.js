@@ -70,12 +70,14 @@ const desktop = async (page, { count = 1, media = false, expired = false, logged
     }, { count, media, expired, loggedIn });
 };
 
-test('About shows the version and master changelog before login', async ({ page }) => {
+test('About uses the shared navbar and minimal changelog header before login', async ({ page }) => {
     await desktop(page, { loggedIn: false });
     const notes = '# Changelog\n## v0.2.0\n<b>Plain changelog text</b>';
     await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ body: notes }));
     await page.goto('/#/about');
-    await expect(page.getByText('Innerly 0.1.0', { exact: true })).toBeVisible();
+    await expect(page.locator('nav.navbar')).toHaveCount(1);
+    await expect(page.getByRole('heading')).toHaveText('Changelog');
+    await expect(page.getByRole('link', { name: 'Back', exact: true })).toHaveCount(0);
     await expect(page.locator('pre')).toHaveText(notes);
     await expect(page.locator('pre b')).toHaveCount(0);
     await page.getByRole('button', { name: 'Check for Updates' }).click();
@@ -85,13 +87,14 @@ test('About shows the version and master changelog before login', async ({ page 
     await expect(page.getByRole('status')).toHaveText('Unable to check for updates. Please try again later.');
 });
 
-test('About handles a failed changelog fetch without hiding the installed version', async ({ page }) => {
+test('About keeps the shared layout when the changelog fetch fails', async ({ page }) => {
     await desktop(page);
     await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ status: 503, body: 'Unavailable' }));
     await page.goto('/#/');
     await page.locator('.custom-letter-box').click();
     await page.getByRole('link', { name: 'Updates', exact: true }).click();
-    await expect(page.getByText('Innerly 0.1.0', { exact: true })).toBeVisible();
+    await expect(page.locator('nav.navbar')).toHaveCount(1);
+    await expect(page.getByRole('heading')).toHaveText('Changelog');
     await expect(page.locator('pre')).toHaveText('Unable to load the changelog. Please try again later.');
 });
 

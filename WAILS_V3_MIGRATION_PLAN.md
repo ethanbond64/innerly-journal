@@ -132,6 +132,16 @@ Updater signing format and selected-version provider decisions remain intentiona
 
 Deliverable: no production imports of Wails v2, `frontend/wailsjs`, or direct v2 globals; testable v3 desktop adapter.
 
+### Phase 2 status
+
+- Binding generation and the desktop adapter were mostly implemented in phase 1. Kept that structure: no new adapter framework, native patch, preference service, or additional source files.
+- Audited production calls: only `native-desktop.js` imports v3 runtime/generated bindings; no v2 imports/globals remain. Existing pseudo-API mappings and test-boundary mocks are unchanged.
+- Added a bounded native-runtime readiness wait and a visible startup error instead of hanging indefinitely. External URL and background runtime failures are contained by the existing adapter; external URLs still require credential-free HTTPS with no webview fallback.
+- Verified deterministic binding generation and clean generated-assets builds. Added tests in the existing test files for rejected runtime calls, unsafe URLs, preference reloads and no native IPC in the browser fixture.
+- **Intentional display-preference reset, documented in README:** tagged macOS source changes the origin from `wails://wails/` to `wails://localhost/` (dev adds port 3000). Existing localStorage keys are unchanged, but v2 values are not accessible from the new origin. No v2 migration bridge or old-storage deletion; journal/account data is unaffected. Same-origin v3 reload persistence is covered by browser tests; native close/relaunch persistence still needs an interactive Mac.
+- **Open requirement:** beta.33's macOS delegate has no supported navigation-policy hook. Existing app links use the HTTPS-only adapter, but that is not a guarantee against arbitrary programmatic native-webview navigation. Do not mark phase 2 fully accepted or ship on that assumption. Resolve through a supported upstream API/version or an explicit owner decision, rather than introducing a custom WKNavigationDelegate shim.
+- Validation after simplification: Go tests, 12 frontend unit tests, 28 WebKit/Chromium UI checks, and the universal packaged build passed. No new files remain. Phase 1's interactive native smoke-test gates remain open. Version metadata and updater work have not been started.
+
 ## Phase 3 — authoritative v0.1.0 build metadata
 
 1. Choose a small authoritative app-version source independent of v2 `wails.json` (for example a root VERSION file or a small build metadata config). Document it and validate against the top changelog heading. Avoid adding a version framework.

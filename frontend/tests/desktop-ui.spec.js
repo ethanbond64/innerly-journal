@@ -210,6 +210,22 @@ test('a changed search discards an older delayed response', async ({ page }) => 
     await expect(page.getByText('Entry 3', { exact: true })).toBeAttached();
 });
 
+test('display preferences survive reload without native IPC', async ({ page }) => {
+    const nativeRequests = [];
+    page.on('request', request => {
+        if (new URL(request.url()).pathname.startsWith('/wails/')) nativeRequests.push(request.url());
+    });
+    await desktop(page);
+    await page.goto('/#/settings');
+    await page.locator('label[for="switch"]').click();
+    await page.locator('label[for="typewriterSwitch"]').click();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('#switch')).toBeChecked();
+    await expect(page.locator('#typewriterSwitch')).not.toBeChecked();
+    expect(nativeRequests).toEqual([]);
+});
+
 test('desktop reserves exactly one draggable title strip in both themes', async ({ page }) => {
     await desktop(page);
     await page.goto('/#/settings');

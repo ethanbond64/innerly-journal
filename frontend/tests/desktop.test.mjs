@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { journalFetch, openExternal, setDesktopAdapter } from '../src/desktop.js';
+import { journalFetch, openExternal, setWindowBackground, desktopApp, setDesktopAdapter } from '../src/desktop.js';
 
 const install = (methods) => {
     setDesktopAdapter({ journal: methods, isDesktop: () => true });
@@ -52,13 +52,13 @@ test('desktop import response shapes', async () => {
 });
 
 // External navigation only opens credential-free HTTPS URLs in the system browser.
-test('desktop external links require HTTPS', () => {
+test('desktop external links require HTTPS', async () => {
     install({});
     const opened = [];
     setDesktopAdapter({ isDesktop: () => true, openURL: (url) => opened.push(url) });
     for (const url of ['http://example.com', 'file:///etc/passwd', 'https://user:pass@example.com', 'https://example.com']) {
         let prevented = false;
-        openExternal({ preventDefault: () => { prevented = true; } }, url);
+        await openExternal({ preventDefault: () => { prevented = true; } }, url);
         assert.equal(prevented, true);
     }
     assert.deepEqual(opened, ['https://example.com/']);
@@ -68,4 +68,22 @@ test('desktop external links require HTTPS', () => {
 test('missing desktop bindings fail explicitly', async () => {
     setDesktopAdapter(undefined);
     await assert.rejects(journalFetch('/api/version'), /desktop app/);
+    assert.throws(desktopApp, /desktop app/);
+    assert.equal(await openExternal({ preventDefault() {} }, 'https://example.com'), false);
+    assert.equal(await setWindowBackground(255, 255, 255), false);
+});
+
+test('runtime rejections never fall back to webview navigation or break theme changes', async () => {
+    setDesktopAdapter({ isDesktop: () => true, openURL: async () => { throw new Error('OS failure'); }, setBackground: async () => { throw new Error('window closed'); } });
+    assert.equal(await openExternal({ preventDefault() {} }, 'https://example.com'), false);
+    assert.equal(await setWindowBackground(23, 34, 59), false);
+});
+
+test('external navigation rejects other schemes, relative URLs and credentials before IPC', async () => {
+    const opened = [];
+    setDesktopAdapter({ isDesktop: () => true, openURL: (url) => opened.push(url) });
+    for (const url of ['javascript:alert(1)', 'data:text/html,hello', 'mailto:owner@example.com', '//example.com', '#/write', 'wails://localhost/', 'https://user@example.com', 'https://:pass@example.com', null, {}]) {
+        assert.equal(await openExternal({ preventDefault() {} }, url), false);
+    }
+    assert.deepEqual(opened, []);
 });

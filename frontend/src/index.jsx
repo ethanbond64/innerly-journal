@@ -20,4 +20,10 @@ const start = async () => {
         <Router><App /></Router>
     </>);
 };
-start();
+start().catch(() => {
+    root.render(<main role="alert" style={{ padding: '48px' }}>
+        <h1>Innerly could not start</h1>
+        <p>The desktop connection could not be established. Please close and reopen Innerly, or try reloading.</p>
+        <button type="button" onClick={() => window.location.reload()}>Reload</button>
+    </main>);
+});

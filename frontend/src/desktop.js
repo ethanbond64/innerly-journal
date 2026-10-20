@@ -13,9 +13,19 @@ export const initializeDesktop = async () => {
 };
 export const isDesktop = () => !!adapter?.isDesktop();
 export const isMacDesktop = () => isDesktop() && adapter.isMac();
-export const desktopApp = () => adapter.journal;
-export const setWindowBackground = (...rgb) => {
-    if (isDesktop()) adapter.setBackground(...rgb);
+export const desktopApp = () => {
+    if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
+    return adapter.journal;
+};
+export const setWindowBackground = async (...rgb) => {
+    if (!isDesktop()) return false;
+    try {
+        await adapter.setBackground(...rgb);
+        return true;
+    } catch {
+        // Cosmetic native failures must not break journal/theme changes.
+        return false;
+    }
 };
 
 const response = (body, status = 200) => ({ ok: status < 400, status, statusText: body.message || '', json: async () => body });
@@ -81,12 +91,16 @@ export const journalFetch = async (path, options = {}) => {
     return response({ ...result, 'lock-auth-expired': false });
 };
 
-export const openExternal = (event, link) => {
+export const openExternal = async (event, link) => {
     event.preventDefault();
+    if (!isDesktop() || typeof link !== 'string') return false;
     try {
         const url = new URL(link);
-        if (url.protocol === 'https:' && !url.username && !url.password) adapter?.openURL(url.href);
+        if (url.protocol !== 'https:' || url.username || url.password) return false;
+        await adapter.openURL(url.href);
+        return true;
     } catch {
-        return;
+        // Invalid URLs and OS/browser failures must not trigger webview fallback.
+        return false;
     }
 };

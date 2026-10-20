@@ -58,8 +58,7 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
             OpenWindow: () => { state.calls.push(['window']); return result(); },
             Logout: () => result(),
         };
-        window.go = { journal: { App: methods } };
-        window.runtime = { WindowUnfullscreen: () => state.calls.push(['unfullscreen']), BrowserOpenURL: () => state.calls.push(['external']) };
+        window.__innerlyTestDesktop = { journal: methods, openURL: () => state.calls.push(['external']) };
     }, { count, media, expired });
 };
 
@@ -211,12 +210,25 @@ test('a changed search discards an older delayed response', async ({ page }) => 
     await expect(page.getByText('Entry 3', { exact: true })).toBeAttached();
 });
 
-test('settings can exit native fullscreen and open an independent window', async ({ page }) => {
+test('desktop reserves exactly one draggable title strip in both themes', async ({ page }) => {
     await desktop(page);
     await page.goto('/#/settings');
-    await page.getByRole('button', { name: 'Exit fullscreen' }).click();
-    await page.getByRole('button', { name: 'Open another window' }).click();
-    const calls = await page.evaluate(() => window.journalTest.calls);
-    expect(calls).toContainEqual(['unfullscreen']);
-    expect(calls).toContainEqual(['window']);
+    await expect(page.locator('.window-titlebar')).toHaveCount(1);
+    for (const dark of [false, true]) {
+        if (await page.locator('#switch').isChecked() !== dark) {
+            await page.locator('label[for="switch"]').click();
+        }
+        await expect(page.locator('html')).toHaveAttribute('data-theme', dark ? 'dark' : 'light');
+        const titlebar = await page.locator('.window-titlebar').evaluate((element) => {
+            const style = getComputedStyle(element);
+            return {
+                height: style.height,
+                drag: style.getPropertyValue('--wails-draggable').trim(),
+                background: style.backgroundColor,
+                pageBackground: getComputedStyle(document.body).backgroundColor,
+                padding: getComputedStyle(document.getElementById('root')).paddingTop,
+            };
+        });
+        expect(titlebar).toEqual({ height: '28px', drag: 'drag', background: titlebar.pageBackground, pageBackground: titlebar.pageBackground, padding: '28px' });
+    }
 });

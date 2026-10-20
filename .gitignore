@@ -3,6 +3,7 @@
 !/build/
 /build/*
 !/build/appicon.png
+!/build/config.yml
 !/build/darwin/
 /build/darwin/*
 !/build/darwin/Info.plist
@@ -15,5 +16,5 @@
 .DS_Store
 .idea
 .work/
-frontend/wailsjs/
+frontend/bindings/
 frontend/package.json.md5

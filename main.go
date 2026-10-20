@@ -1,69 +1,89 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"log"
+	"net/http"
 	"runtime"
+	"strings"
+	"sync"
 
-	"github.com/wailsapp/wails/v2/pkg/menu"
-	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
-
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"innerly/internal/journal"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-func main() {
-	app, err := journal.NewApp(journal.Config{})
-	if err != nil {
-		log.Fatal(err)
+// The getter keeps journal initialization after application.New's helper dispatch.
+func mediaMiddleware(store func() *journal.App) application.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Intercept before both the dev proxy and embedded assets. Never allow
+			// media errors to become Vite's index.html.
+			if strings.HasPrefix(r.URL.Path, "/media/") {
+				journal.MediaHandler(store()).ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
-	defer journal.CloseApp(app)
-	var appContext context.Context
-	var appMenu *menu.Menu
-	if runtime.GOOS == "darwin" {
-		appMenu = menu.NewMenu()
-		innerlyMenu := appMenu.AddSubmenu("Innerly")
-		innerlyMenu.AddText("Refresh", keys.CmdOrCtrl("r"), func(*menu.CallbackData) {
-			if appContext != nil {
-				// Set the hash without an intermediate SPA navigation, then reload
-				// the document even if the user is already on the homepage.
-				wailsruntime.WindowExecJS(appContext, "window.history.replaceState(null, '', '#/'); window.location.reload();")
+}
+
+func main() {
+	var store *journal.App
+	var closeOnce sync.Once
+	closeJournal := func() {
+		closeOnce.Do(func() {
+			if store != nil {
+				journal.CloseApp(store)
 			}
 		})
-		innerlyMenu.AddSeparator()
-		innerlyMenu.AddText("Hide Innerly", keys.CmdOrCtrl("h"), func(*menu.CallbackData) {
-			wailsruntime.Hide(appContext)
-		})
-		innerlyMenu.AddSeparator()
-		innerlyMenu.AddText("Quit Innerly", keys.CmdOrCtrl("q"), func(*menu.CallbackData) {
-			wailsruntime.Quit(appContext)
-		})
-		appMenu.Append(menu.EditMenu())
-		appMenu.Append(menu.WindowMenu())
 	}
-	err = wails.Run(&options.App{
-		Title: "Innerly", Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
-		// Keep native window controls over the matching, draggable frontend title strip.
-		Mac: &mac.Options{TitleBar: &mac.TitleBar{
-			TitlebarAppearsTransparent: true,
-			HideTitle:                  true,
-		}},
-		BackgroundColour: options.NewRGB(255, 255, 255),
-		AssetServer:      &assetserver.Options{Assets: assets, Handler: journal.MediaHandler(app)},
-		Menu:             appMenu,
-		OnStartup:        func(ctx context.Context) { appContext = ctx },
-		OnShutdown:       func(context.Context) { journal.CloseApp(app) },
-		Bind:             []interface{}{app},
+	// New dispatches updater helpers before we open storage or create any UI.
+	app := application.New(application.Options{
+		Name: "Innerly",
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: mediaMiddleware(func() *journal.App { return store }),
+		},
+		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		OnShutdown: closeJournal,
 	})
+	var err error
+	store, err = journal.NewApp(journal.Config{})
 	if err != nil {
+		log.Print(err)
+		return
+	}
+	defer closeJournal() // Also covers errors returned before the run loop starts.
+	app.RegisterService(application.NewService(store))
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name: "main", Title: "Innerly", URL: "/",
+		Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
+		BackgroundColour: application.NewRGB(255, 255, 255),
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBarHidden,
+			// Content extends under the native title bar; the frontend reserves
+			// exactly one 28px strip, using v3's --wails-draggable region.
+			InvisibleTitleBarHeight: 28,
+		},
+	})
+	if runtime.GOOS == "darwin" {
+		menu := app.NewMenu()
+		innerly := menu.AddSubmenu("Innerly")
+		innerly.Add("Refresh").SetAccelerator("CmdOrCtrl+r").OnClick(func(*application.Context) {
+			window.ExecJS("window.history.replaceState(null, '', '#/'); window.location.reload();")
+		})
+		innerly.AddSeparator()
+		innerly.AddRole(application.Hide)
+		innerly.AddSeparator()
+		innerly.Add("Quit Innerly").SetAccelerator("CmdOrCtrl+q").OnClick(func(*application.Context) { app.Quit() })
+		menu.AddRole(application.EditMenu)
+		menu.AddRole(application.WindowMenu)
+		app.Menu.Set(menu)
+	}
+	if err := app.Run(); err != nil {
 		log.Print(err)
 	}
 }

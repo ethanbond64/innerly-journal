@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+[[ "$(uname -s)" == Darwin ]] || { echo 'macOS builds require macOS and Xcode Command Line Tools.' >&2; exit 1; }
+action="${1:-package}"
+arch="${2:-universal}"
+dev="${3:-false}"
+[[ "$arch" != native ]] || arch="$(go env GOARCH)"
+case "$arch" in arm64|amd64|universal) ;; *) echo "Unsupported architecture: $arch" >&2; exit 2 ;; esac
+case "$action" in build|package|run) ;; *) exit 2 ;; esac
+out=build/bin
+mkdir -p "$out"
+
+if [[ "$action" != run ]]; then
+  mkdir -p frontend/dist
+  touch frontend/dist/.keep
+  wails3 generate bindings -names -d frontend/bindings
+  (cd frontend && npm run build)
+  # Keep the owner's icon, not the starter's branding. Only macOS assets ship.
+  wails3 generate icons -input build/appicon.png -macfilename "$out/icons.icns" -windowsfilename "$out/icon.ico"
+  export CGO_ENABLED=1 GOOS=darwin
+  export CGO_CFLAGS="${CGO_CFLAGS:-} -mmacosx-version-min=12.0"
+  export CGO_LDFLAGS="${CGO_LDFLAGS:-} -mmacosx-version-min=12.0"
+  export MACOSX_DEPLOYMENT_TARGET=12.0
+  flags=(-trimpath -buildvcs=false)
+  if [[ "$dev" == true ]]; then
+    flags+=(-gcflags=all=-l)
+  else
+    flags+=(-tags production '-ldflags=-w -s')
+  fi
+  wails3 tool prepare-macos-output --dir "$out"
+  if [[ "$arch" == universal ]]; then
+    for target in arm64 amd64; do
+      GOARCH="$target" go build "${flags[@]}" -o "$out/Innerly-$target" .
+    done
+    lipo -create -output "$out/Innerly" "$out/Innerly-arm64" "$out/Innerly-amd64"
+    rm "$out/Innerly-arm64" "$out/Innerly-amd64"
+    lipo "$out/Innerly" -verify_arch arm64 x86_64
+  else
+    # Go refuses to overwrite a previous fat Mach-O as a single-arch output.
+    rm -f "$out/Innerly"
+    GOARCH="$arch" go build "${flags[@]}" -o "$out/Innerly" .
+  fi
+fi
+[[ "$action" != build ]] || exit 0
+bundle="$out/Innerly.app"
+plist=build/darwin/Info.plist
+if [[ "$dev" == true ]]; then
+  bundle="$out/Innerly.dev.app"
+  plist=build/darwin/Info.dev.plist
+fi
+rm -rf -- "$bundle"
+mkdir -p "$bundle/Contents/"{MacOS,Resources}
+cp "$out/Innerly" "$bundle/Contents/MacOS/Innerly"
+cp "$out/icons.icns" "$bundle/Contents/Resources/icons.icns"
+cp "$plist" "$bundle/Contents/Info.plist"
+xattr -cr "$bundle"
+# This shell currently contains one executable and no frameworks or helper bundles.
+codesign --force --sign - "$bundle"
+codesign --verify --strict "$bundle"
+if [[ "$action" == run ]]; then
+  exec "$bundle/Contents/MacOS/Innerly"
+fi

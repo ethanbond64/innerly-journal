@@ -11,5 +11,5 @@ export default defineConfig({
     workers: 2,
     use: { baseURL: 'http://127.0.0.1:5178', viewport: { width: 1200, height: 850 }, trace: 'retain-on-failure' },
     projects: [{ name: 'webkit', use: { browserName: 'webkit' } }, { name: 'chromium', use: { browserName: 'chromium' } }],
-    webServer: { command: 'npm run start -- --host 127.0.0.1 --port 5178 --strictPort', url: 'http://127.0.0.1:5178', reuseExistingServer: false },
+    webServer: { command: 'npm run start -- --mode test --host 127.0.0.1 --port 5178 --strictPort', url: 'http://127.0.0.1:5178', reuseExistingServer: false },
 });

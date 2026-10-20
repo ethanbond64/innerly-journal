@@ -8,9 +8,10 @@ version=$(awk '/^## v/ { sub(/^## v/, ""); print $1; exit }' CHANGELOG.md)
   echo 'Expected a ## vX.Y.Z heading in CHANGELOG.md' >&2
   exit 1
 }
-metadata_version=$(node -p 'require("./wails.json").info.productVersion')
+# Phase 1 keeps the existing bundle version; phase 3 will consolidate metadata.
+metadata_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/darwin/Info.plist)
 [[ "$metadata_version" == "$version" ]] || {
-  echo "wails.json version ($metadata_version) does not match changelog ($version)" >&2
+  echo "Bundle version ($metadata_version) does not match changelog ($version)" >&2
   exit 1
 }
 tag="v$version"

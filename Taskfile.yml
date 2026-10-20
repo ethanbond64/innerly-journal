@@ -1,0 +1,25 @@
+version: '3'
+
+# macOS is the shipping target. Commands follow the beta.33 starter's Go build,
+# lipo, .app layout and ad-hoc signing conventions without mobile/server targets.
+vars:
+  ARCH: '{{.ARCH | default "universal"}}'
+  DEV: '{{.DEV | default "false"}}'
+
+tasks:
+  build:
+    cmds:
+      - bash scripts/build-macos.sh build '{{.ARCH}}' '{{.DEV}}'
+  package:
+    cmds:
+      - bash scripts/build-macos.sh package '{{.ARCH}}' '{{.DEV}}'
+  run:
+    cmds:
+      - bash scripts/build-macos.sh run '{{.ARCH}}' true
+  bindings:
+    cmds:
+      - mkdir -p frontend/dist && touch frontend/dist/.keep
+      - wails3 generate bindings -names -d frontend/bindings
+  dev:
+    cmds:
+      - wails3 dev -config build/config.yml -port 3000

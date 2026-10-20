@@ -65,7 +65,7 @@ ROOT="$PWD"
 APP="$ROOT/build/bin/Innerly.app"
 mkdir -p release
 
-./scripts/desktop.sh build -platform "darwin/$arch"
+./scripts/desktop.sh build "ARCH=$arch"
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
 bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")
 [[ "$bundle_id" == co.innerly ]] || fail "Unexpected bundle ID: $bundle_id"

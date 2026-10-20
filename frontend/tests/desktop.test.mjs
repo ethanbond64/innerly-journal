@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { journalFetch, openExternal } from '../src/desktop.js';
+import { journalFetch, openExternal, setDesktopAdapter } from '../src/desktop.js';
 
 const install = (methods) => {
-    globalThis.window = { go: { journal: { App: methods } } };
+    setDesktopAdapter({ journal: methods, isDesktop: () => true });
 };
 
 // Login returns user data without introducing a desktop bearer token.
@@ -55,7 +55,7 @@ test('desktop import response shapes', async () => {
 test('desktop external links require HTTPS', () => {
     install({});
     const opened = [];
-    window.runtime = { BrowserOpenURL: (url) => opened.push(url) };
+    setDesktopAdapter({ isDesktop: () => true, openURL: (url) => opened.push(url) });
     for (const url of ['http://example.com', 'file:///etc/passwd', 'https://user:pass@example.com', 'https://example.com']) {
         let prevented = false;
         openExternal({ preventDefault: () => { prevented = true; } }, url);
@@ -66,6 +66,6 @@ test('desktop external links require HTTPS', () => {
 
 // Missing bindings must not silently send journal operations to an HTTP server.
 test('missing desktop bindings fail explicitly', async () => {
-    globalThis.window = {};
+    setDesktopAdapter(undefined);
     await assert.rejects(journalFetch('/api/version'), /desktop app/);
 });

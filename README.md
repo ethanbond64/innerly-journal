@@ -4,7 +4,7 @@ A local multimedia journal built with Go, Wails, and React. Includes encrypted n
 
 ## Build and run on macOS
 
-Install **Go**, **Node.js 20+ with npm**, and **Xcode Command Line Tools** (`xcode-select --install`). The setup script installs Wails 2.11.0 and uses Go 1.24.13.
+Install **Go with toolchain auto-download support**, **Node.js 22 with npm**, and **Xcode Command Line Tools** (`xcode-select --install`). `go.mod` pins Go **1.26.9** and Wails **v3.0.0-beta.33**. Setup installs `wails3` at that exact module version; the frontend lockfile pins `@wailsio/runtime` **3.0.0-beta.33**.
 
 ```bash
 ./scripts/desktop.sh setup
@@ -16,9 +16,16 @@ Development data and tool caches stay under `.work/`. Create a local account on 
 To build and run the standalone app:
 
 ```bash
-./scripts/desktop.sh build
+./scripts/desktop.sh build                  # Universal arm64 + x86_64, ad-hoc signed
+# ./scripts/desktop.sh build ARCH=arm64      # Faster native-only build on Apple Silicon
 open build/bin/Innerly.app
 ```
+
+Builds use the v3 `Taskfile.yml` and `build/config.yml`, not `wails.json`. `build/darwin/Info*.plist` are concrete v3 bundle assets (minimum macOS 12). `scripts/desktop.sh` isolates HOME, Go/npm caches and temporary files under `.work/`; release signing still runs outside that HOME. The development data path is an environment setting, never embedded in the binary.
+
+Bindings are generated (not committed) into `frontend/bindings/` before desktop frontend compilation. On a clean checkout, run `setup`, then `build` or `dev`; for frontend-only work run `./scripts/desktop.sh bindings` before `npm --prefix frontend run build`. Browser UI tests use a test-only adapter and do not call native IPC.
+
+This is phase 1 of [the v3 migration plan](WAILS_V3_MIGRATION_PLAN.md), not the updater release. Bundle/version consolidation, About & Updates, signed DMG packaging and release CI hardening remain later phases. Native title-bar dragging and complete dev/packaged workflows still need an interactive macOS smoke test; browser tests cannot certify them.
 
 ## Journal data
 
@@ -34,7 +41,7 @@ INNERLY_DATA_DIR="$PWD/.work/journal-copy" build/bin/Innerly.app/Contents/MacOS/
 
 Close applications using the journal before copying its data. Existing journal databases and encrypted entries remain supported; schema upgrades run automatically. Place legacy ZIP imports in the selected data directory's `imports/` folder.
 
-Login is local and held in memory. Settings includes **Exit fullscreen** and **Open another window**; each window logs in independently.
+Login is local and held in memory. The retained `OpenWindow` service starts a separate process with an independent login; Settings no longer exposes desktop-window controls. Closing the last window quits the process and closes its journal workers/database.
 
 ## Tests
 

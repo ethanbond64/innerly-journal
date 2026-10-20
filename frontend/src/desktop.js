@@ -1,5 +1,22 @@
-export const isDesktop = () => !!window.go?.journal?.App;
-export const desktopApp = () => window.go.journal.App;
+let adapter;
+// Also used by unit tests; browser UI fixtures replace only this boundary.
+export const setDesktopAdapter = (value) => { adapter = value; };
+export const initializeDesktop = async () => {
+    if (import.meta.env?.MODE === 'test') {
+        const { testDesktop } = await import('../tests/desktop-adapter.js');
+        setDesktopAdapter(testDesktop);
+    } else {
+        const { nativeDesktop, waitForNativeDesktop } = await import('./native-desktop.js');
+        await waitForNativeDesktop();
+        setDesktopAdapter(nativeDesktop);
+    }
+};
+export const isDesktop = () => !!adapter?.isDesktop();
+export const isMacDesktop = () => isDesktop() && adapter.isMac();
+export const desktopApp = () => adapter.journal;
+export const setWindowBackground = (...rgb) => {
+    if (isDesktop()) adapter.setBackground(...rgb);
+};
 
 const response = (body, status = 200) => ({ ok: status < 400, status, statusText: body.message || '', json: async () => body });
 
@@ -68,7 +85,7 @@ export const openExternal = (event, link) => {
     event.preventDefault();
     try {
         const url = new URL(link);
-        if (url.protocol === 'https:' && !url.username && !url.password) window.runtime.BrowserOpenURL(url.href);
+        if (url.protocol === 'https:' && !url.username && !url.password) adapter?.openURL(url.href);
     } catch {
         return;
     }

@@ -97,6 +97,31 @@ If the docs site is blocked, use raw.githubusercontent.com or GitHub source. Che
 
 Deliverable: v3 dev launch and unsigned universal packaged app, with a functioning login/home/editor/media workflow.
 
+### Phase 1 implementation status (2026-06-14)
+
+Implemented, with the **interactive native acceptance gate still open**:
+
+- Pinned Wails module/CLI **v3.0.0-beta.33**, upstream commit `b710765493d2d541d1388d83a6731391fd9f2219`; npm runtime **3.0.0-beta.33**; Go **1.26.9** (also consumed by setup-go via go.mod).
+- Generated an untracked React/JavaScript Vite starter at `.work/v3-research/starter/ShellProbe` using the pinned CLI. Inspected tagged migration/signing/updater docs, starter Taskfiles, application/service/menu/window/asset APIs, runtime drag and configuration injection, and updater helper startup. The migration guide's illustrative `wails.json` is stale for this tag; actual starter uses Taskfiles + `build/config.yml`.
+- Replaced the v2 entry point with application creation **before** journal initialization (helper dispatch occurs in `application.New`), service registration, explicit 1200×850 / minimum 700×500 main window, native application/edit/window menus, and a once-guarded shutdown path. Kept independent-process `OpenWindow` and the owner's icon and `co.innerly` identity.
+- `/media/` middleware intercepts before both the dev proxy and embedded file server. Existing authorization/path/symlink restrictions are unchanged. Added shell routing/image-byte/logout tests and an isolated helper subprocess test proving helper dispatch does not create the journal directory.
+- Native full-size transparent title bar hides only the native title, keeps traffic lights, and uses `InvisibleTitleBarHeight: 28`; frontend reserves one 28px `--wails-draggable: drag` strip. Added browser assertions for one strip, padding and matching background in both themes. Actual traffic lights/dragging/fullscreen are **not yet verified**.
+- Necessary phase-2 overlap: generated v3 bindings (untracked; generated before compilation), a small runtime/service adapter, theme/browser calls and test mocks were ported so this shell does not depend on v2 globals. Native startup waits for beta.33's `wails:runtime-config-ready` event when necessary; OS metadata is injected after navigation, not necessarily before frontend module evaluation. The fuller phase-2 origin/preferences/navigation audit remains open.
+- Removed v2 config/runtime. Added macOS-only Taskfile build/package/dev commands following the starter conventions, without adding mobile/Linux/Windows targets. Bundle assets remain at **0.0.1**, with version consolidation deliberately left to phase 3. Release scripts were minimally adjusted for the new build arguments and concrete plist metadata; no signed release was attempted.
+
+Commands / validation (logs under `.work/v3-research/`):
+
+- `./scripts/desktop.sh setup` installs the pinned CLI/runtime dependencies.
+- `./scripts/desktop.sh bindings` regenerates bindings deterministically using `wails3 generate bindings -names -d frontend/bindings`.
+- **Passed:** `./scripts/desktop.sh test`: journal + shell/helper Go tests and 10 frontend unit tests.
+- **Passed:** `./scripts/desktop.sh race`: root shell/helper tests and journal race tests (~404 seconds for the journal suite). The macOS test linker emits deployment-target warnings on this host; packaged builds explicitly target macOS 12.
+- **Passed:** `./scripts/desktop.sh test-ui`: 26 WebKit/Chromium browser checks. Replaced a stale test for already-removed Settings desktop-window controls with the two-theme title-strip regression check.
+- **Passed clean generated-assets rebuild:** removed only generated `frontend/dist` and `frontend/bindings`, then ran `setup` and `build`. `setup` now generates bindings too. `./scripts/desktop.sh build` produces `build/bin/Innerly.app`, ad-hoc signed (not Developer ID signed/notarized); `lipo -info build/bin/Innerly.app/Contents/MacOS/Innerly` reports **x86_64 arm64**. `plutil -lint build/darwin/Info*.plist` passes.
+- `./scripts/desktop.sh dev` builds the development bundle, starts Vite on port 3000, and launches the process; log confirms v3 beta.33, Go 1.26.9 and the connected development asset server. A packaged process was also launched with a disposable data-directory override and then stopped.
+- **Blocker:** this session has no capturable display (`screencapture`: “could not create image from display”) and macOS UI accessibility is disabled. A live process is not proof of a working native login/home/editor/image flow. Before marking phase 1 complete, use a disposable journal to verify those workflows in both dev and universal packaged builds, Cmd-R/H/Q/edit shortcuts, normal close, title dragging/traffic lights/no double spacing in both themes, fullscreen/restore, and packaged production data-path selection. Do not use the owner's journal for these checks.
+
+Updater signing format and selected-version provider decisions remain intentionally unresolved until phase 4; phase 1 does not ship an updater or enable installs.
+
 ## Phase 2 — frontend bindings and desktop boundary
 
 1. Generate v3 service bindings via the pinned CLI, with a deterministic output location and generation command. Decide whether generated bindings are committed or generated before frontend compilation; make clean-clone builds work either way.

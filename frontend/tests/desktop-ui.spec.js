@@ -90,7 +90,7 @@ test('About handles a failed changelog fetch without hiding the installed versio
     await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ status: 503, body: 'Unavailable' }));
     await page.goto('/#/');
     await page.locator('.custom-letter-box').click();
-    await page.getByRole('link', { name: 'About & Updates' }).click();
+    await page.getByRole('link', { name: 'Updates', exact: true }).click();
     await expect(page.getByText('Innerly 0.1.0', { exact: true })).toBeVisible();
     await expect(page.locator('pre')).toHaveText('Unable to load the changelog. Please try again later.');
 });

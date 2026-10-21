@@ -53,7 +53,8 @@ ROOT="$PWD"
 APP="$ROOT/build/bin/Innerly.app"
 wails="$ROOT/.work/gopath/bin/wails3"
 wails_version="$(awk '$1 == "github.com/wailsapp/wails/v3" {print $2; exit}' go.mod)"
-[[ -x "$wails" && "$("$wails" version)" == "$wails_version" ]] || fail 'Run ./scripts/desktop.sh setup for the pinned Wails CLI'
+# wails3 prints its version on stderr, so capture both streams.
+[[ -x "$wails" && "$("$wails" version 2>&1)" == "$wails_version" ]] || fail 'Run ./scripts/desktop.sh setup for the pinned Wails CLI'
 
 # Everything private lives in one 0700 directory, removed on any exit. In --ci
 # mode the temporary keychain is destroyed and the search list restored there too.

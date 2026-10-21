@@ -13,6 +13,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/updater"
+	"github.com/wailsapp/wails/v3/pkg/updater/providers/endpoint"
 	"innerly/internal/journal"
 )
 
@@ -40,9 +41,6 @@ func main() {
 	var closeOnce sync.Once
 	closeJournal := func() {
 		closeOnce.Do(func() {
-			if updates != nil {
-				updates.shutdown()
-			}
 			if store != nil {
 				journal.CloseApp(store)
 			}
@@ -66,17 +64,26 @@ func main() {
 	defer closeJournal() // Also covers errors returned before the run loop starts.
 	lock := openInstanceLock()
 	defer lock.Close()
-	// Downloads are large; the catalog request carries its own shorter context.
-	provider := &releaseProvider{client: &http.Client{Timeout: 10 * time.Minute}}
+	// The stock manifest provider: it compares versions, downloads the signed
+	// ZIP and refuses anything that is not newer than this build.
+	provider, err := endpoint.New(endpoint.Config{
+		URL:        updateManifestURL,
+		Channel:    "stable",
+		HTTPClient: &http.Client{Timeout: 10 * time.Minute}, // release archives are large
+	})
+	if err != nil {
+		log.Print(err)
+		return
+	}
 	executable, _ := os.Executable()
 	target := appBundle(executable)
 	if resolved, err := filepath.EvalSymlinks(executable); err != nil || resolved != executable {
 		target = "" // keep our target identical to Wails'; no symlink installations
 	}
-	updates = newUpdateService(app.Context(), app.Updater, provider, lock, target, store.Version())
+	updates = newUpdateService(app.Context(), app.Updater, lock, target, store.Version())
 	if err := app.Updater.Init(updater.Config{
-		CurrentVersion: store.Version(), PublicKey: updates.key,
-		Providers: []updater.Provider{provider}, Window: updater.WindowNone,
+		CurrentVersion: store.Version(), PublicKey: updateKey(),
+		Providers: []updater.Provider{provider}, Window: &updater.BuiltinWindow{},
 	}); err != nil {
 		log.Print(err)
 		return
@@ -102,9 +109,6 @@ func main() {
 		})
 		innerly.AddSeparator()
 		innerly.Add("Refresh").SetAccelerator("CmdOrCtrl+r").OnClick(func(*application.Context) {
-			if updates.Status().State == "restarting" {
-				return // do not reload away the editor-save barrier during restart
-			}
 			window.ExecJS("window.history.replaceState(null, '', '#/'); window.location.reload();")
 		})
 		innerly.AddSeparator()

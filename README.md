@@ -27,11 +27,11 @@ Builds use `Taskfile.yml` and `build/config.yml`; `build/darwin/Info*.plist` are
 
 ## About & Updates
 
-Open **Updates** from the account menu or **About & Updates** from the macOS app menu. The page works before login and shows `master/CHANGELOG.md` as plain text, so it may list unreleased changes.
+Open **Updates** from the account menu or **About & Updates** from the macOS app menu. The page works before login and shows the installed version plus `master/CHANGELOG.md` as plain text, so it may list unreleased changes.
 
-**Check for Updates** lists newer published stable releases, newest first, with their dates and notes. Drafts and prereleases are hidden, releases without a universal ZIP and `manifest.json` are marked unavailable, and successful checks are cached for a minute to stay inside GitHub's anonymous quota. No GitHub token or Markdown renderer is shipped.
+**Check for Updates** hands off to Wails' own update window, which reads `manifest.json` from the newest published release, compares its version with the installed one, and shows the release notes. Installing downloads the universal ZIP, authenticates it against the public key compiled into the app, and swaps the bundle when the user clicks **Restart & Apply**. No GitHub token and no custom update UI are shipped, and nothing is downloaded or installed without the user asking.
 
-Choose a version, click **Download** — progress and cancellation are available — then **Install and Restart** when ready. Wails authenticates the ZIP against the public key compiled into the app, extracts it, and swaps the bundle; the version you picked is the one installed, never a newer one published in the meantime. Innerly additionally checks that the staged bundle is `Innerly.app` with the expected bundle identifier and version, and refuses to install from a development build, a mounted DMG, a translocated app, or an unwritable folder. Restart waits for in-progress writing to reach the journal, including a draft whose editor route has already unmounted; a failed save blocks it, and so does another Innerly window still being open. Errors leave the running app and its journal usable.
+Before the window opens, Innerly refuses to update at all from a development build, a mounted DMG, a translocated app, an unwritable installation folder, or while a second Innerly instance is running. Writing is saved by the editor's ordinary three-second autosave, which keeps running while the update window downloads. Errors leave the running app and its journal usable.
 
 ## Version
 
@@ -55,7 +55,7 @@ This key is separate from Apple's Developer ID certificate. Never commit its pri
   --update-public-key "$HOME/.config/innerly/updater.key.pub"
 ```
 
-The default is universal (Apple Silicon + Intel); `--help` lists the API-key and keychain alternatives. The script signs, notarizes, staples and verifies the app, then packages a DMG and signs, notarizes, staples and verifies that separately. Files appear in `release/` — versioned DMG and ZIP, their SHA-256 checksums, and `manifest.json` — only after every gate passes. Both archives hold the same stapled app, but the updater payload is the ZIP, **not** the DMG. `manifest.json` carries the ZIP's size, SHA-512 digest, Ed25519ph signature, versioned download URL and changelog notes; a checksum alone would not authenticate an update.
+The default is universal (Apple Silicon + Intel); `--help` lists the API-key and keychain alternatives. The script signs, notarizes, staples and verifies the app, then packages a DMG and signs, notarizes, staples and verifies that separately. Files appear in `release/` — versioned DMG and ZIP, their SHA-256 checksums, and `manifest.json` — only after every gate passes. Both archives hold the same stapled app, but the updater payload is the ZIP, **not** the DMG. `manifest.json` carries the ZIP's size, SHA-512 digest, Ed25519ph signature, versioned download URL and changelog notes; installed apps read it from `releases/latest/download/manifest.json`, and a checksum alone would not authenticate an update.
 
 In Actions the same script runs as `./scripts/release-macos.sh --ci`, taking every credential from secrets — `MACOS_SIGNING_IDENTITY`, `MACOS_SIGNING_P12_BASE64`, `MACOS_SIGNING_P12_PASSWORD`, `APPLE_NOTARY_KEY_P8`, `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER_ID`, `INNERLY_UPDATE_PRIVATE_KEY` and `INNERLY_UPDATE_PUBLIC_KEY`. It materializes them into one private temporary directory with a throwaway keychain and removes both through an `EXIT` trap, so nothing survives a failure.
 

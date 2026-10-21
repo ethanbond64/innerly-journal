@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
@@ -8,7 +8,6 @@ import { getDateNoTime } from "./utils.jsx";
 import { putEntry } from "./entry-handoff.js";
 import { PasswordModal } from "./password-modal.jsx";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
-import { trackDraft } from './pending-writes.js';
 
 // Measures the pixel offset of the caret within the textarea's scroll area
 // using a hidden mirror div to account for word-wrap accurately.
@@ -157,8 +156,7 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
     const [showHeader, setShowHeader] = useState(true);
 
     const entryIdRef = useRef(initialId);
-    const valueRef = useRef(text);   // readable after the textarea has unmounted
-    const dirtyRef = useRef(false);  // text differs from what the journal has
+    const dirtyRef = useRef(false);   // text differs from what the server has
     const savingRef = useRef(null);  // promise for the in-flight save
     const [submitting, setSubmitting] = useState(false);
 
@@ -257,52 +255,42 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
         }
     };
 
-    // One save, resolving once the text has reached the journal.
-    const save = useCallback((draft) => {
-        const value = valueRef.current;
-        const id = entryIdRef.current;
-        dirtyRef.current = false;
-        const settled = new Promise((resolve, reject) => {
-            const onSaved = (data) => {
-                if (data && data.id) entryIdRef.current = data.id;
-                // Edits made while the request was in flight are still unsaved.
-                setSaveState(dirtyRef.current ? 'unsaved' : 'saved');
-                resolve(data);
-            };
-            const onFailed = () => {
-                dirtyRef.current = true; // the text never reached the journal
-                setSaveState('failed');
-                reject(new Error('Your writing could not be saved. Try saving again.'));
-            };
-            if (id === null) insertTextEntry(value, functionalDatetime, onSaved, onFailed, { draft });
-            else updateTextEntry(id, { text: value }, null, onSaved, onFailed, { draft });
-        });
-        savingRef.current = settled.finally(() => {
-            if (savingRef.current === settled) savingRef.current = null;
-        });
-        return savingRef.current;
+    // Autosave: every 3 seconds, save if the text is dirty and nothing is in flight. A
+    // failed save leaves the text dirty, so the next tick simply tries again.
+    useEffect(() => {
+        const onSaved = (data) => {
+            savingRef.current = false;
+            if (data && data.id) {
+                entryIdRef.current = data.id;
+            }
+            // Edits made while the request was in flight are still unsaved.
+            setSaveState(dirtyRef.current ? 'unsaved' : 'saved');
+        };
+
+        const onFailed = () => {
+            savingRef.current = false;
+            dirtyRef.current = true; // the text never reached the server
+            setSaveState('failed');
+        };
+
+        const timer = setInterval(() => {
+            const writeTo = textareaRef.current;
+            if (!dirtyRef.current || savingRef.current || !writeTo) return;
+
+            dirtyRef.current = false;
+            savingRef.current = true;
+
+            if (entryIdRef.current === null) {
+                savingRef.current = insertTextEntry(writeTo.value, functionalDatetime, onSaved, onFailed, { draft: true });
+            } else {
+                savingRef.current = updateTextEntry(entryIdRef.current, { text: writeTo.value }, null, onSaved, onFailed, { draft: true });
+            }
+        }, 3000);
+
+        return () => clearInterval(timer);
     }, [functionalDatetime]);
 
-    // Resolves once every edit so far has reached the journal. A save awaiting a
-    // lock password stays pending here until its retry settles.
-    const flush = useCallback(async () => {
-        await savingRef.current;
-        if (dirtyRef.current) await save(true);
-    }, [save]);
-
-    // Autosave every 3 seconds if the text is dirty and nothing is in flight. A
-    // failed save leaves the text dirty, so the next tick simply tries again.
-    // Leaving the editor flushes the draft so a restart can still wait for it.
-    useEffect(() => {
-        const timer = setInterval(() => {
-            if (dirtyRef.current && !savingRef.current) save(true).catch(() => {});
-        }, 3000);
-        const leave = trackDraft(flush);
-        return () => { clearInterval(timer); leave(); };
-    }, [save, flush]);
-
     const onTextChange = () => {
-        valueRef.current = textareaRef.current.value;
         dirtyRef.current = true;
         // A failure stays red until a save actually succeeds.
         setSaveState(prev => prev === 'failed' ? prev : 'unsaved');
@@ -393,19 +381,27 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
         e.preventDefault();
         if (submitting) return;
         setSubmitting(true);
-        try {
-            // Final Save serializes behind autosave, including lock-password retries.
-            await savingRef.current;
-            const data = await save(false);
-            if (textareaRef.current) {
-                putEntry(data);
-                navigate(viewRoute + data.id);
-            }
-        } catch {
-            // save() has already shown the failed status.
-        } finally {
-            setSubmitting(false);
-        }
+        // Wait for an autosave (possibly awaiting a password) to obtain its ID.
+        // Otherwise Save could insert the same new entry a second time.
+        await savingRef.current;
+        if (!textareaRef.current) return;
+        const value = textareaRef.current.value;
+        dirtyRef.current = false;
+        const onSaved = (data) => {
+            if (!textareaRef.current) return;
+            putEntry(data);
+            navigate(viewRoute + data.id);
+        };
+        const onFailed = () => {
+            dirtyRef.current = true;
+            setSaveState('failed');
+        };
+        savingRef.current = entryIdRef.current === null
+            ? insertTextEntry(value, functionalDatetime, onSaved, onFailed)
+            : updateTextEntry(entryIdRef.current, { text: value }, null, onSaved, onFailed);
+        await savingRef.current;
+        savingRef.current = null;
+        setSubmitting(false);
     };
 
     return (

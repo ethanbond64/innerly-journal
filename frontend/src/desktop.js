@@ -1,5 +1,3 @@
-import { flushWriting } from './pending-writes.js';
-
 let adapter;
 // Also used by unit tests; browser UI fixtures replace only this boundary.
 export const setDesktopAdapter = (value) => { adapter = value; };
@@ -13,18 +11,12 @@ export const initializeDesktop = async () => {
         setDesktopAdapter(nativeDesktop);
     }
 };
+// Opens Wails' update window, which owns the download, verification and restart.
 export const checkForUpdates = () => {
     if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
     return adapter.checkForUpdates();
 };
 export const updateStatus = () => adapter.updateStatus();
-export const downloadUpdate = version => adapter.downloadUpdate(version);
-export const cancelUpdate = () => adapter.cancelUpdate();
-// Writing in progress reaches the journal before the app is replaced.
-export const restartUpdate = async version => {
-    await flushWriting();
-    return adapter.restartUpdate(version);
-};
 export const isDesktop = () => !!adapter?.isDesktop();
 export const isMacDesktop = () => isDesktop() && adapter.isMac();
 export const desktopApp = () => {

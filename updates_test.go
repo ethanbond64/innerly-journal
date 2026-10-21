@@ -10,32 +10,24 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/wailsapp/wails/v3/pkg/updater"
+	"github.com/wailsapp/wails/v3/pkg/updater/providers/endpoint"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-type updateFixture struct {
-	releases  []map[string]any
-	files     map[string][]byte
-	key       ed25519.PublicKey
-	client    *http.Client
-	requested []string
-}
-
-// All traffic stays in memory. The signing key is generated for this test only;
-// no GitHub, Keychain, Developer ID, notarization or actual restart is involved.
-func newUpdateFixture(t *testing.T) *updateFixture {
+// An in-memory release: a signed ZIP and the manifest describing it. The key is
+// generated for this test only; no GitHub, Keychain, Developer ID, notarization
+// or actual restart is involved.
+func newUpdateFixture(t *testing.T, version string) (*http.Client, ed25519.PublicKey, map[string][]byte) {
 	t.Helper()
 	pub, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -59,329 +51,177 @@ func newUpdateFixture(t *testing.T) *updateFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &updateFixture{key: pub, files: map[string][]byte{}}
-	for _, version := range []string{"0.2.0", "0.3.0", "0.9.0", "0.10.0"} {
-		prefix := downloadPrefix("v" + version)
-		name := zipName(version)
-		manifest := map[string]any{"schemaVersion": 1, "version": version, "channel": "stable", "artifacts": []any{map[string]any{
-			"url": prefix + name, "platform": "darwin", "size": len(payload),
+	name := "Innerly-" + version + "-mac-universal.zip"
+	zipURL := "https://github.com/ethanbond64/innerly-once/releases/download/v" + version + "/" + name
+	manifest, _ := json.Marshal(map[string]any{"schemaVersion": 1, "version": version, "channel": "stable",
+		"artifacts": []any{map[string]any{
+			"url": zipURL, "platform": "darwin", "size": len(payload),
 			"digestAlgo": "sha512", "digest": base64.StdEncoding.EncodeToString(digest[:]),
 			"signatureAlgo": "ed25519ph", "signature": base64.StdEncoding.EncodeToString(signature),
-		}}}
-		f.files[prefix+"manifest.json"], _ = json.Marshal(manifest)
-		f.files[prefix+name] = bytes.Clone(payload)
-		f.releases = append(f.releases, map[string]any{"tag_name": "v" + version, "published_at": "2026-01-01T00:00:00Z", "body": "<script>not HTML</script>", "assets": []any{
-			map[string]any{"name": name}, map[string]any{"name": "manifest.json"},
-		}})
-	}
-	f.client = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		f.requested = append(f.requested, r.URL.String())
+		}}})
+	files := map[string][]byte{updateManifestURL: manifest, zipURL: payload}
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if r.Header.Get("Authorization") != "" {
 			t.Error("must not send a token")
 		}
 		status := http.StatusOK
-		var body []byte
-		if r.URL.Host == "api.github.com" {
-			body, _ = json.Marshal(f.releases)
-		} else if body = f.files["https://"+r.URL.Host+r.URL.Path]; body == nil {
+		// The provider appends query parameters to the manifest URL.
+		body, ok := files["https://"+r.URL.Host+r.URL.Path]
+		if !ok {
 			status = http.StatusNotFound
 		}
 		return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(body)), Request: r}, nil
 	})}
-	return f
+	return client, pub, files
 }
 
-func TestUpdateCatalog(t *testing.T) {
-	f := newUpdateFixture(t)
-	var ignored []map[string]any
-	_ = json.Unmarshal([]byte(`[{"tag_name":"v0.1.0"},{"tag_name":"v0.0.1"},{"tag_name":"v0.11.0-beta.1"},
-		{"tag_name":"v0.12.0","draft":true},{"tag_name":"v0.13.0","prerelease":true},{"tag_name":"0.14.0"}]`), &ignored)
-	f.releases = append(f.releases, ignored...)
-	p := &releaseProvider{client: f.client}
-	releases, err := p.catalog(context.Background(), "0.1.0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var versions []string
-	for _, r := range releases {
-		versions = append(versions, r.Version)
-	}
-	// Newest first; drafts, prereleases and anything at or below current are hidden.
-	if strings.Join(versions, ",") != "0.14.0,0.10.0,0.9.0,0.3.0,0.2.0" {
-		t.Fatal(versions)
-	}
-	if releases[0].Unavailable == "" || releases[1].Unavailable != "" {
-		t.Fatal("a release without the universal ZIP and manifest is not installable", releases)
-	}
-	if releases[1].Notes != "<script>not HTML</script>" {
-		t.Fatal("notes must stay plain text")
-	}
-	if stableVersion("v0.2.0") != "0.2.0" || stableVersion("0.2.0") != "0.2.0" || stableVersion("0.2") != "" {
-		t.Fatal("stable version normalization")
-	}
-	// Listing releases must not fetch any manifests or payloads.
-	if len(f.requested) != 1 {
-		t.Fatal("catalog made extra requests", f.requested)
-	}
+type testWindow struct{}
+
+func (testWindow) EmitEvent(string, ...any) bool { return true }
+func (testWindow) Show()                         {}
+func (testWindow) Close()                        {}
+
+type testHost struct {
+	mu        sync.Mutex
+	opened    []updater.WindowOptions
+	emitted   []string
+	listeners []string
+	quits     int
 }
 
-func TestUpdateResolveRejectsBadMetadata(t *testing.T) {
-	for _, mode := range []string{"valid", "wrong-version", "wrong-url", "arm-only", "dmg", "unknown-version"} {
+func (h *testHost) Emit(name string, _ ...any) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.emitted = append(h.emitted, name)
+	return true
+}
+func (h *testHost) OnEvent(name string, _ func(any)) func() {
+	h.mu.Lock()
+	h.listeners = append(h.listeners, name)
+	h.mu.Unlock()
+	return func() {}
+}
+func (h *testHost) OpenWindow(opts updater.WindowOptions) updater.WindowHandle {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.opened = append(h.opened, opts)
+	return testWindow{}
+}
+func (h *testHost) Quit() { h.mu.Lock(); h.quits++; h.mu.Unlock() }
+
+// The whole update path, driven through Wails: its window opens, its provider
+// authenticates the payload against the key pinned into this binary, and a
+// payload that does not authenticate never becomes installable.
+func TestUpdateFlowAndVerification(t *testing.T) {
+	for _, mode := range []string{"valid", "wrong-key", "corrupted", "missing-asset", "not-newer"} {
 		t.Run(mode, func(t *testing.T) {
-			f := newUpdateFixture(t)
-			path := downloadPrefix("v0.2.0") + "manifest.json"
-			var m map[string]any
-			_ = json.Unmarshal(f.files[path], &m)
-			a := m["artifacts"].([]any)[0].(map[string]any)
-			switch mode {
-			case "wrong-version":
-				m["version"] = "0.3.0"
-			case "wrong-url":
-				a["url"] = "https://evil.example/" + zipName("0.2.0")
-			case "arm-only":
-				a["url"] = strings.Replace(a["url"].(string), "universal", "arm64", 1)
-			case "dmg":
-				a["url"] = strings.Replace(a["url"].(string), ".zip", ".dmg", 1)
-			}
-			f.files[path], _ = json.Marshal(m)
-			p := &releaseProvider{client: f.client}
-			if _, err := p.catalog(context.Background(), "0.1.0"); err != nil {
-				t.Fatal(err)
-			}
 			version := "0.2.0"
-			if mode == "unknown-version" {
-				version = "9.9.9" // never offered by the catalog
+			if mode == "not-newer" {
+				version = "0.1.0" // exactly what is installed
 			}
-			_, err := p.resolve(context.Background(), version, "0.1.0")
-			if (err == nil) != (mode == "valid") {
-				t.Fatal(mode, err)
-			}
-		})
-	}
-}
-
-type updaterTestHost struct{}
-
-func (updaterTestHost) Emit(string, ...any) bool         { return true }
-func (updaterTestHost) OnEvent(string, func(any)) func() { return func() {} }
-func (updaterTestHost) OpenWindow(updater.WindowOptions) updater.WindowHandle {
-	panic("must not open native updater UI")
-}
-func (updaterTestHost) Quit() { panic("tests must never restart the real application") }
-
-// Wails performs the real download, hashing, signature check and extraction
-// here. Only the chosen version may be installed, and only if it authenticates.
-func TestWailsUpdateVerificationAndSelection(t *testing.T) {
-	for _, mode := range []string{"valid", "wrong-key", "corrupted", "missing-asset"} {
-		t.Run(mode, func(t *testing.T) {
-			f := newUpdateFixture(t)
-			p := &releaseProvider{client: f.client}
-			if _, err := p.catalog(context.Background(), "0.1.0"); err != nil {
-				t.Fatal(err)
-			}
-			selected, err := p.resolve(context.Background(), "0.2.0", "0.1.0") // NOT the latest (0.10.0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			p.selected = selected
-			key := bytes.Clone(f.key)
+			client, pub, files := newUpdateFixture(t, version)
+			key := bytes.Clone(pub)
+			zipURL := "https://github.com/ethanbond64/innerly-once/releases/download/v" + version +
+				"/Innerly-" + version + "-mac-universal.zip"
 			switch mode {
 			case "wrong-key":
 				key[0] ^= 1
 			case "corrupted":
-				f.files[downloadPrefix("v0.2.0")+zipName("0.2.0")][0] ^= 1
+				files[zipURL][0] ^= 1
 			case "missing-asset":
-				delete(f.files, downloadPrefix("v0.2.0")+zipName("0.2.0"))
+				delete(files, zipURL)
 			}
-			engine := updater.New(updaterTestHost{})
-			if err := engine.Init(updater.Config{CurrentVersion: "0.1.0", PublicKey: key, Providers: []updater.Provider{p}, Window: updater.WindowNone}); err != nil {
+			provider, err := endpoint.New(endpoint.Config{URL: updateManifestURL, Channel: "stable", HTTPClient: client})
+			if err != nil {
 				t.Fatal(err)
 			}
-			release, err := engine.Check(context.Background())
-			if err != nil || release.Version != "0.2.0" {
-				t.Fatal(release, err)
+			host := &testHost{}
+			engine := updater.New(host)
+			if err := engine.Init(updater.Config{CurrentVersion: "0.1.0", PublicKey: key,
+				Providers: []updater.Provider{provider}, Window: &updater.BuiltinWindow{}}); err != nil {
+				t.Fatal(err)
 			}
-			err = engine.DownloadAndInstall(context.Background()) // never Restart
+			err = engine.CheckAndInstall(context.Background()) // real download, verify, extract; never Restart
+
+			host.mu.Lock()
+			defer host.mu.Unlock()
+			if len(host.opened) != 1 {
+				t.Fatalf("the update window did not open: %d", len(host.opened))
+			}
+			if !strings.Contains(host.opened[0].InitialHTML, "wails:updater:user:restart") {
+				t.Error("the window is not the framework's update template")
+			}
+			if host.quits != 0 {
+				t.Error("checking for updates must never quit on its own")
+			}
+			if mode == "not-newer" {
+				if err != nil || engine.State() != updater.StateUpToDate {
+					t.Fatalf("same version offered as an update: %v %s", err, engine.State())
+				}
+				return
+			}
 			if mode == "valid" {
-				if err != nil {
-					t.Fatal(err)
+				if err != nil || engine.State() != updater.StateReady {
+					t.Fatalf("signed update did not become installable: %v %s", err, engine.State())
 				}
-				staged := engine.DownloadedPath()
-				if filepath.Base(staged) != "Innerly.app" {
-					t.Fatal(staged)
+				// Restart is the user's decision, through the window's button.
+				if !slicesContain(host.listeners, "wails:updater:user:restart") {
+					t.Error("no restart listener registered")
 				}
-				if _, err := os.Stat(filepath.Join(staged, "Contents", "MacOS", "Innerly")); err != nil {
-					t.Fatal(err)
-				}
-				exe, _ := os.Executable()
-				u := &UpdateService{engine: engine, target: filepath.Join(filepath.Dir(exe), "Innerly.app")}
-				u.discardStaged()
-				if _, err := os.Stat(staged); !os.IsNotExist(err) {
-					t.Fatal("did not clean staging", err)
-				}
-			} else if err == nil || engine.State() == updater.StateReady {
-				t.Fatal("unauthenticated update reached ready state", err)
+				return
 			}
-			last := f.requested[len(f.requested)-1]
-			if !strings.Contains(last, "/v0.2.0/"+zipName("0.2.0")) {
-				t.Fatal("selection changed", last)
+			if err == nil || engine.State() == updater.StateReady {
+				t.Fatalf("unauthenticated update reached ready state: %v %s", err, engine.State())
 			}
 		})
 	}
 }
 
-// This runner replaces PlistBuddy. It reads no signing identity and no bundle.
-func macTools(identifier, version string) commandRunner {
-	return func(_ context.Context, name string, args ...string) ([]byte, error) {
-		if filepath.Base(name) != "PlistBuddy" {
-			return nil, errors.New("unexpected command")
+func slicesContain(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
 		}
-		if args[1] == "Print :CFBundleIdentifier" {
-			return []byte(identifier + "\n"), nil
-		}
-		return []byte(version + "\n"), nil
 	}
+	return false
 }
 
-func TestMacUpdateValidation(t *testing.T) {
-	if err := validateUpdate(context.Background(), "/stage/Innerly.app", "0.2.0", macTools("co.innerly", "0.2.0")); err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct{ staged, identifier, version string }{
-		{"/stage/Innerly.app", "co.innerly", "0.3.0"},    // a different version than chosen
-		{"/stage/Innerly.app", "com.other.app", "0.2.0"}, // a different application
-		{"/stage/Other.app", "co.innerly", "0.2.0"},      // not Innerly's bundle
-	} {
-		if validateUpdate(context.Background(), tc.staged, "0.2.0", macTools(tc.identifier, tc.version)) == nil {
-			t.Fatal("accepted mismatched update", tc)
-		}
-	}
-	for _, path := range []string{"", "/Volumes/Innerly/Innerly.app", "/private/var/AppTranslocation/test/Innerly.app"} {
+func TestUpdateRefusedWhereInstallWouldFail(t *testing.T) {
+	for _, path := range []string{"", "/Volumes/Innerly/Innerly.app", "/private/var/AppTranslocation/x/Innerly.app"} {
 		if updateLocation(path) == nil {
 			t.Fatal("unsafe installation location", path)
 		}
 	}
-}
-
-type fakeUpdateEngine struct {
-	provider     *releaseProvider
-	staged       string
-	version      string
-	restarts     int
-	restartError error
-	started      chan struct{}
-}
-
-func (e *fakeUpdateEngine) Check(ctx context.Context) (*updater.Release, error) {
-	r, err := e.provider.Check(ctx, updater.CheckRequest{})
-	if r != nil {
-		e.version = r.Version
+	if appBundle("/Applications/Innerly.app/Contents/MacOS/Innerly") != "/Applications/Innerly.app" {
+		t.Fatal("installed bundle not recognised")
 	}
-	return r, err
-}
-func (e *fakeUpdateEngine) DownloadAndInstall(ctx context.Context) error {
-	if e.started != nil {
-		close(e.started)
-		<-ctx.Done()
-		return ctx.Err()
+	if appBundle("/tmp/Innerly") != "" {
+		t.Fatal("a loose executable is not an app bundle")
 	}
-	return os.MkdirAll(e.staged, 0700)
-}
-func (e *fakeUpdateEngine) DownloadedPath() string        { return e.staged }
-func (e *fakeUpdateEngine) State() updater.State          { return updater.StateIdle }
-func (e *fakeUpdateEngine) Restart(context.Context) error { e.restarts++; return e.restartError }
-
-func TestSelectedUpdateServiceAndRestartRecovery(t *testing.T) {
-	f := newUpdateFixture(t)
-	p := &releaseProvider{client: f.client}
-	dir := t.TempDir()
-	engine := &fakeUpdateEngine{provider: p, staged: filepath.Join(dir, "wails-update-fixture", "extract", "Innerly.app")}
-	t.Setenv("HOME", t.TempDir())
-	lock := openInstanceLock()
-	defer lock.Close()
-	u := &UpdateService{engine: engine, provider: p, lock: lock, ctx: context.Background(),
-		target: filepath.Join(dir, "Innerly.app"), run: macTools("co.innerly", "0.2.0"), status: UpdateStatus{Current: "0.1.0"}}
-	if _, err := u.Check(); err != nil {
-		t.Fatal(err)
-	}
-	requests := len(f.requested)
-	if _, err := u.Check(); err != nil || len(f.requested) != requests {
-		t.Fatal("one-minute catalog cache", err)
-	}
-	if err := u.Download("0.1.0"); err == nil {
-		t.Fatal("downgrade accepted")
-	}
-	if err := u.Download("0.2.0"); err != nil {
-		t.Fatal(err)
-	}
-	f.releases = append(f.releases, map[string]any{"tag_name": "v0.20.0"}) // a newer release appears
-	if engine.version != "0.2.0" || !u.Status().Ready || engine.restarts != 0 {
-		t.Fatal("wrong selection or automatic restart")
-	}
-	requests = len(f.requested)
-	if err := u.Restart("0.3.0"); err == nil {
-		t.Fatal("restarted a different version")
-	}
-	other := openInstanceLock()
-	if err := u.Restart("0.2.0"); err == nil {
-		t.Fatal("replaced the app while another instance was running")
-	}
-	other.Close()
-	engine.restartError = errors.New("fixture helper failed")
-	if err := u.Restart("0.2.0"); err == nil {
-		t.Fatal("helper failure hidden")
-	}
-	if u.Status().State == "restarting" {
-		t.Fatal("a failed restart must leave the app usable")
-	}
-	engine.restartError = nil
-	if err := u.Restart("0.2.0"); err != nil {
-		t.Fatal(err)
-	}
-	if len(f.requested) != requests {
-		t.Fatal("restart must not re-resolve latest")
-	}
-	u.discardStaged()
-}
-
-func TestUpdateDownloadCancellationAndSerialization(t *testing.T) {
-	f := newUpdateFixture(t)
-	p := &releaseProvider{client: f.client}
-	if _, err := p.catalog(context.Background(), "0.1.0"); err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	engine := &fakeUpdateEngine{provider: p, started: make(chan struct{})}
-	u := &UpdateService{engine: engine, provider: p, ctx: context.Background(), target: filepath.Join(dir, "Innerly.app"), status: UpdateStatus{Current: "0.1.0"}}
-	done := make(chan error, 1)
-	go func() { done <- u.Download("0.2.0") }()
-	<-engine.started
-	if _, err := u.Check(); err == nil {
-		t.Fatal("concurrent check could change selection")
-	}
-	if err := u.Download("0.3.0"); err == nil {
-		t.Fatal("concurrent selection allowed")
-	}
-	u.Cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatal(err)
-	}
-	if u.Status().Ready || engine.restarts != 0 {
-		t.Fatal("canceled download became installable")
-	}
-	dev := newUpdateService(context.Background(), engine, p, nil, "", "development")
-	if dev.Status().Disabled == "" || dev.Download("0.2.0") == nil {
+	// A development build has no pinned key, so it may never install anything.
+	dev := newUpdateService(context.Background(), nil, nil, "", "development")
+	if dev.Status().Disabled == "" || dev.Check() == nil {
 		t.Fatal("development installation must be disabled")
 	}
 }
 
-func TestUpdateCatalogErrors(t *testing.T) {
-	for _, code := range []int{403, 429, 500} {
-		p := &releaseProvider{client: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: code, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("failure")), Request: r}, nil
-		})}}
-		if _, err := p.catalog(context.Background(), "0.1.0"); err == nil {
-			t.Fatal("GitHub failure treated as up-to-date", code)
-		}
+func TestUpdateRequiresSingleInstance(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	lock := openInstanceLock()
+	if lock == nil {
+		t.Fatal("could not take the instance lock")
+	}
+	defer lock.Close()
+	other := openInstanceLock()
+	if lock.probeExclusive() == nil {
+		t.Fatal("update allowed while another instance was running")
+	}
+	other.Close()
+	if err := lock.probeExclusive(); err != nil {
+		t.Fatal(err)
+	}
+	// The probe must leave this instance sharing, so a later check can repeat it.
+	if err := lock.probeExclusive(); err != nil {
+		t.Fatal("probe did not return to sharing:", err)
 	}
 }

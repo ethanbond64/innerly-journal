@@ -7,18 +7,25 @@ arch="${2:-universal}"
 dev="${3:-false}"
 [[ "$arch" != native ]] || arch="$(go env GOARCH)"
 case "$arch" in arm64|amd64|universal) ;; *) echo "Unsupported architecture: $arch" >&2; exit 2 ;; esac
-case "$action" in build|package|run) ;; *) exit 2 ;; esac
+case "$action" in bindings|build|package|run) ;; *) echo "Unknown action: $action" >&2; exit 2 ;; esac
+# Go's embed pattern must resolve before this package compiles.
+mkdir -p frontend/dist
+touch frontend/dist/.keep
+bindings() { wails3 generate bindings -names -d frontend/bindings; }
+if [[ "$action" == bindings ]]; then
+  bindings
+  exit 0
+fi
 out=build/bin
 version="$(./scripts/release-version.sh --version)"
 mkdir -p "$out"
 
 if [[ "$action" != run ]]; then
-  mkdir -p frontend/dist
-  touch frontend/dist/.keep
-  wails3 generate bindings -names -d frontend/bindings
+  bindings
   (cd frontend && npm run build)
   # Keep the owner's icon, not the starter's branding. Only macOS assets ship.
-  wails3 generate icons -input build/appicon.png -macfilename "$out/icons.icns" -windowsfilename "$out/icon.ico"
+  [[ -f "$out/icons.icns" && "$out/icons.icns" -nt build/appicon.png ]] ||
+    wails3 generate icons -input build/appicon.png -macfilename "$out/icons.icns" -windowsfilename "$out/icon.ico"
   export CGO_ENABLED=1 GOOS=darwin
   export CGO_CFLAGS="${CGO_CFLAGS:-} -mmacosx-version-min=12.0"
   export CGO_LDFLAGS="${CGO_LDFLAGS:-} -mmacosx-version-min=12.0"

@@ -57,7 +57,7 @@ This key is separate from Apple's Developer ID certificate. Never commit its pri
 
 The default is universal (Apple Silicon + Intel); `--help` lists the API-key and keychain alternatives. The script signs, notarizes, staples and verifies the app, then packages a DMG and signs, notarizes, staples and verifies that separately. Files appear in `release/` — versioned DMG and ZIP, their SHA-256 checksums, and `manifest.json` — only after every gate passes. Both archives hold the same stapled app, but the updater payload is the ZIP, **not** the DMG. `manifest.json` carries the ZIP's size, SHA-512 digest, Ed25519ph signature, versioned download URL and changelog notes; a checksum alone would not authenticate an update.
 
-Release Actions also need `INNERLY_UPDATE_PRIVATE_KEY` and `INNERLY_UPDATE_PUBLIC_KEY` secrets holding those PEM files. The workflow deletes its temporary copies even on failure and publishes the manifest beside both artifacts.
+In Actions the same script runs as `./scripts/release-macos.sh --ci`, taking every credential from secrets — `MACOS_SIGNING_IDENTITY`, `MACOS_SIGNING_P12_BASE64`, `MACOS_SIGNING_P12_PASSWORD`, `APPLE_NOTARY_KEY_P8`, `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER_ID`, `INNERLY_UPDATE_PRIVATE_KEY` and `INNERLY_UPDATE_PUBLIC_KEY`. It materializes them into one private temporary directory with a throwaway keychain and removes both through an `EXIT` trap, so nothing survives a failure.
 
 On failure, inspect `release/*-notary.json` and any `.log.json` diagnostics. The version gate skips already-published tags, so never replace a published version's signed artifacts — ship a new changelog version instead.
 

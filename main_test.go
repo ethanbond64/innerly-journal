@@ -93,12 +93,13 @@ func TestChangelogVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct{ changelog, want string }{
-		{"## v0.9.0\n## v0.10.0 - 2026-01-01\n## v0.1.0\n", "0.10.0"},
-		{"## v1.0.0\n## v0.99.99\n## v0.100.0\n", "1.0.0"},
-		{"## v0.0.9\n## v0.0.10\n", "0.0.10"},
-		{"## v01.0.0\n", ""},
-		{"# No versions\n", ""},
+	for _, tc := range []struct{ changelog, want, notes string }{
+		{"## v0.9.0\nnine\n## v0.10.0 - 2026-01-01\nten\n## v0.1.0\none\n", "0.10.0", "ten\n"},
+		{"## v1.0.0\none\n## v0.99.99\n## v0.100.0\n", "1.0.0", "one\n"},
+		{"## v0.0.9\n## v0.0.10\nlatest\n", "0.0.10", "latest\n"},
+		{"## v01.0.0\n", "", ""},
+		{"# No versions\n", "", ""},
+		{"## v0.2.0\n\n## v0.1.0\nnotes\n", "0.2.0", ""}, // empty notes must fail
 	} {
 		dir := t.TempDir()
 		if err := os.Mkdir(filepath.Join(dir, "scripts"), 0700); err != nil {
@@ -116,8 +117,21 @@ func TestChangelogVersion(t *testing.T) {
 			if err == nil {
 				t.Fatalf("accepted invalid changelog: %q", tc.changelog)
 			}
-		} else if err != nil || strings.TrimSpace(string(output)) != tc.want {
+			continue
+		}
+		if err != nil || strings.TrimSpace(string(output)) != tc.want {
 			t.Fatalf("changelog %q: got %q, %v; want %s", tc.changelog, output, err, tc.want)
+		}
+		// release-macos.sh takes the manifest's release notes from this mode.
+		notes := filepath.Join(dir, "notes.md")
+		if out, err := exec.Command("bash", path, "--notes", notes).CombinedOutput(); (err == nil) != (tc.notes != "") {
+			t.Fatalf("changelog %q: notes %q, %v", tc.changelog, out, err)
+		}
+		if tc.notes != "" {
+			written, err := os.ReadFile(notes)
+			if err != nil || string(written) != tc.notes {
+				t.Fatalf("changelog %q: notes %q, want %q", tc.changelog, written, tc.notes)
+			}
 		}
 	}
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { formatLongDateNoComma } from './date-format.js';
 import { homeRoute, viewRoute } from "./constants.js";
 import { Icon } from "./icon.jsx";
@@ -8,7 +8,7 @@ import { getDateNoTime } from "./utils.jsx";
 import { putEntry } from "./entry-handoff.js";
 import { PasswordModal } from "./password-modal.jsx";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
-import { attachEditorSave, editorSave } from './editor-saves.js';
+import { trackDraft } from './pending-writes.js';
 
 // Measures the pixel offset of the caret within the textarea's scroll area
 // using a hidden mirror div to account for word-wrap accurately.
@@ -156,16 +156,10 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
     const navigate = useNavigate();
     const [showHeader, setShowHeader] = useState(true);
 
-    const [buffer] = useState(() => editorSave(initialId, text, (id, value, draft) => new Promise((resolve, reject) => {
-        let saved = false;
-        const onSaved = data => { saved = true; resolve(data); };
-        const onFailed = error => reject(error instanceof Error ? error : new Error('Writing could not be saved.'));
-        const request = id === null
-            ? insertTextEntry(value, functionalDatetime, onSaved, onFailed, { draft })
-            : updateTextEntry(id, { text: value }, null, onSaved, onFailed, { draft });
-        // Session cancellation/401 can resolve without calling either callback.
-        Promise.resolve(request).then(() => { if (!saved) onFailed(); }, onFailed);
-    })));
+    const entryIdRef = useRef(initialId);
+    const valueRef = useRef(text);   // readable after the textarea has unmounted
+    const dirtyRef = useRef(false);  // text differs from what the journal has
+    const savingRef = useRef(null);  // promise for the in-flight save
     const [submitting, setSubmitting] = useState(false);
 
     const [saveState, setSaveState] = useState('saved'); // drives the status dot only
@@ -263,14 +257,55 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
         }
     };
 
+    // One save, resolving once the text has reached the journal.
+    const save = useCallback((draft) => {
+        const value = valueRef.current;
+        const id = entryIdRef.current;
+        dirtyRef.current = false;
+        const settled = new Promise((resolve, reject) => {
+            const onSaved = (data) => {
+                if (data && data.id) entryIdRef.current = data.id;
+                // Edits made while the request was in flight are still unsaved.
+                setSaveState(dirtyRef.current ? 'unsaved' : 'saved');
+                resolve(data);
+            };
+            const onFailed = () => {
+                dirtyRef.current = true; // the text never reached the journal
+                setSaveState('failed');
+                reject(new Error('Your writing could not be saved. Try saving again.'));
+            };
+            if (id === null) insertTextEntry(value, functionalDatetime, onSaved, onFailed, { draft });
+            else updateTextEntry(id, { text: value }, null, onSaved, onFailed, { draft });
+        });
+        savingRef.current = settled.finally(() => {
+            if (savingRef.current === settled) savingRef.current = null;
+        });
+        return savingRef.current;
+    }, [functionalDatetime]);
+
+    // Resolves once every edit so far has reached the journal. A save awaiting a
+    // lock password stays pending here until its retry settles.
+    const flush = useCallback(async () => {
+        await savingRef.current;
+        if (dirtyRef.current) await save(true);
+    }, [save]);
+
+    // Autosave every 3 seconds if the text is dirty and nothing is in flight. A
+    // failed save leaves the text dirty, so the next tick simply tries again.
+    // Leaving the editor flushes the draft so a restart can still wait for it.
     useEffect(() => {
-        const detach = attachEditorSave(buffer, state => setSaveState(previous => previous === 'failed' && state === 'unsaved' ? previous : state));
-        const timer = setInterval(() => buffer.flush().catch(() => {}), 3000);
-        return () => { clearInterval(timer); detach(); };
-    }, [buffer]);
+        const timer = setInterval(() => {
+            if (dirtyRef.current && !savingRef.current) save(true).catch(() => {});
+        }, 3000);
+        const leave = trackDraft(flush);
+        return () => { clearInterval(timer); leave(); };
+    }, [save, flush]);
 
     const onTextChange = () => {
-        buffer.change(textareaRef.current.value);
+        valueRef.current = textareaRef.current.value;
+        dirtyRef.current = true;
+        // A failure stays red until a save actually succeeds.
+        setSaveState(prev => prev === 'failed' ? prev : 'unsaved');
 
         // Typewriter autoscroll
         const textarea = textareaRef.current;
@@ -360,13 +395,14 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
         setSubmitting(true);
         try {
             // Final Save serializes behind autosave, including lock-password retries.
-            const data = await buffer.flush(false);
+            await savingRef.current;
+            const data = await save(false);
             if (textareaRef.current) {
                 putEntry(data);
                 navigate(viewRoute + data.id);
             }
         } catch {
-            setSaveState('failed');
+            // save() has already shown the failed status.
         } finally {
             setSubmitting(false);
         }
@@ -463,7 +499,7 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
                             onChange={onTextChange}
                             onScroll={handleTextareaScroll}
                             style={{ marginTop: '20px' }}
-                            defaultValue={buffer.value}
+                            defaultValue={text}
                         />
                     </div>
                     <div className="writeto-display"></div>

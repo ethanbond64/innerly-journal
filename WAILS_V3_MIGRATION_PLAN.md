@@ -97,31 +97,6 @@ If the docs site is blocked, use raw.githubusercontent.com or GitHub source. Che
 
 Deliverable: v3 dev launch and unsigned universal packaged app, with a functioning login/home/editor/media workflow.
 
-### Phase 1 implementation status (2026-06-14)
-
-Implemented, with the **interactive native acceptance gate still open**:
-
-- Pinned Wails module/CLI **v3.0.0-beta.33**, upstream commit `b710765493d2d541d1388d83a6731391fd9f2219`; npm runtime **3.0.0-beta.33**; Go **1.26.9** (also consumed by setup-go via go.mod).
-- Generated an untracked React/JavaScript Vite starter at `.work/v3-research/starter/ShellProbe` using the pinned CLI. Inspected tagged migration/signing/updater docs, starter Taskfiles, application/service/menu/window/asset APIs, runtime drag and configuration injection, and updater helper startup. The migration guide's illustrative `wails.json` is stale for this tag; actual starter uses Taskfiles + `build/config.yml`.
-- Replaced the v2 entry point with application creation **before** journal initialization (helper dispatch occurs in `application.New`), service registration, explicit 1200×850 / minimum 700×500 main window, native application/edit/window menus, and a once-guarded shutdown path. Kept independent-process `OpenWindow` and the owner's icon and `co.innerly` identity.
-- `/media/` middleware intercepts before both the dev proxy and embedded file server. Existing authorization/path/symlink restrictions are unchanged. Added shell routing/image-byte/logout tests and an isolated helper subprocess test proving helper dispatch does not create the journal directory.
-- Native full-size transparent title bar hides only the native title, keeps traffic lights, and uses `InvisibleTitleBarHeight: 28`; frontend reserves one 28px `--wails-draggable: drag` strip. Added browser assertions for one strip, padding and matching background in both themes. Actual traffic lights/dragging/fullscreen are **not yet verified**.
-- Necessary phase-2 overlap: generated v3 bindings (untracked; generated before compilation), a small runtime/service adapter, theme/browser calls and test mocks were ported so this shell does not depend on v2 globals. Native startup waits for beta.33's `wails:runtime-config-ready` event when necessary; OS metadata is injected after navigation, not necessarily before frontend module evaluation. The fuller phase-2 origin/preferences/navigation audit remains open.
-- Removed v2 config/runtime. Added macOS-only Taskfile build/package/dev commands following the starter conventions, without adding mobile/Linux/Windows targets. Bundle assets remain at **0.0.1**, with version consolidation deliberately left to phase 3. Release scripts were minimally adjusted for the new build arguments and concrete plist metadata; no signed release was attempted.
-
-Commands / validation (logs under `.work/v3-research/`):
-
-- `./scripts/desktop.sh setup` installs the pinned CLI/runtime dependencies.
-- `./scripts/desktop.sh bindings` regenerates bindings deterministically using `wails3 generate bindings -names -d frontend/bindings`.
-- **Passed:** `./scripts/desktop.sh test`: journal + shell/helper Go tests and 10 frontend unit tests.
-- **Passed:** `./scripts/desktop.sh race`: root shell/helper tests and journal race tests (~404 seconds for the journal suite). The macOS test linker emits deployment-target warnings on this host; packaged builds explicitly target macOS 12.
-- **Passed:** `./scripts/desktop.sh test-ui`: 26 WebKit/Chromium browser checks. Replaced a stale test for already-removed Settings desktop-window controls with the two-theme title-strip regression check.
-- **Passed clean generated-assets rebuild:** removed only generated `frontend/dist` and `frontend/bindings`, then ran `setup` and `build`. `setup` now generates bindings too. `./scripts/desktop.sh build` produces `build/bin/Innerly.app`, ad-hoc signed (not Developer ID signed/notarized); `lipo -info build/bin/Innerly.app/Contents/MacOS/Innerly` reports **x86_64 arm64**. `plutil -lint build/darwin/Info*.plist` passes.
-- `./scripts/desktop.sh dev` builds the development bundle, starts Vite on port 3000, and launches the process; log confirms v3 beta.33, Go 1.26.9 and the connected development asset server. A packaged process was also launched with a disposable data-directory override and then stopped.
-- **Blocker:** this session has no capturable display (`screencapture`: “could not create image from display”) and macOS UI accessibility is disabled. A live process is not proof of a working native login/home/editor/image flow. Before marking phase 1 complete, use a disposable journal to verify those workflows in both dev and universal packaged builds, Cmd-R/H/Q/edit shortcuts, normal close, title dragging/traffic lights/no double spacing in both themes, fullscreen/restore, and packaged production data-path selection. Do not use the owner's journal for these checks.
-
-Updater signing format and selected-version provider decisions remain intentionally unresolved until phase 4; phase 1 does not ship an updater or enable installs.
-
 ## Phase 2 — frontend bindings and desktop boundary
 
 1. Generate v3 service bindings via the pinned CLI, with a deterministic output location and generation command. Decide whether generated bindings are committed or generated before frontend compilation; make clean-clone builds work either way.
@@ -131,16 +106,6 @@ Updater signing format and selected-version provider decisions remain intentiona
 5. Change tests to mock the adapter/service boundary rather than v2 globals. Browser-only UI tests must not try to call a live native IPC transport. Verify v3 asset scheme/origin changes do not silently lose stored theme/preferences.
 
 Deliverable: no production imports of Wails v2, `frontend/wailsjs`, or direct v2 globals; testable v3 desktop adapter.
-
-### Phase 2 status
-
-- Binding generation and the desktop adapter were mostly implemented in phase 1. Kept that structure: no new adapter framework, native patch, preference service, or additional source files.
-- Audited production calls: only `native-desktop.js` imports v3 runtime/generated bindings; no v2 imports/globals remain. Existing pseudo-API mappings and test-boundary mocks are unchanged.
-- Added a bounded native-runtime readiness wait and a visible startup error instead of hanging indefinitely. External URL and background runtime failures are contained by the existing adapter; external URLs still require credential-free HTTPS with no webview fallback.
-- Verified deterministic binding generation and clean generated-assets builds. Added tests in the existing test files for rejected runtime calls, unsafe URLs, preference reloads and no native IPC in the browser fixture.
-- **Intentional display-preference reset, documented in README:** tagged macOS source changes the origin from `wails://wails/` to `wails://localhost/` (dev adds port 3000). Existing localStorage keys are unchanged, but v2 values are not accessible from the new origin. No v2 migration bridge or old-storage deletion; journal/account data is unaffected. Same-origin v3 reload persistence is covered by browser tests; native close/relaunch persistence still needs an interactive Mac.
-- **Open requirement:** beta.33's macOS delegate has no supported navigation-policy hook. Existing app links use the HTTPS-only adapter, but that is not a guarantee against arbitrary programmatic native-webview navigation. Do not mark phase 2 fully accepted or ship on that assumption. Resolve through a supported upstream API/version or an explicit owner decision, rather than introducing a custom WKNavigationDelegate shim.
-- Validation after simplification: Go tests, 12 frontend unit tests, 28 WebKit/Chromium UI checks, and the universal packaged build passed. No new files remain. Phase 1's interactive native smoke-test gates remain open. Version metadata and updater work have not been started.
 
 ## Phase 3 — authoritative v0.1.0 build metadata
 
@@ -154,11 +119,8 @@ Deliverable: no production imports of Wails v2, `frontend/wailsjs`, or direct v2
 
 The owner's subsequent instruction supersedes the metadata requirements above: **only the version is wanted**, and the highest numeric `## vX.Y.Z` changelog heading is the authority. No VERSION file, app-info service, build/commit metadata, build ID or updater configuration is being added.
 
-- `release-version.sh --version` selects the highest changelog version offline; release notes are taken from that same heading, even if headings are out of order.
-- Desktop builds inject the value into the existing `journal.App.Version()` and populate both bundle version fields before signing. Existing release artifact naming derives from that bundle version. Frontend package metadata already matches v0.1.0.
-- Prepended v0.1.0 without changing release history. DMG and updater features are explicitly not claimed as implemented.
-- Validation passed: Go tests (including out-of-order/numeric changelog fixtures), 12 frontend unit tests, unsigned universal and arm64 development builds. Both bundle version fields and the injected journal version report `0.1.0`. Release fixtures verified highest-version notes, already-published skip and API-error failure.
-- Phase 1/2 native acceptance gates and later updater/release work remain open.
+- `release-version.sh --version` selects the highest changelog version offline; release notes come from that same heading, even if headings are out of order.
+- Desktop builds inject the value into the existing `journal.App.Version()` and populate both bundle version fields before signing. Release artifact naming derives from that bundle version.
 
 ## Phase 4 — GitHub releases and selected-version updater
 
@@ -196,30 +158,6 @@ A checksum downloaded from the same location detects corruption but is not equiv
 
 Deliverable: a selected version can be safely staged and explicitly installed/restarted; tests prove it is the selected version, not always latest.
 
-### Phase 4 progress — small built-in integration
-
-Following the owner's instruction to fetch master and minimize custom code:
-
-- Added one page, `about-page.jsx`, accessible before login from the app menu and through the account menu, using the shared navbar. It fetches the public repository's `master/CHANGELOG.md` as plain text. No Markdown renderer or sanitization code. Per the owner's later UI instructions, only the Changelog heading and Check for Updates button remain; there is no installed-version display or extra title/subtitle.
-- Wails' stock GitHub provider handles stable/latest discovery, HTTP, and semantic version comparison. The only custom selection code matches the macOS universal ZIP, excluding DMGs and sidecars. A small bound `UpdateService.Check` returns its result to the page; no custom provider, release catalog or updater UI.
-- **This is check-only, not completion of the original phase 4.** No download, installation, restart, periodic check or update-window action is exposed. Signed payload verification and editor/other-process restart safety are not ready, so installation remains off. The selected-version picker from the original plan is also not implemented; the current check uses Wails' built-in latest-release behavior.
-- Confirmed the repository and master changelog are publicly readable without credentials. Validation passed: Go tests (including ZIP asset selection), 12 frontend unit tests, 32 WebKit/Chromium UI checks, and the unsigned universal build. UI tests mock the adapter and master-changelog request, including before-login access and failures. No native install/restart was attempted.
-- Earlier native acceptance/navigation gates remain open. When installation is enabled, prefer Wails' default update window and pipeline rather than adding a custom UI/framework.
-
-### Phase 4 completion — macOS implementation
-
-The owner subsequently requested the remaining phase 4/5 code, explicitly **without using Apple credentials for testing**. The check-only scope above is superseded:
-
-- `updates.go` lists all newer stable releases from the fixed public repository, paginates with bounded bodies/timeouts and a one-minute cache, reports API/rate failures, and uses the existing pinned `x/mod/semver` dependency. Missing/incompatible ZIP or signature metadata makes a release unavailable. No token or custom Markdown renderer.
-- A small selected-release provider returns the exact checked version and delegates manifest parsing/download to Wails' endpoint provider. Serialized operations keep the selection immutable through verification/staging/restart; restart never resolves latest again. Wails performs ZIP signature verification, extraction, helper replacement/recovery and relaunch. Only its stock SHA-512/Ed25519ph format is accepted.
-- The existing minimal Changelog page retains its navbar and master text. Manual checks reveal a version selector, plain-text release notes/dates, download/progress/cancel, and explicit Install and Restart. No extra native update window or automatic release checks/install/restart.
-- A shared editor-save buffer survives route unmounts, awaits in-flight saves, retries dirty writing, preserves failed drafts in memory, and blocks restart on failure/password prompts. The desktop restart action freezes user input until the save barrier and restart attempt finish; a failed restart restores interaction. Logout clears retained plaintext. Native Refresh is suppressed during restart preparation.
-- `update_macos.go` rejects mounted/translocated/unwritable locations and validates the signed staged app's exact version, bundle ID, both CPU slices, minimum OS, Developer ID team and Gatekeeper status. No elevated installer. Per-user shared instance locks require other processes to close; an atomic helper-PID marker blocks new journal opens through the parent/helper handoff. Existing journal shutdown cancels/awaits workers and closes SQLite before the helper can swap.
-- Release builds now pin the maintainer-supplied public PEM via a base64-safe linker value, after a Wails CLI keypair preflight. Ordinary/development builds cannot install updates. No production key generation or trust key downloaded from the feed.
-- Automated tests exercise real Wails download/signature verification/extraction with disposable keys and in-memory HTTP; missing/stripped signatures, wrong keys, corruption, selection of a non-latest version, concurrent operations, cancellation, version/team/OS rejection, instance guards and helper failure recovery. macOS signing/Gatekeeper/notary commands and restart are faked in tests. Frontend tests cover detached/in-flight/failed/password saves and explicit exact-version actions.
-- **Passed validation:** Go tests, root-package race tests, 19 frontend unit tests, 38 WebKit/Chromium UI checks, and the universal ad-hoc packaged build. Verified disposable-key linker pinning and its absence from the default build; rechecked real Wails DMG creation/mounting and CLI manifest verification using only the ad-hoc app and disposable keys. Logs: `.work/phase5/update-{tests,race,ui,build}.log`, `key-link-check.log`, `final-packaging.log`.
-- **Implementation complete; native release acceptance remains manual.** No Apple credentials were queried/used, no notarization submitted, and no real app replacement/restart attempted. Earlier phase 1/2 native/navigation gates remain unchanged.
-
 ## Phase 5 — DMG and update packaging
 
 1. Adapt `scripts/release-macos.sh` to pinned v3 build commands while retaining its credential flags and validation checks where applicable. Preserve universal arm64+x86_64 output; verify with `lipo -info` rather than just naming a build universal.
@@ -231,18 +169,6 @@ The owner subsequently requested the remaining phase 4/5 code, explicitly **with
 7. Generate update signature/manifest metadata and checksums from the **final immutable ZIP bytes**. Any repackaging after signing invalidates verification.
 8. Output documented filenames for DMG, updater ZIP, checksums, and per-release update metadata. Keep naming consistent with the app provider and tests.
 9. Clean staging/mounts even on failure, and ensure stale artifacts cannot be mistaken for a successful new release. Never mutate published signed artifacts in place as part of a retry without an explicit policy.
-
-### Phase 5 implementation status
-
-Packaging implementation is in place, including the phase 4 public-key pinning integration:
-
-- Extended the existing release script, retaining Apple credential flags and release-HOME separation. It uses the pinned Wails CLI to build a basic DMG containing the stapled app and Applications symlink, then signs/notarizes/staples/verifies the DMG separately. The ZIP contains only the same stapled `Innerly.app`.
-- Wails `updater manifest -key` generates SHA-512/Ed25519ph verification data for the final ZIP, and `updater verify -publickey` gates output. The manifest also contains release notes and a version-specific GitHub URL. **Artifact bytes are signed, not arbitrary manifest metadata.** The DMG is not included as an updater candidate. Both formats have SHA-256 checksum sidecars.
-- Requires an owner-provisioned persistent Wails signing keypair via `--update-key` / `--update-public-key`. No production keys were generated or changed. The public key is automatically pinned in production builds by the release script; the same persistent keypair must be reused for subsequent releases. Private `*.key` files are ignored.
-- Necessary CI overlap: release Actions writes/removes updater key files from two new PEM secrets (`INNERLY_UPDATE_PRIVATE_KEY`, `INNERLY_UPDATE_PUBLIC_KEY`) and uploads the DMG/checksum and manifest alongside the existing ZIP/checksum. No secrets were configured or release published. Broader phase 6 publication/concurrency hardening is not complete.
-- Outputs are staged and moved into `release/` only after all verification succeeds; stale outputs are removed first. Added existing-file tests for success and failed builds, app/DMG notarization, app stapling, and Wails verification. These tests fake signing services and never use credentials.
-- **Passed:** Go tests and 12 frontend unit tests. Actual Wails DMG/ZIP smoke checks using the existing ad-hoc universal app: mounted read-only, Applications target, identical app contents, valid ad-hoc signatures, both architecture slices, plist version/identity, valid Wails artifact verification and rejection of a wrong key and tampered ZIP. Logs: `.work/phase5/tests.log`, `.work/phase5/packaging-smoke.log`. Disposable signing private keys were removed afterward.
-- **Code complete; still manual acceptance:** real Developer ID signing, both Apple notarizations and Gatekeeper acceptance, clean-machine/quarantine launch, interactive drag-to-Applications and a real signed-version update/restart. No Apple submission or credential lookup was attempted. Phase 4 code is now integrated as described above; phase 6 CI hardening remains separate.
 
 ## Phase 6 — CI and release publication
 
@@ -292,7 +218,5 @@ Packaging implementation is in place, including the phase 4 public-key pinning i
 ## Completion and handoff
 
 Update `README.md` with real prerequisites, setup/dev/test/build/release commands, data directories, versioning, installation and update behavior. Add concise release-maintainer documentation for secrets, public-key setup/rotation implications, artifact names, signing/notarization, verification and safe reruns. Public keys may be committed; private keys may not.
-
-Keep the plan/checklist updated as work proceeds: record selected Wails/runtime/toolchain versions, exact commands, signature metadata format, the selected-version provider approach, tests run, manual checks and blockers. Do not claim the native update flow is tested just because frontend compilation passes.
 
 Implementation is complete when the app genuinely runs on v3, the title bar remains draggable, the signed DMG works, About shows accurate GitHub releases, a chosen newer version installs/restarts through first-party Wails updater machinery, and CI can reproducibly publish v0.1.0 with all required assets. If external signing credentials or interactive macOS tests are unavailable, finish what can be verified and report the remaining manual/release gates explicitly rather than fabricating success.

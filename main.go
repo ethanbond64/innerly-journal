@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/updater"
@@ -34,13 +35,6 @@ func mediaMiddleware(store func() *journal.App) application.Middleware {
 }
 
 func main() {
-	// The Wails helper never opens storage; its PID keeps new app instances
-	// waiting until the framework has finished replacement/relaunch.
-	if err := handoffUpdateGuard(); err != nil {
-		_ = os.WriteFile(os.Getenv("WAILS_UPDATER_HELPER_READY"), []byte("error: "+err.Error()), 0600)
-		log.Print(err)
-		return
-	}
 	var store *journal.App
 	var updates *UpdateService
 	var closeOnce sync.Once
@@ -64,30 +58,22 @@ func main() {
 		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		OnShutdown: closeJournal,
 	})
-	dir, err := instanceDirectory()
-	if err != nil {
-		log.Print(err)
-		return
-	}
-	guard, err := openInstanceGuard(dir)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-	defer guard.Close()
-	store, err = journal.NewApp(journal.Config{})
+	store, err := journal.NewApp(journal.Config{})
 	if err != nil {
 		log.Print(err)
 		return
 	}
 	defer closeJournal() // Also covers errors returned before the run loop starts.
-	provider := &releaseProvider{client: newReleaseClient()}
+	lock := openInstanceLock()
+	defer lock.Close()
+	// Downloads are large; the catalog request carries its own shorter context.
+	provider := &releaseProvider{client: &http.Client{Timeout: 10 * time.Minute}}
 	executable, _ := os.Executable()
 	target := appBundle(executable)
 	if resolved, err := filepath.EvalSymlinks(executable); err != nil || resolved != executable {
 		target = "" // keep our target identical to Wails'; no symlink installations
 	}
-	updates = newUpdateService(app.Context(), app.Updater, provider, guard, target, store.Version())
+	updates = newUpdateService(app.Context(), app.Updater, provider, lock, target, store.Version())
 	if err := app.Updater.Init(updater.Config{
 		CurrentVersion: store.Version(), PublicKey: updates.key,
 		Providers: []updater.Provider{provider}, Window: updater.WindowNone,

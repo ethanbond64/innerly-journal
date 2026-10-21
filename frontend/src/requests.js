@@ -2,7 +2,6 @@ import { journalFetch as fetch } from "./desktop.js";
 import { logout, getLockByDefault } from "./utils.jsx";
 import { loginRoute } from "./constants.js";
 import { replace } from "./history.js";
-import { setSaveNeedsPassword } from './editor-saves.js';
 
 const dayLimit = 200;
 
@@ -23,10 +22,7 @@ export const onLockAuthExpired = (subscriber) => {
     return () => lockAuthSubscribers.delete(subscriber);
 };
 
-const flushLockRetries = () => {
-    setSaveNeedsPassword(false);
-    pendingLockRetries.splice(0).forEach(({ retry }) => retry());
-};
+const flushLockRetries = () => pendingLockRetries.splice(0).forEach(({ retry }) => retry());
 
 const getHeaders = () => ({ 'Content-Type': 'application/json' });
 
@@ -43,7 +39,6 @@ const handleResponse = async (response) => {
 
         if (response.status === 401 && data && data[LOCK_AUTH_EXPIRED] === true) {
             error.lockAuthExpired = true;
-            setSaveNeedsPassword(true);
             lockAuthSubscribers.forEach((subscriber) => subscriber());
         }
 

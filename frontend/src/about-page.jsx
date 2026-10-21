@@ -39,9 +39,11 @@ export const AboutPage = () => {
             } catch { /* An update-status failure must not interrupt the journal. */ }
         };
         refresh();
+        // Only an operation in progress reports anything worth polling for.
+        if (!busy && !downloading) return () => { active = false; };
         const timer = setInterval(refresh, 500);
         return () => { active = false; clearInterval(timer); };
-    }, []);
+    }, [busy, downloading]);
 
     const perform = async action => {
         setBusy(true);

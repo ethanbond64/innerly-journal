@@ -1,4 +1,4 @@
-import { withSavedWriting } from './editor-saves.js';
+import { flushWriting } from './pending-writes.js';
 
 let adapter;
 // Also used by unit tests; browser UI fixtures replace only this boundary.
@@ -20,7 +20,11 @@ export const checkForUpdates = () => {
 export const updateStatus = () => adapter.updateStatus();
 export const downloadUpdate = version => adapter.downloadUpdate(version);
 export const cancelUpdate = () => adapter.cancelUpdate();
-export const restartUpdate = version => withSavedWriting(() => adapter.restartUpdate(version));
+// Writing in progress reaches the journal before the app is replaced.
+export const restartUpdate = async version => {
+    await flushWriting();
+    return adapter.restartUpdate(version);
+};
 export const isDesktop = () => !!adapter?.isDesktop();
 export const isMacDesktop = () => isDesktop() && adapter.isMac();
 export const desktopApp = () => {

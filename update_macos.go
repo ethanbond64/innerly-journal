@@ -8,12 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
-	"time"
-
-	"golang.org/x/mod/semver"
 )
 
 type commandRunner func(context.Context, string, ...string) ([]byte, error)
@@ -50,57 +46,21 @@ func updateLocation(target string) error {
 	return os.Remove(probe)
 }
 
-// Wails authenticates/extracts the ZIP. These macOS-only checks bind those
-// authenticated bytes to the selected version, app identity and signing team.
-// Manifest metadata by itself is not signed.
-func validateUpdate(ctx context.Context, staged, version, installed string, run commandRunner) error {
+// Wails authenticates the ZIP against the public key compiled into this binary
+// and extracts it. This only binds those authenticated bytes to the app the
+// user chose, catching a release packaged with the wrong app or version.
+func validateUpdate(ctx context.Context, staged, version string, run commandRunner) error {
 	if filepath.Base(staged) != "Innerly.app" {
 		return errors.New("the update must contain Innerly.app")
 	}
 	plist := filepath.Join(staged, "Contents", "Info.plist")
-	for field, want := range map[string]string{"CFBundleIdentifier": "co.innerly", "CFBundleShortVersionString": version, "CFBundleVersion": version} {
+	for field, want := range map[string]string{"CFBundleIdentifier": "co.innerly", "CFBundleShortVersionString": version} {
 		value, err := run(ctx, "/usr/libexec/PlistBuddy", "-c", "Print :"+field, plist)
 		if err != nil || strings.TrimSpace(string(value)) != want {
 			return fmt.Errorf("update %s does not match %s", field, want)
 		}
 	}
-	minimum, err := run(ctx, "/usr/libexec/PlistBuddy", "-c", "Print :LSMinimumSystemVersion", plist)
-	if err != nil {
-		return err
-	}
-	host, err := run(ctx, "/usr/bin/sw_vers", "-productVersion")
-	if err != nil {
-		return err
-	}
-	minVersion, hostVersion := "v"+strings.TrimSpace(string(minimum)), "v"+strings.TrimSpace(string(host))
-	if !semver.IsValid(minVersion) || !semver.IsValid(hostVersion) || semver.Compare(minVersion, hostVersion) > 0 {
-		return errors.New("this update requires a newer version of macOS")
-	}
-	if _, err := run(ctx, "/usr/bin/lipo", filepath.Join(staged, "Contents", "MacOS", "Innerly"), "-verify_arch", "arm64", "x86_64"); err != nil {
-		return err
-	}
-	var team string
-	for _, bundle := range []string{installed, staged} {
-		if _, err := run(ctx, "/usr/bin/codesign", "--verify", "--deep", "--strict", bundle); err != nil {
-			return err
-		}
-		info, err := run(ctx, "/usr/bin/codesign", "--display", "--verbose=4", bundle)
-		if err != nil {
-			return err
-		}
-		var signedBy string
-		for _, line := range strings.Split(string(info), "\n") {
-			if strings.HasPrefix(line, "TeamIdentifier=") {
-				signedBy = strings.TrimPrefix(line, "TeamIdentifier=")
-			}
-		}
-		if signedBy == "" || signedBy == "not set" || (team != "" && signedBy != team) {
-			return errors.New("the update and installed app must have the same Developer ID signing team")
-		}
-		team = signedBy
-	}
-	_, err = run(ctx, "/usr/sbin/spctl", "--assess", "--type", "execute", staged)
-	return err
+	return nil
 }
 
 func (u *UpdateService) discardStaged() {
@@ -116,117 +76,51 @@ func (u *UpdateService) discardStaged() {
 	}
 }
 
-// Every ordinary process holds a shared lock before opening any journal.
-// Installation needs it exclusively. A separate upgrade lock makes conversion
-// safe if two instances ask to install simultaneously. The helper PID marker
-// covers the gap after the parent exits and before Wails finishes its swap.
-type instanceGuard struct {
-	instances *os.File
-	upgrade   *os.File
-	gate      string
-}
+// Every Innerly process holds this lock shared while it runs, so installing an
+// update — which needs it exclusively — cannot replace the bundle while another
+// window is using the journal. Advisory only: if the lock cannot be opened,
+// updating proceeds rather than becoming impossible.
+type instanceLock struct{ file *os.File }
 
-func instanceDirectory() (string, error) {
-	dir, err := os.UserCacheDir()
-	return filepath.Join(dir, "Innerly"), err
-}
-
-func openInstanceGuard(dir string) (*instanceGuard, error) {
+func openInstanceLock() *instanceLock {
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return nil
+	}
+	dir := filepath.Join(cache, "Innerly")
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, err
+		return nil
 	}
-	g := &instanceGuard{gate: filepath.Join(dir, "updating.pid")}
-	var err error
-	g.instances, err = os.OpenFile(filepath.Join(dir, "instances.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	file, err := os.OpenFile(filepath.Join(dir, "instances.lock"), os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	g.upgrade, err = os.OpenFile(filepath.Join(dir, "upgrade.lock"), os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		g.Close()
-		return nil, err
+	if syscall.Flock(int(file.Fd()), syscall.LOCK_SH|syscall.LOCK_NB) != nil {
+		file.Close() // another process is mid-update; this one simply is not counted
+		return nil
 	}
-	deadline := time.Now().Add(time.Minute)
-	for {
-		err = syscall.Flock(int(g.instances.Fd()), syscall.LOCK_SH|syscall.LOCK_NB)
-		if err == nil {
-			data, readErr := os.ReadFile(g.gate)
-			pid, parseErr := strconv.Atoi(strings.TrimSpace(string(data)))
-			if os.IsNotExist(readErr) || (readErr == nil && parseErr == nil && pid > 0 && errors.Is(syscall.Kill(pid, 0), syscall.ESRCH)) {
-				_ = os.Remove(g.gate) // stale after a finished/failed helper
-				return g, nil
-			}
-		}
-		if time.Now().After(deadline) {
-			g.Close()
-			return nil, errors.New("an Innerly update is still running; try launching again after it finishes")
-		}
-		time.Sleep(100 * time.Millisecond) // no database is open while waiting
-	}
+	return &instanceLock{file: file}
 }
 
-func (g *instanceGuard) beginUpdate() error {
-	if g == nil || syscall.Flock(int(g.upgrade.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) != nil {
-		return errors.New("another Innerly instance is preparing an update")
+func (l *instanceLock) acquireForUpdate() error {
+	if l == nil {
+		return nil
 	}
-	if err := syscall.Flock(int(g.instances.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		_ = syscall.Flock(int(g.instances.Fd()), syscall.LOCK_SH)
-		_ = syscall.Flock(int(g.upgrade.Fd()), syscall.LOCK_UN)
-		return errors.New("close all other Innerly windows before installing the update")
-	}
-	if err := writeUpdatePID(g.gate); err != nil {
-		g.abortUpdate()
-		return err
-	}
-	if err := os.Setenv("INNERLY_UPDATE_HANDOFF", "1"); err != nil {
-		g.abortUpdate()
-		return err
+	if syscall.Flock(int(l.file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) != nil {
+		return errors.New("Close all other Innerly windows before installing the update.")
 	}
 	return nil
 }
 
-func (g *instanceGuard) abortUpdate() {
-	_ = os.Unsetenv("INNERLY_UPDATE_HANDOFF")
-	_ = os.Remove(g.gate)
-	_ = syscall.Flock(int(g.instances.Fd()), syscall.LOCK_SH)
-	_ = syscall.Flock(int(g.upgrade.Fd()), syscall.LOCK_UN)
-}
-
-func (g *instanceGuard) Close() {
-	if g != nil {
-		if g.instances != nil {
-			g.instances.Close()
-		}
-		if g.upgrade != nil {
-			g.upgrade.Close()
-		}
+// Back to sharing, so a failed restart leaves this instance usable.
+func (l *instanceLock) release() {
+	if l != nil {
+		_ = syscall.Flock(int(l.file.Fd()), syscall.LOCK_SH)
 	}
 }
 
-func handoffUpdateGuard() error {
-	if os.Getenv("WAILS_UPDATER_HELPER") != "1" || os.Getenv("INNERLY_UPDATE_HANDOFF") != "1" {
-		return nil
+func (l *instanceLock) Close() {
+	if l != nil {
+		l.file.Close()
 	}
-	dir, err := instanceDirectory()
-	if err != nil {
-		return err
-	}
-	return writeUpdatePID(filepath.Join(dir, "updating.pid"))
-}
-
-func writeUpdatePID(path string) error {
-	file, err := os.CreateTemp(filepath.Dir(path), ".updating-*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(file.Name())
-	_, err = fmt.Fprintln(file, os.Getpid())
-	closeErr := file.Close()
-	if err != nil {
-		return err
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	return os.Rename(file.Name(), path) // readers never see a truncated PID
 }

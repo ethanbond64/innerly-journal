@@ -133,7 +133,6 @@ test('updates download only the selected version and restart only on explicit co
     await page.evaluate(() => { window.journalTest.restartError = true; });
     await page.getByRole('button', { name: 'Install and Restart' }).click();
     await expect(page.getByText('Close other Innerly windows before installing.')).toBeVisible();
-    expect(await page.evaluate(() => document.getElementById('root').inert)).toBe(false);
     expect(await page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'restart-update'))).toEqual([['restart-update', '0.2.0']]);
 });
 
@@ -168,9 +167,9 @@ test('Install and Restart waits for writing saved after leaving the editor', asy
     });
     await page.locator('#writeto').fill('Writing must reach the journal before restarting.');
     await page.evaluate(() => { window.location.hash = '#/about'; });
+    // Leaving the editor flushes the draft; that save is still in flight.
     await expect.poll(() => page.evaluate(() => window.journalTest.pending.length)).toBe(1);
     await page.getByRole('button', { name: 'Install and Restart' }).click();
-    await expect.poll(() => page.evaluate(() => document.getElementById('root').inert)).toBe(true);
     expect(await page.evaluate(() => window.journalTest.calls.some(call => call[0] === 'restart-update'))).toBe(false);
     await page.evaluate(() => window.journalTest.pending.shift()());
     await expect.poll(() => page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'restart-update'))).toEqual([['restart-update', '0.2.0']]);

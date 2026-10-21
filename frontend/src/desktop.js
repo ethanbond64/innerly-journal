@@ -1,5 +1,38 @@
-export const isDesktop = () => !!window.go?.journal?.App;
-export const desktopApp = () => window.go.journal.App;
+let adapter;
+// Also used by unit tests; browser UI fixtures replace only this boundary.
+export const setDesktopAdapter = (value) => { adapter = value; };
+export const initializeDesktop = async () => {
+    if (import.meta.env?.MODE === 'test') {
+        const { testDesktop } = await import('../tests/desktop-adapter.js');
+        setDesktopAdapter(testDesktop);
+    } else {
+        const { nativeDesktop, waitForNativeDesktop } = await import('./native-desktop.js');
+        await waitForNativeDesktop();
+        setDesktopAdapter(nativeDesktop);
+    }
+};
+// Opens Wails' update window, which owns the download, verification and restart.
+export const checkForUpdates = () => {
+    if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
+    return adapter.checkForUpdates();
+};
+export const updateStatus = () => adapter.updateStatus();
+export const isDesktop = () => !!adapter?.isDesktop();
+export const isMacDesktop = () => isDesktop() && adapter.isMac();
+export const desktopApp = () => {
+    if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
+    return adapter.journal;
+};
+export const setWindowBackground = async (...rgb) => {
+    if (!isDesktop()) return false;
+    try {
+        await adapter.setBackground(...rgb);
+        return true;
+    } catch {
+        // Cosmetic native failures must not break journal/theme changes.
+        return false;
+    }
+};
 
 const response = (body, status = 200) => ({ ok: status < 400, status, statusText: body.message || '', json: async () => body });
 
@@ -64,12 +97,16 @@ export const journalFetch = async (path, options = {}) => {
     return response({ ...result, 'lock-auth-expired': false });
 };
 
-export const openExternal = (event, link) => {
+export const openExternal = async (event, link) => {
     event.preventDefault();
+    if (!isDesktop() || typeof link !== 'string') return false;
     try {
         const url = new URL(link);
-        if (url.protocol === 'https:' && !url.username && !url.password) window.runtime.BrowserOpenURL(url.href);
+        if (url.protocol !== 'https:' || url.username || url.password) return false;
+        await adapter.openURL(url.href);
+        return true;
     } catch {
-        return;
+        // Invalid URLs and OS/browser failures must not trigger webview fallback.
+        return false;
     }
 };

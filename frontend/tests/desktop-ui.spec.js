@@ -7,11 +7,12 @@ test('media requests fall through to Wails instead of receiving the app HTML', a
 });
 
 // Exercise the real React UI in WebKit and Chromium with an in-memory Wails boundary.
-const desktop = async (page, { count = 1, media = false, expired = false } = {}) => {
-    await page.addInitScript(({ count, media, expired }) => {
+const desktop = async (page, { count = 1, media = false, expired = false, loggedIn = true } = {}) => {
+    await page.addInitScript(({ count, media, expired, loggedIn }) => {
         const user = { id: 1, email: 'owner@example.com', settings: { lock_by_default: true } };
         const result = (data = null) => ({ data, success: true });
-        const state = window.journalTest = { calls: [], expired, entries: [], pending: [], delay: false };
+        const state = window.journalTest = { calls: [], expired, entries: [], pending: [], delay: false,
+            update: { current: '0.1.0', disabled: '' } };
         for (let i = 0; i < count; i++) {
             const date = new Date();
             date.setDate(date.getDate() - i);
@@ -19,7 +20,8 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
                 entry_data: { title: `Entry ${i + 1}`, text: `Text ${i + 1}`, sentiment: 'neutral', link: 'https://example.com/', path: '/images/apple-touch-icon128.png' } });
         }
         const methods = {
-            CurrentUser: () => result(user),
+            CurrentUser: () => result(loggedIn ? user : null),
+            Version: async () => '0.1.0',
             FetchEntry: (id) => result(state.entries.find(e => e.id === id)),
             FetchEntries: async (q) => {
                 state.calls.push(['fetch', q]);
@@ -58,10 +60,77 @@ const desktop = async (page, { count = 1, media = false, expired = false } = {})
             OpenWindow: () => { state.calls.push(['window']); return result(); },
             Logout: () => result(),
         };
-        window.go = { journal: { App: methods } };
-        window.runtime = { WindowUnfullscreen: () => state.calls.push(['unfullscreen']), BrowserOpenURL: () => state.calls.push(['external']) };
-    }, { count, media, expired });
+        window.__innerlyTestDesktop = {
+            journal: methods, openURL: () => state.calls.push(['external']),
+            // The real method blocks while Wails' own window runs the update.
+            checkForUpdates: async () => {
+                state.calls.push(['check-updates']);
+                if (state.updateError) throw new Error('Close all other Innerly windows before installing an update.');
+                if (state.delayCheck) await new Promise(resolve => state.pending.push(resolve));
+            },
+            updateStatus: async () => structuredClone(state.update),
+        };
+    }, { count, media, expired, loggedIn });
 };
+
+test('About uses the shared navbar and minimal changelog header before login', async ({ page }) => {
+    await desktop(page, { loggedIn: false });
+    const notes = '# Changelog\n## v0.2.0\n<b>Plain changelog text</b>';
+    await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ body: notes }));
+    await page.goto('/#/about');
+    await expect(page.locator('nav.navbar')).toHaveCount(1);
+    await expect(page.getByRole('heading')).toHaveText('Changelog');
+    await expect(page.getByRole('link', { name: 'Back', exact: true })).toHaveCount(0);
+    await expect(page.locator('pre')).toHaveText(notes);
+    await expect(page.locator('pre b')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Check for Updates' })).toBeEnabled();
+});
+
+test('About keeps the shared layout when the changelog fetch fails', async ({ page }) => {
+    await desktop(page);
+    await page.route('https://raw.githubusercontent.com/ethanbond64/innerly-once/master/CHANGELOG.md', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+    await page.goto('/#/');
+    await page.locator('.custom-letter-box').click();
+    await page.getByRole('link', { name: 'Updates', exact: true }).click();
+    await expect(page.locator('nav.navbar')).toHaveCount(1);
+    await expect(page.getByRole('heading')).toHaveText('Changelog');
+    await expect(page.locator('pre')).toHaveText('Unable to load the changelog. Please try again later.');
+});
+
+test('Check for Updates hands off to the desktop updater and surfaces its refusals', async ({ page }) => {
+    await desktop(page, { loggedIn: false });
+    await page.route('https://raw.githubusercontent.com/**', route => route.fulfill({ body: '# Changelog' }));
+    await page.goto('/#/about');
+    await expect(page.getByText('Installed version: v0.1.0')).toBeVisible();
+    await page.evaluate(() => { window.journalTest.delayCheck = true; });
+    await page.getByRole('button', { name: 'Check for Updates' }).click();
+    // Only Wails may drive the update; the page just waits for its window.
+    await expect(page.getByRole('button', { name: 'Checking…' })).toBeDisabled();
+    expect(await page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'check-updates'))).toEqual([['check-updates']]);
+    await page.evaluate(() => window.journalTest.pending.shift()());
+    await expect(page.getByRole('button', { name: 'Check for Updates' })).toBeEnabled();
+    await page.evaluate(() => { window.journalTest.delayCheck = false; window.journalTest.updateError = true; });
+    await page.getByRole('button', { name: 'Check for Updates' }).click();
+    await expect(page.getByRole('status')).toHaveText('Close all other Innerly windows before installing an update.');
+});
+
+test('a build that cannot install updates says so instead of offering to try', async ({ page }) => {
+    await desktop(page);
+    await page.route('https://raw.githubusercontent.com/**', route => route.fulfill({ body: '# Changelog' }));
+    await page.addInitScript(() => {
+        const ready = () => {
+            if (!window.journalTest) return setTimeout(ready, 0);
+            window.journalTest.update = { current: '0.1.0', disabled: 'Move Innerly to Applications and launch it there before updating.' };
+        };
+        ready();
+    });
+    await page.goto('/#/about');
+    await expect(page.getByText('Move Innerly to Applications and launch it there before updating.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Check for Updates' })).toBeDisabled();
+    await page.locator('.custom-letter-box').click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+});
 
 test('activity squares open the matching day page', async ({ page }) => {
     await desktop(page);
@@ -211,12 +280,41 @@ test('a changed search discards an older delayed response', async ({ page }) => 
     await expect(page.getByText('Entry 3', { exact: true })).toBeAttached();
 });
 
-test('settings can exit native fullscreen and open an independent window', async ({ page }) => {
+test('display preferences survive reload without native IPC', async ({ page }) => {
+    const nativeRequests = [];
+    page.on('request', request => {
+        if (new URL(request.url()).pathname.startsWith('/wails/')) nativeRequests.push(request.url());
+    });
     await desktop(page);
     await page.goto('/#/settings');
-    await page.getByRole('button', { name: 'Exit fullscreen' }).click();
-    await page.getByRole('button', { name: 'Open another window' }).click();
-    const calls = await page.evaluate(() => window.journalTest.calls);
-    expect(calls).toContainEqual(['unfullscreen']);
-    expect(calls).toContainEqual(['window']);
+    await page.locator('label[for="switch"]').click();
+    await page.locator('label[for="typewriterSwitch"]').click();
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('#switch')).toBeChecked();
+    await expect(page.locator('#typewriterSwitch')).not.toBeChecked();
+    expect(nativeRequests).toEqual([]);
+});
+
+test('desktop reserves exactly one draggable title strip in both themes', async ({ page }) => {
+    await desktop(page);
+    await page.goto('/#/settings');
+    await expect(page.locator('.window-titlebar')).toHaveCount(1);
+    for (const dark of [false, true]) {
+        if (await page.locator('#switch').isChecked() !== dark) {
+            await page.locator('label[for="switch"]').click();
+        }
+        await expect(page.locator('html')).toHaveAttribute('data-theme', dark ? 'dark' : 'light');
+        const titlebar = await page.locator('.window-titlebar').evaluate((element) => {
+            const style = getComputedStyle(element);
+            return {
+                height: style.height,
+                drag: style.getPropertyValue('--wails-draggable').trim(),
+                background: style.backgroundColor,
+                pageBackground: getComputedStyle(document.body).backgroundColor,
+                padding: getComputedStyle(document.getElementById('root')).paddingTop,
+            };
+        });
+        expect(titlebar).toEqual({ height: '28px', drag: 'drag', background: titlebar.pageBackground, pageBackground: titlebar.pageBackground, padding: '28px' });
+    }
 });

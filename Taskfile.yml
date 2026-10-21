@@ -1,0 +1,21 @@
+version: '3'
+
+# Pure dispatch: build, package, run and dev are the task names the wails3 CLI
+# and build/config.yml look up. All build logic lives in scripts/build-macos.sh.
+vars:
+  ARCH: '{{.ARCH | default "universal"}}'
+  DEV: '{{.DEV | default "false"}}'
+
+tasks:
+  build:
+    cmds:
+      - bash scripts/build-macos.sh build '{{.ARCH}}' '{{.DEV}}'
+  package:
+    cmds:
+      - bash scripts/build-macos.sh package '{{.ARCH}}' '{{.DEV}}'
+  run:
+    cmds:
+      - bash scripts/build-macos.sh run '{{.ARCH}}' true
+  dev:
+    cmds:
+      - wails3 dev -config build/config.yml -port 3000

@@ -38,29 +38,20 @@ jobs:
         run: |
           ./scripts/desktop.sh setup
           ./scripts/desktop.sh test
-      - name: Install signing and notarization credentials
-        if: success() && steps.version.outputs.release == 'true'
-        env:
-          MACOS_SIGNING_P12_BASE64: ${{ secrets.MACOS_SIGNING_P12_BASE64 }}
-          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
-          APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
-        run: ./scripts/ci-macos-keychain.sh setup
+      # The script materializes every credential into one private temporary
+      # directory and removes it, and its keychain, through an EXIT trap.
       - name: Build, sign, notarize, and package
         if: success() && steps.version.outputs.release == 'true'
         env:
           MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          MACOS_SIGNING_P12_BASE64: ${{ secrets.MACOS_SIGNING_P12_BASE64 }}
+          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
+          APPLE_NOTARY_KEY_P8: ${{ secrets.APPLE_NOTARY_KEY_P8 }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-        run: |
-          ./scripts/release-macos.sh \
-            --identity "$MACOS_SIGNING_IDENTITY" \
-            --keychain "$RUNNER_TEMP/innerly-signing.keychain-db" \
-            --api-key "$RUNNER_TEMP/innerly-notary.p8" \
-            --key-id "$APPLE_NOTARY_KEY_ID" \
-            --issuer "$APPLE_NOTARY_ISSUER_ID"
-      - name: Remove private signing material
-        if: always() && steps.version.outputs.release == 'true'
-        run: ./scripts/ci-macos-keychain.sh cleanup
+          INNERLY_UPDATE_PRIVATE_KEY: ${{ secrets.INNERLY_UPDATE_PRIVATE_KEY }}
+          INNERLY_UPDATE_PUBLIC_KEY: ${{ secrets.INNERLY_UPDATE_PUBLIC_KEY }}
+        run: ./scripts/release-macos.sh --ci
       - name: Publish release
         if: success() && steps.version.outputs.release == 'true'
         env:
@@ -74,6 +65,9 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" --clobber \
             "release/Innerly-$RELEASE_VERSION-mac-universal.zip" \
-            "release/Innerly-$RELEASE_VERSION-mac-universal.zip.sha256"
+            "release/Innerly-$RELEASE_VERSION-mac-universal.zip.sha256" \
+            "release/Innerly-$RELEASE_VERSION-mac-universal.dmg" \
+            "release/Innerly-$RELEASE_VERSION-mac-universal.dmg.sha256" \
+            release/manifest.json
           gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG" \
             --notes-file "$RUNNER_TEMP/innerly-release-notes.md" --draft=false

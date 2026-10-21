@@ -116,7 +116,10 @@ func (a *App) OpenWindow() Result {
 	})
 }
 
-func (a *App) Version() string     { return "1.0.0" }
+// Set from the highest CHANGELOG.md version by scripts/build-macos.sh.
+var version = "development"
+
+func (a *App) Version() string     { return version }
 func (a *App) CurrentUser() Result { return a.run(func(u User) (any, error) { return u, nil }) }
 func (a *App) Logout() Result {
 	a.mu.Lock()

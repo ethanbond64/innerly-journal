@@ -12,12 +12,14 @@ import { SettingsPage } from "./settings-page.jsx";
 import { ActivityPage } from "./activity-page.jsx";
 import { DayPage } from "./day-page.jsx";
 import { PasswordModal } from "./password-modal.jsx";
+import { AboutPage } from './about-page.jsx';
 
 export const App = () => {
   return (
     <>
     <PasswordModal watchLockTimeout />
     <Routes>
+      <Route path="/about" element={<AboutPage />} />
       <Route path={loginRoute} element={<LoginPage />} />
       <Route path={signupRoute} element={<SignUpPage />} />
       <Route path={homeRoute} element={<AuthenticationGuard component={HomePage} />} />

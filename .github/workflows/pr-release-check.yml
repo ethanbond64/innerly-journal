@@ -42,4 +42,4 @@ jobs:
         run: ./scripts/desktop.sh test
       - name: Universal build (no secrets on PRs)
         if: steps.version.outputs.release == 'true'
-        run: ./scripts/desktop.sh build -platform darwin/universal
+        run: ./scripts/desktop.sh build ARCH=universal

@@ -17,29 +17,30 @@ mkdir -p "$TMPDIR" "$HOME" "$GOPATH" "$GOCACHE" "$XDG_CACHE_HOME" "$npm_config_c
 export PATH="$GOPATH/bin:$PATH"
 case "${1:-test}" in
   setup)
-    WAILS_VERSION="$(awk '$1 == "github.com/wailsapp/wails/v2" {print $2; exit}' go.mod)"
-    go install "github.com/wailsapp/wails/v2/cmd/wails@$WAILS_VERSION"
+    WAILS_VERSION="$(awk '$1 == "github.com/wailsapp/wails/v3" {print $2; exit}' go.mod)"
+    go install "github.com/wailsapp/wails/v3/cmd/wails3@$WAILS_VERSION"
     (cd frontend && npm ci)
+    bash scripts/build-macos.sh bindings
     ;;
   test)
-    go test -timeout 2m ./internal/journal/...
+    go test -timeout 2m ./...
     (cd frontend && npm test)
     ;;
   test-ui)
     (cd frontend && npm run test:ui)
     ;;
   race)
-    go test -race -timeout 10m ./internal/journal/...
+    go test -race -timeout 10m ./...
     ;;
   build)
     shift
-    wails build -nocolour "$@"
+    wails3 task package "$@"
+    ;;
+  bindings)
+    bash scripts/build-macos.sh bindings
     ;;
   dev)
-    wails dev
+    wails3 task dev
     ;;
-  doctor)
-    wails doctor
-    ;;
-  *) printf 'Usage: %s {setup|test|test-ui|race|build|dev|doctor}\n' "$0" >&2; exit 2 ;;
+  *) printf 'Usage: %s {setup|test|test-ui|race|build|bindings|dev}\n' "$0" >&2; exit 2 ;;
 esac

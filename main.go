@@ -1,62 +1,125 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
+	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/menu"
-	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
-
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/updater"
+	"github.com/wailsapp/wails/v3/pkg/updater/providers/endpoint"
 	"innerly/internal/journal"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-func main() {
-	app, err := journal.NewApp(journal.Config{})
-	if err != nil {
-		log.Fatal(err)
+// The getter keeps journal initialization after application.New's helper dispatch.
+func mediaMiddleware(store func() *journal.App) application.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Intercept before both the dev proxy and embedded assets. Never allow
+			// media errors to become Vite's index.html.
+			if strings.HasPrefix(r.URL.Path, "/media/") {
+				journal.MediaHandler(store()).ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
-	defer journal.CloseApp(app)
-	var appContext context.Context
-	var appMenu *menu.Menu
-	if runtime.GOOS == "darwin" {
-		appMenu = menu.NewMenu()
-		innerlyMenu := appMenu.AddSubmenu("Innerly")
-		innerlyMenu.AddText("Refresh", keys.CmdOrCtrl("r"), func(*menu.CallbackData) {
-			if appContext != nil {
-				// Set the hash without an intermediate SPA navigation, then reload
-				// the document even if the user is already on the homepage.
-				wailsruntime.WindowExecJS(appContext, "window.history.replaceState(null, '', '#/'); window.location.reload();")
+}
+
+func main() {
+	var store *journal.App
+	var updates *UpdateService
+	var closeOnce sync.Once
+	closeJournal := func() {
+		closeOnce.Do(func() {
+			if store != nil {
+				journal.CloseApp(store)
 			}
 		})
-		innerlyMenu.AddSeparator()
-		innerlyMenu.AddText("Hide Innerly", keys.CmdOrCtrl("h"), func(*menu.CallbackData) {
-			wailsruntime.Hide(appContext)
-		})
-		innerlyMenu.AddSeparator()
-		innerlyMenu.AddText("Quit Innerly", keys.CmdOrCtrl("q"), func(*menu.CallbackData) {
-			wailsruntime.Quit(appContext)
-		})
-		appMenu.Append(menu.EditMenu())
-		appMenu.Append(menu.WindowMenu())
 	}
-	err = wails.Run(&options.App{
-		Title: "Innerly", Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
-		AssetServer: &assetserver.Options{Assets: assets, Handler: journal.MediaHandler(app)},
-		Menu:        appMenu,
-		OnStartup:   func(ctx context.Context) { appContext = ctx },
-		OnShutdown:  func(context.Context) { journal.CloseApp(app) },
-		Bind:        []interface{}{app},
+	// New dispatches updater helpers before we open storage or create any UI.
+	app := application.New(application.Options{
+		Name: "Innerly",
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: mediaMiddleware(func() *journal.App { return store }),
+		},
+		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		OnShutdown: closeJournal,
+	})
+	store, err := journal.NewApp(journal.Config{})
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	defer closeJournal() // Also covers errors returned before the run loop starts.
+	lock := openInstanceLock()
+	defer lock.Close()
+	// The stock manifest provider: it compares versions, downloads the signed
+	// ZIP and refuses anything that is not newer than this build.
+	provider, err := endpoint.New(endpoint.Config{
+		URL:        updateManifestURL,
+		Channel:    "stable",
+		HTTPClient: &http.Client{Timeout: 10 * time.Minute}, // release archives are large
 	})
 	if err != nil {
+		log.Print(err)
+		return
+	}
+	executable, _ := os.Executable()
+	target := appBundle(executable)
+	if resolved, err := filepath.EvalSymlinks(executable); err != nil || resolved != executable {
+		target = "" // keep our target identical to Wails'; no symlink installations
+	}
+	updates = newUpdateService(app.Context(), app.Updater, lock, target, store.Version())
+	if err := app.Updater.Init(updater.Config{
+		CurrentVersion: store.Version(), PublicKey: updateKey(),
+		Providers: []updater.Provider{provider}, Window: &updater.BuiltinWindow{},
+	}); err != nil {
+		log.Print(err)
+		return
+	}
+	app.RegisterService(application.NewService(store))
+	app.RegisterService(application.NewService(updates))
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name: "main", Title: "Innerly", URL: "/",
+		Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
+		BackgroundColour: application.NewRGB(255, 255, 255),
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBarHidden,
+			// Content extends under the native title bar; the frontend reserves
+			// exactly one 28px strip, using v3's --wails-draggable region.
+			InvisibleTitleBarHeight: 28,
+		},
+	})
+	if runtime.GOOS == "darwin" {
+		menu := app.NewMenu()
+		innerly := menu.AddSubmenu("Innerly")
+		innerly.Add("About & Updates").OnClick(func(*application.Context) {
+			window.ExecJS("window.location.hash = '#/about';")
+		})
+		innerly.AddSeparator()
+		innerly.Add("Refresh").SetAccelerator("CmdOrCtrl+r").OnClick(func(*application.Context) {
+			window.ExecJS("window.history.replaceState(null, '', '#/'); window.location.reload();")
+		})
+		innerly.AddSeparator()
+		innerly.AddRole(application.Hide)
+		innerly.AddSeparator()
+		innerly.Add("Quit Innerly").SetAccelerator("CmdOrCtrl+q").OnClick(func(*application.Context) { app.Quit() })
+		menu.AddRole(application.EditMenu)
+		menu.AddRole(application.WindowMenu)
+		app.Menu.Set(menu)
+	}
+	if err := app.Run(); err != nil {
 		log.Print(err)
 	}
 }

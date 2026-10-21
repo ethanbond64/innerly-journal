@@ -84,7 +84,7 @@ export const Navbar = ({ setSearch, user }) => {
         setMenuOpen(prev => !prev);
     };
 
-    let initial = user.email.charAt(0).toUpperCase();
+    let initial = user?.email?.charAt(0).toUpperCase() || '?';
 
     return (
         <nav className={`navbar navbar-default navbar-fixed-top`} style={{zIndex:1000}}>
@@ -123,9 +123,13 @@ export const Navbar = ({ setSearch, user }) => {
                         <li>
                             <Link to={settingsRoute} style={{ fontSize: '15px' }}>Settings</Link>
                         </li>
+                        <li role="separator" className="divider"></li>
+                        <li>
+                            <Link to="/about" style={{ fontSize: '15px' }}>Updates</Link>
+                        </li>
                         <li role="separator" className={`divider`}></li>
                         <li>
-                            <Link to={loginRoute} style={{ fontSize: '15px', marginBottom: '6px'}} onClick={logOut}>Log out</Link>
+                            <Link to={loginRoute} style={{ fontSize: '15px', marginBottom: '6px'}} onClick={user ? logOut : undefined}>{user ? 'Log out' : 'Log in'}</Link>
                         </li>
                     </ul>)
                     : null

@@ -3,6 +3,7 @@
 !/build/
 /build/*
 !/build/appicon.png
+!/build/config.yml
 !/build/darwin/
 /build/darwin/*
 !/build/darwin/Info.plist
@@ -10,10 +11,11 @@
 /release/
 *.p12
 *.p8
+*.key
 *.mobileprovision
 **/dist
 .DS_Store
 .idea
 .work/
-frontend/wailsjs/
+frontend/bindings/
 frontend/package.json.md5

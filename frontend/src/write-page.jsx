@@ -8,6 +8,7 @@ import { getDateNoTime } from "./utils.jsx";
 import { putEntry } from "./entry-handoff.js";
 import { PasswordModal } from "./password-modal.jsx";
 import { clampTypewriterLine, getTypewriterSettings, saveTypewriterSettings } from "./typewriter.js";
+import { attachEditorSave, editorSave } from './editor-saves.js';
 
 // Measures the pixel offset of the caret within the textarea's scroll area
 // using a hidden mirror div to account for word-wrap accurately.
@@ -155,9 +156,16 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
     const navigate = useNavigate();
     const [showHeader, setShowHeader] = useState(true);
 
-    const entryIdRef = useRef(initialId);
-    const dirtyRef = useRef(false);   // text differs from what the server has
-    const savingRef = useRef(null);  // promise for the in-flight save
+    const [buffer] = useState(() => editorSave(initialId, text, (id, value, draft) => new Promise((resolve, reject) => {
+        let saved = false;
+        const onSaved = data => { saved = true; resolve(data); };
+        const onFailed = error => reject(error instanceof Error ? error : new Error('Writing could not be saved.'));
+        const request = id === null
+            ? insertTextEntry(value, functionalDatetime, onSaved, onFailed, { draft })
+            : updateTextEntry(id, { text: value }, null, onSaved, onFailed, { draft });
+        // Session cancellation/401 can resolve without calling either callback.
+        Promise.resolve(request).then(() => { if (!saved) onFailed(); }, onFailed);
+    })));
     const [submitting, setSubmitting] = useState(false);
 
     const [saveState, setSaveState] = useState('saved'); // drives the status dot only
@@ -255,45 +263,14 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
         }
     };
 
-    // Autosave: every 3 seconds, save if the text is dirty and nothing is in flight. A
-    // failed save leaves the text dirty, so the next tick simply tries again.
     useEffect(() => {
-        const onSaved = (data) => {
-            savingRef.current = false;
-            if (data && data.id) {
-                entryIdRef.current = data.id;
-            }
-            // Edits made while the request was in flight are still unsaved.
-            setSaveState(dirtyRef.current ? 'unsaved' : 'saved');
-        };
-
-        const onFailed = () => {
-            savingRef.current = false;
-            dirtyRef.current = true; // the text never reached the server
-            setSaveState('failed');
-        };
-
-        const timer = setInterval(() => {
-            const writeTo = textareaRef.current;
-            if (!dirtyRef.current || savingRef.current || !writeTo) return;
-
-            dirtyRef.current = false;
-            savingRef.current = true;
-
-            if (entryIdRef.current === null) {
-                savingRef.current = insertTextEntry(writeTo.value, functionalDatetime, onSaved, onFailed, { draft: true });
-            } else {
-                savingRef.current = updateTextEntry(entryIdRef.current, { text: writeTo.value }, null, onSaved, onFailed, { draft: true });
-            }
-        }, 3000);
-
-        return () => clearInterval(timer);
-    }, [functionalDatetime]);
+        const detach = attachEditorSave(buffer, state => setSaveState(previous => previous === 'failed' && state === 'unsaved' ? previous : state));
+        const timer = setInterval(() => buffer.flush().catch(() => {}), 3000);
+        return () => { clearInterval(timer); detach(); };
+    }, [buffer]);
 
     const onTextChange = () => {
-        dirtyRef.current = true;
-        // A failure stays red until a save actually succeeds.
-        setSaveState(prev => prev === 'failed' ? prev : 'unsaved');
+        buffer.change(textareaRef.current.value);
 
         // Typewriter autoscroll
         const textarea = textareaRef.current;
@@ -381,27 +358,18 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
         e.preventDefault();
         if (submitting) return;
         setSubmitting(true);
-        // Wait for an autosave (possibly awaiting a password) to obtain its ID.
-        // Otherwise Save could insert the same new entry a second time.
-        await savingRef.current;
-        if (!textareaRef.current) return;
-        const value = textareaRef.current.value;
-        dirtyRef.current = false;
-        const onSaved = (data) => {
-            if (!textareaRef.current) return;
-            putEntry(data);
-            navigate(viewRoute + data.id);
-        };
-        const onFailed = () => {
-            dirtyRef.current = true;
+        try {
+            // Final Save serializes behind autosave, including lock-password retries.
+            const data = await buffer.flush(false);
+            if (textareaRef.current) {
+                putEntry(data);
+                navigate(viewRoute + data.id);
+            }
+        } catch {
             setSaveState('failed');
-        };
-        savingRef.current = entryIdRef.current === null
-            ? insertTextEntry(value, functionalDatetime, onSaved, onFailed)
-            : updateTextEntry(entryIdRef.current, { text: value }, null, onSaved, onFailed);
-        await savingRef.current;
-        savingRef.current = null;
-        setSubmitting(false);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -495,7 +463,7 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
                             onChange={onTextChange}
                             onScroll={handleTextareaScroll}
                             style={{ marginTop: '20px' }}
-                            defaultValue={text}
+                            defaultValue={buffer.value}
                         />
                     </div>
                     <div className="writeto-display"></div>

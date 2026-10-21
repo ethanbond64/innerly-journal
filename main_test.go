@@ -14,8 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wailsapp/wails/v3/pkg/updater"
-	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 	"innerly/internal/journal"
 )
 
@@ -88,20 +86,6 @@ func TestMediaRoutingBeforeAssetOrDevFallback(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/", nil))
 	if response.Body.String() != "SPA fallback" {
 		t.Fatal("ordinary assets did not reach next handler")
-	}
-}
-
-func TestUpdateAsset(t *testing.T) {
-	assets := []github.ReleaseAsset{
-		{Name: "Innerly-0.2.0-mac-universal.dmg"},
-		{Name: "Innerly-0.2.0-mac-universal.zip.sha256"},
-		{Name: "Innerly-0.2.0-mac-arm64.zip"},
-		{Name: "Innerly-0.2.0-mac-universal.zip"},
-	}
-	if updateAsset(updater.CheckRequest{Platform: "darwin"}, assets) != 3 ||
-		updateAsset(updater.CheckRequest{Platform: "darwin"}, assets[:3]) != -1 ||
-		updateAsset(updater.CheckRequest{Platform: "linux"}, assets) != -1 {
-		t.Fatal("update checks must select only the macOS universal ZIP")
 	}
 }
 

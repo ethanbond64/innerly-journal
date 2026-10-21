@@ -30,6 +30,11 @@ if [[ "$action" != run ]]; then
   else
     flags+=(-tags production)
     ldflags="-w -s $ldflags"
+    # Release builds pin the public PEM, base64-encoded for safe linker quoting.
+    if [[ -n "${INNERLY_UPDATE_PUBLIC_KEY_B64:-}" ]]; then
+      [[ "$INNERLY_UPDATE_PUBLIC_KEY_B64" =~ ^[A-Za-z0-9+/]+=*$ ]] || { echo 'Invalid updater public-key encoding' >&2; exit 1; }
+      ldflags+=" -X main.updatePublicKey=$INNERLY_UPDATE_PUBLIC_KEY_B64"
+    fi
   fi
   flags+=("-ldflags=$ldflags")
   wails3 tool prepare-macos-output --dir "$out"

@@ -1,3 +1,5 @@
+import { withSavedWriting } from './editor-saves.js';
+
 let adapter;
 // Also used by unit tests; browser UI fixtures replace only this boundary.
 export const setDesktopAdapter = (value) => { adapter = value; };
@@ -15,6 +17,10 @@ export const checkForUpdates = () => {
     if (!isDesktop()) throw new Error('Innerly must run inside the desktop app.');
     return adapter.checkForUpdates();
 };
+export const updateStatus = () => adapter.updateStatus();
+export const downloadUpdate = version => adapter.downloadUpdate(version);
+export const cancelUpdate = () => adapter.cancelUpdate();
+export const restartUpdate = version => withSavedWriting(() => adapter.restartUpdate(version));
 export const isDesktop = () => !!adapter?.isDesktop();
 export const isMacDesktop = () => isDesktop() && adapter.isMac();
 export const desktopApp = () => {

@@ -87,7 +87,14 @@ rm -f "$ROOT/release/$base".{zip,zip.sha256,dmg,dmg.sha256} \
 staging=$(mktemp -d)
 trap 'rm -rf "$staging"' EXIT
 
-./scripts/desktop.sh build "ARCH=$arch"
+# Validate the persistent keypair before building or contacting Apple. Pin the
+# same public key in the binary; the release feed can never replace this key.
+printf 'Innerly updater key check' > "$staging/key-check-mac-universal.zip"
+"$wails" updater manifest -version "$version" -key "$update_key" \
+  -output "$staging/key-check.json" "$staging/key-check-mac-universal.zip"
+"$wails" updater verify -manifest "$staging/key-check.json" -publickey "$update_public_key"
+INNERLY_UPDATE_PUBLIC_KEY_B64="$(base64 < "$update_public_key" | tr -d '\n')" \
+  ./scripts/desktop.sh build "ARCH=$arch"
 bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")
 [[ "$bundle_id" == co.innerly ]] || fail "Unexpected bundle ID: $bundle_id"
 for field in CFBundleShortVersionString CFBundleVersion; do

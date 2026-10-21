@@ -11,7 +11,8 @@ const desktop = async (page, { count = 1, media = false, expired = false, logged
     await page.addInitScript(({ count, media, expired, loggedIn }) => {
         const user = { id: 1, email: 'owner@example.com', settings: { lock_by_default: true } };
         const result = (data = null) => ({ data, success: true });
-        const state = window.journalTest = { calls: [], expired, entries: [], pending: [], delay: false };
+        const state = window.journalTest = { calls: [], expired, entries: [], pending: [], delay: false,
+            update: { current: '0.1.0', state: 'idle', releases: [], ready: false, version: '', disabled: '' } };
         for (let i = 0; i < count; i++) {
             const date = new Date();
             date.setDate(date.getDate() - i);
@@ -64,7 +65,24 @@ const desktop = async (page, { count = 1, media = false, expired = false, logged
             checkForUpdates: async () => {
                 state.calls.push(['check-updates']);
                 if (state.updateError) throw new Error('Offline');
-                return "You're up to date.";
+                state.update.lastChecked = new Date().toISOString();
+                return structuredClone(state.update);
+            },
+            updateStatus: async () => structuredClone(state.update),
+            downloadUpdate: async version => {
+                state.calls.push(['download-update', version]);
+                state.update = { ...state.update, state: 'downloading', version, ready: false, written: 20, total: 100 };
+                if (state.delayDownload) await new Promise((resolve, reject) => { state.downloadPending = { resolve, reject }; });
+                state.update = { ...state.update, state: 'ready', ready: true };
+            },
+            cancelUpdate: async () => {
+                state.calls.push(['cancel-update']);
+                state.update = { ...state.update, state: 'error', ready: false };
+                state.downloadPending?.reject(new Error('Download canceled'));
+            },
+            restartUpdate: async version => {
+                state.calls.push(['restart-update', version]);
+                if (state.restartError) throw new Error('Close other Innerly windows before installing.');
             },
         };
     }, { count, media, expired, loggedIn });
@@ -84,7 +102,7 @@ test('About uses the shared navbar and minimal changelog header before login', a
     await expect(page.getByRole('status')).toHaveText("You're up to date.");
     await page.evaluate(() => { window.journalTest.updateError = true; });
     await page.getByRole('button', { name: 'Check for Updates' }).click();
-    await expect(page.getByRole('status')).toHaveText('Unable to check for updates. Please try again later.');
+    await expect(page.getByRole('status')).toHaveText('Offline');
 });
 
 test('About keeps the shared layout when the changelog fetch fails', async ({ page }) => {
@@ -96,6 +114,67 @@ test('About keeps the shared layout when the changelog fetch fails', async ({ pa
     await expect(page.locator('nav.navbar')).toHaveCount(1);
     await expect(page.getByRole('heading')).toHaveText('Changelog');
     await expect(page.locator('pre')).toHaveText('Unable to load the changelog. Please try again later.');
+});
+
+test('updates download only the selected version and restart only on explicit confirmation', async ({ page }) => {
+    await desktop(page, { loggedIn: false });
+    await page.route('https://raw.githubusercontent.com/**', route => route.fulfill({ body: '# Changelog' }));
+    await page.goto('/#/about');
+    await page.evaluate(() => { window.journalTest.update.releases = ['0.3.0', '0.2.0'].map(version => ({
+        version, publishedAt: '2026-01-01T00:00:00Z', notes: '<script>window.badUpdate = true</script>', unavailable: ''
+    })); });
+    await page.getByRole('button', { name: 'Check for Updates' }).click();
+    await page.getByLabel('Update version').selectOption('0.2.0');
+    await page.getByRole('button', { name: 'Download', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Install and Restart' })).toBeEnabled();
+    expect(await page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'download-update'))).toEqual([['download-update', '0.2.0']]);
+    expect(await page.evaluate(() => window.journalTest.calls.some(call => call[0] === 'restart-update'))).toBe(false);
+    expect(await page.evaluate(() => window.badUpdate)).toBeUndefined();
+    await page.evaluate(() => { window.journalTest.restartError = true; });
+    await page.getByRole('button', { name: 'Install and Restart' }).click();
+    await expect(page.getByText('Close other Innerly windows before installing.')).toBeVisible();
+    expect(await page.evaluate(() => document.getElementById('root').inert)).toBe(false);
+    expect(await page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'restart-update'))).toEqual([['restart-update', '0.2.0']]);
+});
+
+test('update download can be canceled without restarting or breaking navigation', async ({ page }) => {
+    await desktop(page);
+    await page.route('https://raw.githubusercontent.com/**', route => route.fulfill({ body: '# Changelog' }));
+    await page.goto('/#/about');
+    await page.evaluate(() => {
+        window.journalTest.delayDownload = true;
+        window.journalTest.update.releases = [{ version: '0.2.0', publishedAt: '2026-01-01T00:00:00Z', notes: 'Fixture notes', unavailable: '' }];
+    });
+    await page.getByRole('button', { name: 'Check for Updates' }).click();
+    await page.getByRole('button', { name: 'Download', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Cancel Download' })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel Download' }).click();
+    await expect(page.getByText('Download canceled')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Install and Restart' })).toHaveCount(0);
+    await page.locator('.custom-letter-box').click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+});
+
+test('Install and Restart waits for writing saved after leaving the editor', async ({ page }) => {
+    await desktop(page);
+    await page.route('https://raw.githubusercontent.com/**', route => route.fulfill({ body: '# Changelog' }));
+    await page.goto('/#/write');
+    await page.evaluate(() => {
+        window.journalTest.delayInsert = true;
+        window.journalTest.update = { current: '0.1.0', state: 'ready', version: '0.2.0', ready: true, releases: [
+            { version: '0.2.0', publishedAt: '2026-01-01T00:00:00Z', notes: 'Fixture notes', unavailable: '' }
+        ] };
+    });
+    await page.locator('#writeto').fill('Writing must reach the journal before restarting.');
+    await page.evaluate(() => { window.location.hash = '#/about'; });
+    await expect.poll(() => page.evaluate(() => window.journalTest.pending.length)).toBe(1);
+    await page.getByRole('button', { name: 'Install and Restart' }).click();
+    await expect.poll(() => page.evaluate(() => document.getElementById('root').inert)).toBe(true);
+    expect(await page.evaluate(() => window.journalTest.calls.some(call => call[0] === 'restart-update'))).toBe(false);
+    await page.evaluate(() => window.journalTest.pending.shift()());
+    await expect.poll(() => page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'restart-update'))).toEqual([['restart-update', '0.2.0']]);
+    expect(await page.evaluate(() => window.journalTest.calls.filter(call => call[0] === 'insert').length)).toBe(1);
 });
 
 test('activity squares open the matching day page', async ({ page }) => {

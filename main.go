@@ -4,13 +4,14 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/updater"
-	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 	"innerly/internal/journal"
 )
 
@@ -32,41 +33,22 @@ func mediaMiddleware(store func() *journal.App) application.Middleware {
 	}
 }
 
-// Wails handles release discovery and semantic version comparison. Installation
-// stays off until signed update packaging and restart safety are in place.
-type UpdateService struct{ app *application.App }
-
-func (u *UpdateService) Check() (string, error) {
-	if u.app.Updater.CurrentVersion() == "development" {
-		return "Development build: use the desktop build script to check a versioned build.", nil
-	}
-	release, err := u.app.Updater.Check(u.app.Context())
-	if err != nil {
-		return "", err
-	}
-	if release == nil {
-		return "You're up to date.", nil
-	}
-	return "Version " + release.Version + " is available. In-app installation is not enabled yet.", nil
-}
-
-func updateAsset(req updater.CheckRequest, assets []github.ReleaseAsset) int {
-	if req.Platform != "darwin" {
-		return -1
-	}
-	for i, asset := range assets {
-		if strings.HasPrefix(asset.Name, "Innerly-") && strings.HasSuffix(asset.Name, "-mac-universal.zip") {
-			return i
-		}
-	}
-	return -1
-}
-
 func main() {
+	// The Wails helper never opens storage; its PID keeps new app instances
+	// waiting until the framework has finished replacement/relaunch.
+	if err := handoffUpdateGuard(); err != nil {
+		_ = os.WriteFile(os.Getenv("WAILS_UPDATER_HELPER_READY"), []byte("error: "+err.Error()), 0600)
+		log.Print(err)
+		return
+	}
 	var store *journal.App
+	var updates *UpdateService
 	var closeOnce sync.Once
 	closeJournal := func() {
 		closeOnce.Do(func() {
+			if updates != nil {
+				updates.shutdown()
+			}
 			if store != nil {
 				journal.CloseApp(store)
 			}
@@ -82,24 +64,39 @@ func main() {
 		Mac:        application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		OnShutdown: closeJournal,
 	})
-	var err error
+	dir, err := instanceDirectory()
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	guard, err := openInstanceGuard(dir)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	defer guard.Close()
 	store, err = journal.NewApp(journal.Config{})
 	if err != nil {
 		log.Print(err)
 		return
 	}
 	defer closeJournal() // Also covers errors returned before the run loop starts.
-	provider, err := github.New(github.Config{Repository: "ethanbond64/innerly-once", AssetMatcher: updateAsset})
-	if err != nil {
-		log.Print(err)
-		return
+	provider := &releaseProvider{client: newReleaseClient()}
+	executable, _ := os.Executable()
+	target := appBundle(executable)
+	if resolved, err := filepath.EvalSymlinks(executable); err != nil || resolved != executable {
+		target = "" // keep our target identical to Wails'; no symlink installations
 	}
-	if err := app.Updater.Init(updater.Config{CurrentVersion: store.Version(), Providers: []updater.Provider{provider}}); err != nil {
+	updates = newUpdateService(app.Context(), app.Updater, provider, guard, target, store.Version())
+	if err := app.Updater.Init(updater.Config{
+		CurrentVersion: store.Version(), PublicKey: updates.key,
+		Providers: []updater.Provider{provider}, Window: updater.WindowNone,
+	}); err != nil {
 		log.Print(err)
 		return
 	}
 	app.RegisterService(application.NewService(store))
-	app.RegisterService(application.NewService(&UpdateService{app: app}))
+	app.RegisterService(application.NewService(updates))
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name: "main", Title: "Innerly", URL: "/",
 		Width: 1200, Height: 850, MinWidth: 700, MinHeight: 500,
@@ -119,6 +116,9 @@ func main() {
 		})
 		innerly.AddSeparator()
 		innerly.Add("Refresh").SetAccelerator("CmdOrCtrl+r").OnClick(func(*application.Context) {
+			if updates.Status().State == "restarting" {
+				return // do not reload away the editor-save barrier during restart
+			}
 			window.ExecJS("window.history.replaceState(null, '', '#/'); window.location.reload();")
 		})
 		innerly.AddSeparator()

@@ -35,6 +35,18 @@ html.mac-titlebar {
   top: var(--window-titlebar-height);
 }
 
+/* With a navbar the titlebar is the same colour, so the navbar runs underneath
+   it instead of below it. The combined strip then matches the browser navbar
+   height, and the navbar's own padding already keeps its contents clear of the
+   drag region. */
+.mac-titlebar.has-navbar #root {
+  padding-top: 0;
+}
+
+.mac-titlebar.has-navbar .navbar-fixed-top {
+  top: 0;
+}
+
 main {
   padding-top: 50px;
   padding-bottom: 20px;

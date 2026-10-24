@@ -21,6 +21,12 @@ export const Navbar = ({ setSearch, user }) => {
     const { isDarkMode, setDarkMode } = useDarkMode();
     const dropdownRef = useRef(null);
 
+    // Lets the window titlebar match the navbar colour while a navbar is mounted.
+    useEffect(() => {
+        document.documentElement.classList.add('has-navbar');
+        return () => document.documentElement.classList.remove('has-navbar');
+    }, []);
+
     // Handle clicks outside of dropdown - Safari-friendly version
     useEffect(() => {
         if (!menuOpen) return;

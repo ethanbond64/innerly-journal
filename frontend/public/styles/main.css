@@ -25,6 +25,12 @@ html.mac-titlebar {
   --wails-draggable: drag;
 }
 
+/* Blend into whatever sits directly below: the navbar when a page has one,
+   otherwise the page background. */
+.mac-titlebar.has-navbar .window-titlebar {
+  background-color: var(--naveb);
+}
+
 .mac-titlebar .navbar-fixed-top {
   top: var(--window-titlebar-height);
 }

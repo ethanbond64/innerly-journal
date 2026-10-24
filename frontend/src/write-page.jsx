@@ -174,6 +174,13 @@ export const WritePageBase = ({ heading, functionalDatetime = null,
 
     const headerTimeout = useRef(null);
 
+    // The wordmark and header already start below the window titlebar, so the
+    // page runs underneath it rather than being pushed down by its height.
+    useEffect(() => {
+        document.documentElement.classList.add('titlebar-overlay');
+        return () => document.documentElement.classList.remove('titlebar-overlay');
+    }, []);
+
     const handleMouseEnter = () => {
         clearTimeout(headerTimeout.current);
         setShowHeader(true);

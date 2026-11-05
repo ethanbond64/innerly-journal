@@ -5,15 +5,16 @@
 #   (no argument)  also check GitHub and emit Actions outputs
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version=$(awk '/^## v/ { sub(/^## v/, ""); print $1 }' CHANGELOG.md |
+# Headings are '## [vX.Y.Z] - YYYY-MM-DD'; the date is ignored here.
+version=$(awk '/^## \[v/ { sub(/^## \[v/, ""); sub(/\].*$/, ""); print }' CHANGELOG.md |
   sort -t . -k1,1nr -k2,2nr -k3,3nr | awk 'NR == 1')
 [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
-  echo 'Expected a ## vX.Y.Z heading in CHANGELOG.md' >&2
+  echo 'Expected a ## [vX.Y.Z] - YYYY-MM-DD heading in CHANGELOG.md' >&2
   exit 1
 }
 tag="v$version"
 notes() {
-  awk -v heading="$tag" '/^## / { if (started) exit; if ($2 == heading) { started=1; next } } started' \
+  awk -v heading="[$tag]" '/^## / { if (started) exit; if ($2 == heading) { started=1; next } } started' \
     CHANGELOG.md > "$1"
   grep -q '[^[:space:]]' "$1" || { echo 'Release notes are empty' >&2; exit 1; }
 }

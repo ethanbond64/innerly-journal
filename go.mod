@@ -1,12 +1,14 @@
 module innerly
 
-go 1.26.9
+go 1.26.10
+
+toolchain go1.27.3
 
 require (
 	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
 	github.com/wailsapp/wails/v3 v3.0.0-beta.33
 	golang.org/x/crypto v0.58.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.60.1
 )

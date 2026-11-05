@@ -1,6 +1,13 @@
 # Innerly
+[![License](https://img.shields.io/github/license/ethanbond64/innerly-journal)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/ethanbond64/innerly-journal/release-macos.yml?branch=master&label=build)](https://github.com/ethanbond64/innerly-journal/actions/workflows/release-macos.yml)
+[![Latest release](https://img.shields.io/github/v/release/ethanbond64/innerly-journal?sort=semver)](https://github.com/ethanbond64/innerly-journal/releases/latest)
 
 A local multimedia journal built with Go, Wails, and React. Includes encrypted notes, autosave, images, HTTPS link previews, search, and day tags.
+
+![The Innerly timeline, showing entries grouped under December 28th, 24th and 18th 2025. Each day is a row of cards — images, and text cards whose contents are blurred — with collapsed date ranges such as "Dec 27 ... Dec 25" between the rows.](innerly-example.png)
+
+![The Innerly writing view: an empty editor with the placeholder "Write about any thoughts, experiences, or ideas", an autosave indicator, and a Save button.](innerly-write.png)
 
 ## Build and run on macOS
 

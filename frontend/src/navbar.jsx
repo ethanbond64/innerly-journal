@@ -21,6 +21,13 @@ export const Navbar = ({ setSearch, user }) => {
     const { isDarkMode, setDarkMode } = useDarkMode();
     const dropdownRef = useRef(null);
 
+    // Lets the window titlebar match the navbar colour, and the navbar sit
+    // underneath it, while a navbar is mounted.
+    useEffect(() => {
+        document.documentElement.classList.add('has-navbar', 'titlebar-overlay');
+        return () => document.documentElement.classList.remove('has-navbar', 'titlebar-overlay');
+    }, []);
+
     // Handle clicks outside of dropdown - Safari-friendly version
     useEffect(() => {
         if (!menuOpen) return;

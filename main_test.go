@@ -94,12 +94,13 @@ func TestChangelogVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ changelog, want, notes string }{
-		{"## v0.9.0\nnine\n## v0.10.0 - 2026-01-01\nten\n## v0.1.0\none\n", "0.10.0", "ten\n"},
-		{"## v1.0.0\none\n## v0.99.99\n## v0.100.0\n", "1.0.0", "one\n"},
-		{"## v0.0.9\n## v0.0.10\nlatest\n", "0.0.10", "latest\n"},
-		{"## v01.0.0\n", "", ""},
+		{"## [v0.9.0] - 2026-01-01\nnine\n## [v0.10.0] - 2026-02-01\nten\n## [v0.1.0] - 2025-12-01\none\n", "0.10.0", "ten\n"},
+		{"## [v1.0.0] - 2026-01-01\none\n## [v0.99.99] - 2025-01-01\n## [v0.100.0] - 2025-06-01\n", "1.0.0", "one\n"},
+		{"## [v0.0.9] - 2026-01-01\n## [v0.0.10] - 2026-02-01\nlatest\n", "0.0.10", "latest\n"},
+		{"## [v01.0.0] - 2026-01-01\n", "", ""},
+		{"## v0.1.0 - 2026-01-01\nold format\n", "", ""}, // the pre-migration heading must fail
 		{"# No versions\n", "", ""},
-		{"## v0.2.0\n\n## v0.1.0\nnotes\n", "0.2.0", ""}, // empty notes must fail
+		{"## [v0.2.0] - 2026-02-01\n\n## [v0.1.0] - 2026-01-01\nnotes\n", "0.2.0", ""}, // empty notes must fail
 	} {
 		dir := t.TempDir()
 		if err := os.Mkdir(filepath.Join(dir, "scripts"), 0700); err != nil {

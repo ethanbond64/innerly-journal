@@ -12,15 +12,13 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.0",
     "@vitejs/plugin-react": "4.5.2",
-    "vite": "6.4.3"
+    "vite": "6.4.5"
   },
   "scripts": {
     "start": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/*.test.mjs",
-    "test:ui": "playwright test"
+    "test": "node --test tests/*.test.mjs"
   }
 }

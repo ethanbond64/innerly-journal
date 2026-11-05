@@ -25,8 +25,26 @@ html.mac-titlebar {
   --wails-draggable: drag;
 }
 
+/* Blend into whatever sits directly below: the navbar when a page has one,
+   otherwise the page background. */
+.mac-titlebar.has-navbar .window-titlebar {
+  background-color: var(--naveb);
+}
+
 .mac-titlebar .navbar-fixed-top {
   top: var(--window-titlebar-height);
+}
+
+/* Pages whose top content already clears the drag region run underneath the
+   titlebar instead of being pushed below it, so their layout matches the
+   browser. With a navbar that also merges the two into one strip of the same
+   colour, at the browser navbar's height. */
+.mac-titlebar.titlebar-overlay #root {
+  padding-top: 0;
+}
+
+.mac-titlebar.has-navbar .navbar-fixed-top {
+  top: 0;
 }
 
 main {
@@ -1241,10 +1259,11 @@ a.activity-cell:hover {
   padding: 3px 12px;
 }
 
-/* The memories modal. Everything here is scoped to its id, because the older
-   modals are full-bleed sheets and this one is a small panel that sizes to its
-   own content. */
-#memoriesModal {
+/* The shared modal panel: a small card that sizes to its own content, used by
+   the memories, password and delete modals. The base .modal/.modal-content
+   rules above stay as they are, since the image lightbox is a full-bleed sheet
+   that still depends on them. */
+.modal-panel {
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1254,7 +1273,25 @@ a.activity-cell:hover {
   backdrop-filter: blur(3px);
 }
 
-#memoriesModal .modal-dialog {
+/* As a <dialog> the panel is its own top layer, so the UA's sizing, chrome and
+   backdrop are cleared and this element paints the scrim itself. */
+dialog.modal-panel {
+  margin: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  color: inherit;
+}
+
+dialog.modal-panel:not([open]) {
+  display: none;
+}
+
+dialog.modal-panel::backdrop {
+  background-color: transparent;
+}
+
+.modal-panel .modal-dialog {
   width: auto;
   max-width: 100%;
   margin: 0;
@@ -1263,71 +1300,161 @@ a.activity-cell:hover {
 
 /* The card idiom the rest of the app is built from: the page's own surface,
    rounded, lifted off the backdrop rather than outlined against it. */
-#memoriesModal .modal-content {
+.modal-panel .modal-content {
   position: relative;
+  outline: none;
   height: auto;
-  min-width: 280px;
+  min-width: 300px;
+  max-width: 420px;
   max-height: 80vh;
   overflow-y: auto;
-  padding: 0 0 10px;
+  padding: 0;
   text-align: left;
   background-color: var(--bgeb);
   border: none;
   border-radius: 14px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, .45);
-  animation: memoriesRise .16s ease-out;
-  -webkit-animation: memoriesRise .16s ease-out;
+  animation: modalRise .16s ease-out;
+  -webkit-animation: modalRise .16s ease-out;
 }
 
-@keyframes memoriesRise {
+@keyframes modalRise {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-#memoriesModal .modal-header {
-  padding: 18px 22px 14px;
+.modal-panel .modal-header {
+  padding: 20px 22px 14px;
   background-color: transparent;
-  border-bottom: 1px solid rgba(128, 128, 128, .22);
+  border-bottom: 1px solid rgba(128, 128, 128, .18);
 }
 
-#memoriesModal .modal-title {
+/* The × is placed over the card rather than in it, so only a header sharing
+   the card with one reserves the room it needs. */
+.modal-panel .modal-content.has-close .modal-header {
+  padding-right: 54px;
+}
+
+.modal-panel .modal-title {
   margin: 0;
-  font-size: 19px;
+  font-family: inherit;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  line-height: 1.35;
   color: var(--dm-text);
 }
 
-/* The date is the modal's context, so it sits under the title rather than
+/* The subtitle is the modal's context, so it sits under the title rather than
    competing with it. */
-#memoriesModal .modal-subtitle {
-  margin: 4px 0 0;
+.modal-panel .modal-subtitle {
+  margin: 6px 0 0;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--dm-muted);
 }
 
-#memoriesModal .modal-body {
-  padding: 10px;
+.modal-panel .modal-body {
+  padding: 16px 22px 18px;
+  color: var(--dm-text);
+}
+
+/* Prose inside the body reads as the panel's own text, not a page heading. */
+.modal-panel .modal-body p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--dm-muted);
+}
+
+/* The card's own bottom padding closes the body, so its last child adds none. */
+.modal-panel .modal-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* An error keeps its own colour rather than the muted prose grey, and follows
+   whatever it reports on. */
+.modal-panel .modal-body p.text-danger {
+  margin: 12px 0 0;
+  color: #b3312f;
+}
+
+/* The light-mode red is too dark to read on the dark card. */
+html[data-theme='dark'] .modal-panel .modal-body p.text-danger {
+  color: #ff948f;
+}
+
+/* Buttons sit at the trailing edge of the body, the primary action last. */
+.modal-panel .modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+}
+
+.modal-panel .modal-body > p + .modal-actions {
+  margin-top: 16px;
+}
+
+/* Field and buttons share one height and corner, so the row reads as a unit
+   instead of as Bootstrap's defaults stacked next to each other. */
+.modal-panel .modal-actions .form-control,
+.modal-panel .modal-actions .btn {
+  height: 38px;
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.modal-panel .modal-actions .form-control {
+  flex: 1 1 180px;
+  width: auto;
+  min-width: 0;
+  padding: 0 12px;
+  background-color: var(--bgeb);
+  border: 1px solid rgba(128, 128, 128, .4);
+  color: var(--dm-text);
+}
+
+.modal-panel .modal-actions .form-control:focus {
+  border-color: #3694ff;
+  box-shadow: 0 0 0 3px rgba(54, 148, 255, .25);
+}
+
+.modal-panel .modal-actions .btn {
+  min-width: 84px;
+  padding: 0 16px;
+  font-weight: 600;
 }
 
 /* The × is lifted out of the flow so the header can be laid out as if it were
-   not there. */
-#memoriesModal .closemodal {
+   not there, and is a square target rather than a bare glyph. */
+.modal-panel .closemodal {
   position: absolute;
-  top: 8px;
-  right: 14px;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   float: none;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 400;
   line-height: 1;
+  border-radius: 8px;
   color: var(--dm-muted);
-  transition: color .1s ease-in-out;
+  transition: color .1s ease-in-out, background-color .1s ease-in-out;
+  cursor: pointer;
 }
 
-#memoriesModal .closemodal:hover,
-#memoriesModal .closemodal:focus {
+.modal-panel .closemodal:hover,
+.modal-panel .closemodal:focus {
   color: var(--dm-text);
+  background-color: rgba(128, 128, 128, .16);
 }
 
 /* One year per row, each a link to that day's page. The row itself is the
@@ -1351,6 +1478,13 @@ a.activity-cell:hover {
 .memory-year:focus {
   cursor: pointer;
   background-color: var(--well-grey);
+}
+
+/* Each row carries its own padding, so it reaches back out past the body's
+   gutter: the hover pill sits just inside the card while the years stay on the
+   same line as the title above them. */
+.modal-panel .modal-body > .memory-year {
+  margin: 0 -14px;
 }
 
 /* The chevron only resolves on the row being pointed at. */

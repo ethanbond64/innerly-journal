@@ -5,6 +5,7 @@ import { Modal } from './modal.jsx';
 export const DeleteEntryDialog = ({ entryId, onDeleted, onCancel }) => {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
+    const cancel = () => { if (!busy) onCancel(); };
     const remove = () => {
         setBusy(true);
         deleteEntry(entryId, () => onDeleted(), () => {
@@ -12,11 +13,12 @@ export const DeleteEntryDialog = ({ entryId, onDeleted, onCancel }) => {
             setError('Unable to delete this entry. Please try again.');
         });
     };
-    return <Modal label="Delete entry" onCancel={() => { if (!busy) onCancel(); }}>
-        <h3>Delete this entry?</h3>
+    return <Modal label="Delete entry" title="Delete this entry?" onCancel={cancel}>
         <p>This cannot be undone.</p>
-        {error && <p role="alert">{error}</p>}
-        <button autoFocus className="btn btn-default" disabled={busy} onClick={onCancel}>Cancel</button>{' '}
-        <button className="btn btn-danger" disabled={busy} onClick={remove}>Delete</button>
+        {error && <p className="text-danger" role="alert">{error}</p>}
+        <div className="modal-actions">
+            <button autoFocus className="btn btn-default" disabled={busy} onClick={cancel}>Cancel</button>
+            <button className="btn btn-danger" disabled={busy} onClick={remove}>Delete</button>
+        </div>
     </Modal>;
 };

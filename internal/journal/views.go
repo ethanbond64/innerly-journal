@@ -54,7 +54,8 @@ func (a *App) Signup(input Credentials) Result {
 		return outcome(nil, err)
 	}
 	now := timestamp(a.now())
-	r, err := tx.Exec("INSERT INTO users(email,password_hash,admin,settings,usage,created_on,updated_on) VALUES(?,?,?,'{}','{}',?,?)", input.Email, hash, count == 0, now, now)
+	// New accounts start with text blurred; the setting is opened up from Settings.
+	r, err := tx.Exec(`INSERT INTO users(email,password_hash,admin,settings,usage,created_on,updated_on) VALUES(?,?,?,'{"sensitivity":"blur"}','{}',?,?)`, input.Email, hash, count == 0, now, now)
 	if err != nil {
 		return outcome(nil, err)
 	}

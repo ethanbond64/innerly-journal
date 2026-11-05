@@ -1,20 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getTodaysDate } from './utils.jsx';
 import { fetchEntries } from './requests.js';
-import { appendEntries, appendOlderDays } from './timeline.js';
+import { appendEntries, appendEmptyDays } from './timeline.js';
+
+// Empty days are cheap to render but not free, so the tail grows a screenful at
+// a time rather than all the way to the first day the user could have written.
+const dayChunk = 30;
 
 export const useFetch = (search, limit) => {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [allLoaded, setAllLoaded] = useState(false);
     const [error, setError] = useState(null);
     const cursor = useRef(null);
 
     const loadMore = useCallback(async () => {
         const page = cursor.current;
         if (!page || page.busy) return;
+        // Entries are exhausted: keep the timeline going with the empty days
+        // before the oldest one, so the page scrolls on without a click. A
+        // search ends at its last hit instead, since blank days are not results.
         if (page.done) {
-            page.rows = appendOlderDays(page.rows);
+            if (search) return;
+            page.rows = appendEmptyDays(page.rows, dayChunk, page.today);
             setList(page.rows);
             return;
         }
@@ -31,7 +38,6 @@ export const useFetch = (search, limit) => {
             page.offset += results.length;
             page.done = results.length < limit;
             setList(page.rows);
-            setAllLoaded(page.done);
         }
         page.busy = false;
         setLoading(false);
@@ -40,10 +46,9 @@ export const useFetch = (search, limit) => {
     useEffect(() => {
         cursor.current = { offset: 0, rows: [], today: getTodaysDate(), done: false, busy: false };
         setList([]);
-        setAllLoaded(false);
         loadMore();
         return () => { cursor.current = null; };
     }, [loadMore]);
 
-    return { loading, list, allLoaded, error, loadMore };
+    return { loading, list, error, loadMore };
 };

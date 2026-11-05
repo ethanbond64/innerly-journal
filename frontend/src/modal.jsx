@@ -30,7 +30,7 @@ export const Modal = ({ children, label, title = null, subtitle = null,
         onCancel={(event) => { event.preventDefault(); onCancel(); }}>
         {/* The panel itself takes the dialog's initial focus, so opening one does not
             ring the first link; anything with autoFocus still claims it on mount. */}
-        <div className="modal-dialog" role="document"><div className="modal-content" tabIndex={-1}>
+        <div className="modal-dialog" role="document"><div className={`modal-content${closeable ? ' has-close' : ''}`} tabIndex={-1}>
             {closeable && <span className="closemodal" onClick={onCancel}>&times;</span>}
             {title && <div className="modal-header">
                 <h3 className="modal-title">{title}</h3>

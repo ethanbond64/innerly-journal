@@ -77,7 +77,7 @@ export const PasswordModal = ({ prompt = null, callback = (p) => {}, cancel = nu
             </div>
             {
                 error ?
-                <p className="text-danger" id="lockModalError" style={{ marginTop: '10px', marginBottom: '0px' }}>{error}</p>
+                <p className="text-danger" id="lockModalError">{error}</p>
                 : null
             }
         </Modal>

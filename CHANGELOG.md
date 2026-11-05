@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.0
+## [v0.1.0] - 2026-10-20
 
 ### Added
 - About/updates page with changelog contents fetched from github and button to update in place.
@@ -10,7 +10,7 @@
 - Migrated underlying framework from Wails v2 to v3.
 - Journal color theme top level application bar.
 
-## v0.0.1 - 2026-10-18
+## [v0.0.1] - 2026-10-18
 
 ### Added
 - Support for HEIC/HEIF image uploads.
@@ -23,7 +23,7 @@
 - Removed the Desktop windows section from Settings.
 
 
-## v0.0.0 - 2026-10-17
+## [v0.0.0] - 2026-10-17
 
 ### Added
 - Initial binary release of innerly.

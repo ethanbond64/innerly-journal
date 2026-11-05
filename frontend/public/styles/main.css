@@ -1259,10 +1259,11 @@ a.activity-cell:hover {
   padding: 3px 12px;
 }
 
-/* The memories modal. Everything here is scoped to its id, because the older
-   modals are full-bleed sheets and this one is a small panel that sizes to its
-   own content. */
-#memoriesModal {
+/* The shared modal panel: a small card that sizes to its own content, used by
+   the memories, password and delete modals. The base .modal/.modal-content
+   rules above stay as they are, since the image lightbox is a full-bleed sheet
+   that still depends on them. */
+.modal-panel {
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1272,7 +1273,25 @@ a.activity-cell:hover {
   backdrop-filter: blur(3px);
 }
 
-#memoriesModal .modal-dialog {
+/* As a <dialog> the panel is its own top layer, so the UA's sizing, chrome and
+   backdrop are cleared and this element paints the scrim itself. */
+dialog.modal-panel {
+  margin: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  color: inherit;
+}
+
+dialog.modal-panel:not([open]) {
+  display: none;
+}
+
+dialog.modal-panel::backdrop {
+  background-color: transparent;
+}
+
+.modal-panel .modal-dialog {
   width: auto;
   max-width: 100%;
   margin: 0;
@@ -1281,8 +1300,9 @@ a.activity-cell:hover {
 
 /* The card idiom the rest of the app is built from: the page's own surface,
    rounded, lifted off the backdrop rather than outlined against it. */
-#memoriesModal .modal-content {
+.modal-panel .modal-content {
   position: relative;
+  outline: none;
   height: auto;
   min-width: 280px;
   max-height: 80vh;
@@ -1293,22 +1313,22 @@ a.activity-cell:hover {
   border: none;
   border-radius: 14px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, .45);
-  animation: memoriesRise .16s ease-out;
-  -webkit-animation: memoriesRise .16s ease-out;
+  animation: modalRise .16s ease-out;
+  -webkit-animation: modalRise .16s ease-out;
 }
 
-@keyframes memoriesRise {
+@keyframes modalRise {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-#memoriesModal .modal-header {
+.modal-panel .modal-header {
   padding: 18px 22px 14px;
   background-color: transparent;
   border-bottom: 1px solid rgba(128, 128, 128, .22);
 }
 
-#memoriesModal .modal-title {
+.modal-panel .modal-title {
   margin: 0;
   font-size: 19px;
   font-weight: 600;
@@ -1317,21 +1337,51 @@ a.activity-cell:hover {
   color: var(--dm-text);
 }
 
-/* The date is the modal's context, so it sits under the title rather than
+/* The subtitle is the modal's context, so it sits under the title rather than
    competing with it. */
-#memoriesModal .modal-subtitle {
+.modal-panel .modal-subtitle {
   margin: 4px 0 0;
   font-size: 13px;
   color: var(--dm-muted);
 }
 
-#memoriesModal .modal-body {
+.modal-panel .modal-body {
   padding: 10px;
+  color: var(--dm-text);
+}
+
+/* Prose inside the body reads as the panel's own text, not a page heading. */
+.modal-panel .modal-body p {
+  margin: 0 14px 4px;
+  font-size: 15px;
+  color: var(--dm-muted);
+}
+
+/* An error keeps its own colour rather than the muted prose grey. */
+.modal-panel .modal-body p.text-danger {
+  color: #a94442;
+}
+
+/* Buttons sit at the trailing edge of the body, the primary action last. */
+.modal-panel .modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px 4px;
+}
+
+.modal-panel .modal-actions .form-control {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 0;
+  margin: 0;
 }
 
 /* The × is lifted out of the flow so the header can be laid out as if it were
    not there. */
-#memoriesModal .closemodal {
+.modal-panel .closemodal {
   position: absolute;
   top: 8px;
   right: 14px;
@@ -1341,10 +1391,11 @@ a.activity-cell:hover {
   line-height: 1;
   color: var(--dm-muted);
   transition: color .1s ease-in-out;
+  cursor: pointer;
 }
 
-#memoriesModal .closemodal:hover,
-#memoriesModal .closemodal:focus {
+.modal-panel .closemodal:hover,
+.modal-panel .closemodal:focus {
   color: var(--dm-text);
 }
 

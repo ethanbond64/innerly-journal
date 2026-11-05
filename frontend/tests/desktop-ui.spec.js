@@ -7,8 +7,8 @@ test('media requests fall through to Wails instead of receiving the app HTML', a
 });
 
 // Exercise the real React UI in WebKit and Chromium with an in-memory Wails boundary.
-const desktop = async (page, { count = 1, media = false, expired = false, loggedIn = true } = {}) => {
-    await page.addInitScript(({ count, media, expired, loggedIn }) => {
+const desktop = async (page, { count = 1, media = false, expired = false, loggedIn = true, memories = [] } = {}) => {
+    await page.addInitScript(({ count, media, expired, loggedIn, memories }) => {
         const user = { id: 1, email: 'owner@example.com', settings: { lock_by_default: true } };
         const result = (data = null) => ({ data, success: true });
         const state = window.journalTest = { calls: [], expired, entries: [], pending: [], delay: false,
@@ -30,7 +30,7 @@ const desktop = async (page, { count = 1, media = false, expired = false, logged
                 return result(entries);
             },
             FetchTaggedDays: () => result([]), FetchDateTags: () => result([]), FetchTags: () => result([]),
-            FetchMemories: () => result({ datetimes: [] }), ImportFiles: () => result([]),
+            FetchMemories: () => result({ datetimes: memories }), ImportFiles: () => result([]),
             ImportStatus: () => ({ error: { code: 'not-found', message: 'No job' } }),
             AuthenticateLock: (password) => {
                 if (password !== 'journal-password') return { error: { code: 'unauthorized', message: 'Wrong password' } };
@@ -70,7 +70,7 @@ const desktop = async (page, { count = 1, media = false, expired = false, logged
             },
             updateStatus: async () => structuredClone(state.update),
         };
-    }, { count, media, expired, loggedIn });
+    }, { count, media, expired, loggedIn, memories });
 };
 
 test('About uses the shared navbar and minimal changelog header before login', async ({ page }) => {
@@ -296,6 +296,19 @@ test('display preferences survive reload without native IPC', async ({ page }) =
     expect(nativeRequests).toEqual([]);
 });
 
+const titlebarState = (page) => page.locator('.window-titlebar').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+        height: style.height,
+        drag: style.getPropertyValue('--wails-draggable').trim(),
+        background: style.backgroundColor,
+        navBackground: document.querySelector('.navbar') && getComputedStyle(document.querySelector('.navbar')).backgroundColor,
+        pageBackground: getComputedStyle(document.body).backgroundColor,
+        rootPadding: getComputedStyle(document.getElementById('root')).paddingTop,
+        navTop: document.querySelector('.navbar') && getComputedStyle(document.querySelector('.navbar')).top,
+    };
+});
+
 test('desktop reserves exactly one draggable title strip in both themes', async ({ page }) => {
     await desktop(page);
     await page.goto('/#/settings');
@@ -305,16 +318,40 @@ test('desktop reserves exactly one draggable title strip in both themes', async 
             await page.locator('label[for="switch"]').click();
         }
         await expect(page.locator('html')).toHaveAttribute('data-theme', dark ? 'dark' : 'light');
-        const titlebar = await page.locator('.window-titlebar').evaluate((element) => {
-            const style = getComputedStyle(element);
-            return {
-                height: style.height,
-                drag: style.getPropertyValue('--wails-draggable').trim(),
-                background: style.backgroundColor,
-                pageBackground: getComputedStyle(document.body).backgroundColor,
-                padding: getComputedStyle(document.getElementById('root')).paddingTop,
-            };
-        });
-        expect(titlebar).toEqual({ height: '28px', drag: 'drag', background: titlebar.pageBackground, pageBackground: titlebar.pageBackground, padding: '28px' });
+        // A page with a navbar: the strip is the navbar's colour and sits over it, so the
+        // two read as the single navbar the browser shows.
+        const titlebar = await titlebarState(page);
+        expect(titlebar).toEqual({ ...titlebar, height: '28px', drag: 'drag',
+            background: titlebar.navBackground, rootPadding: '0px', navTop: '0px' });
+        if (dark) expect(titlebar.navBackground).not.toBe(titlebar.pageBackground);
     }
+});
+
+test('the title strip takes the page background and its own space without a navbar', async ({ page }) => {
+    await desktop(page, { loggedIn: false });
+    await page.goto('/#/login');
+    await expect(page.locator('.navbar')).toHaveCount(0);
+    const titlebar = await titlebarState(page);
+    expect(titlebar).toEqual({ ...titlebar, height: '28px', drag: 'drag',
+        background: titlebar.pageBackground, rootPadding: '28px' });
+});
+
+test('the memories panel opens from the badge and closes by backdrop, Escape and a year', async ({ page }) => {
+    const today = new Date();
+    const sameDay = (back) => new Date(today.getFullYear() - back, today.getMonth(), today.getDate(), 12).toISOString();
+    await desktop(page, { memories: [sameDay(1)] });
+    await page.goto('/#/');
+    const open = async () => {
+        await page.locator('.memory-badge').first().click();
+        await expect(page.getByRole('dialog', { name: 'Memories' })).toBeVisible();
+    };
+    await open();
+    await page.mouse.click(60, 700);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await open();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await open();
+    await page.getByRole('link', { name: String(today.getFullYear() - 1) }).click();
+    await expect(page).toHaveURL(/#\/day\//);
 });

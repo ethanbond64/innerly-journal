@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ClickOutsideTracker, getLockTtl } from "./utils.jsx";
+import { getLockTtl } from "./utils.jsx";
 import { authenticateLock, onLockAuthExpired } from "./requests.js";
 import { Modal } from './modal.jsx';
 
@@ -66,33 +66,20 @@ export const PasswordModal = ({ prompt = null, callback = (p) => {}, cancel = nu
     }
 
     return (
-            <Modal label={lockTimeout ? LOCK_TIMEOUT_PROMPT : prompt} onCancel={onCancel}>
-                    <ClickOutsideTracker callback={onCancel}>
-                        <div className="modal-content" >
-                            {
-                                closeable ?
-                                <span className={`closemodal`} onClick={onCancel} style={{ color: 'var(--dm-text)' }}>&times;</span>
-                                : null
-                            }
-                            <div className="modal-header" style={{ padding: '8px' }}>
-                                <h3 className="modal-title" id="lockModalLabel">{lockTimeout ? LOCK_TIMEOUT_PROMPT : prompt}</h3>
-                                {
-                                    lockTimeout ?
-                                    <p className="text-muted" id="lockModalSubtitle" style={{ marginTop: '8px', marginBottom: '0px' }}>{lockTimeoutSubtitle()}</p>
-                                    : null
-                                }
-                            </div>
-                            <div className="modal-body" style={{ textAlign: "center", margin: "0 auto", padding: '10px'}}>
-                                <input autoFocus autoComplete="current-password" type="password" id="password" ref={passwordRef} onKeyDown={onKeyDown} className="form-control" style={{width: "50%", margin: '6px', display: 'inline-block'}} />
-                                <button type="button" id="passcodeSave" onClick={onSubmit} className="btn btn-info">Go</button>
-                                {
-                                    error ?
-                                    <p className="text-danger" id="lockModalError" style={{ marginTop: '10px', marginBottom: '0px' }}>{error}</p>
-                                    : null
-                                }
-                            </div>
-                        </div>
-                    </ClickOutsideTracker>
-            </Modal>
+        <Modal label={lockTimeout ? LOCK_TIMEOUT_PROMPT : prompt}
+               title={lockTimeout ? LOCK_TIMEOUT_PROMPT : prompt}
+               subtitle={lockTimeout ? lockTimeoutSubtitle() : null}
+               closeable={closeable} onCancel={onCancel}>
+            <div className="modal-actions">
+                <input autoFocus autoComplete="current-password" type="password" id="password"
+                       ref={passwordRef} onKeyDown={onKeyDown} className="form-control" />
+                <button type="button" id="passcodeSave" onClick={onSubmit} className="btn btn-info">Go</button>
+            </div>
+            {
+                error ?
+                <p className="text-danger" id="lockModalError" style={{ marginTop: '10px', marginBottom: '0px' }}>{error}</p>
+                : null
+            }
+        </Modal>
     );
 }

@@ -26,9 +26,6 @@ case "${1:-test}" in
     go test -timeout 2m ./...
     (cd frontend && npm test)
     ;;
-  test-ui)
-    (cd frontend && npm run test:ui)
-    ;;
   race)
     go test -race -timeout 10m ./...
     ;;
@@ -42,5 +39,5 @@ case "${1:-test}" in
   dev)
     wails3 task dev
     ;;
-  *) printf 'Usage: %s {setup|test|test-ui|race|build|bindings|dev}\n' "$0" >&2; exit 2 ;;
+  *) printf 'Usage: %s {setup|test|race|build|bindings|dev}\n' "$0" >&2; exit 2 ;;
 esac

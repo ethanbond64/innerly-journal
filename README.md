@@ -1,4 +1,5 @@
 # Innerly
+[![License](https://img.shields.io/github/license/ethanbond64/innerly-journal)](LICENSE)
 [![Build](https://img.shields.io/github/actions/workflow/status/ethanbond64/innerly-journal/release-macos.yml?branch=master&label=build)](https://github.com/ethanbond64/innerly-journal/actions/workflows/release-macos.yml)
 [![Latest release](https://img.shields.io/github/v/release/ethanbond64/innerly-journal?sort=semver)](https://github.com/ethanbond64/innerly-journal/releases/latest)
 

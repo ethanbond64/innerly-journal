@@ -184,9 +184,12 @@ func TestTextCountsAndSentiment(t *testing.T) {
 	}
 }
 
-// TestSettingsAndDefaultLocking checks settings persistence, timeout validation, and the first-save encryption default.
+// TestSettingsAndDefaultLocking checks the signup sensitivity default, settings persistence, timeout validation, and the first-save encryption default.
 func TestSettingsAndDefaultLocking(t *testing.T) {
 	a := testApp(t)
+	if fresh := decoded[User](t, a.CurrentUser()); fresh.Settings["sensitivity"] != "blur" {
+		t.Fatal(fresh.Settings)
+	}
 	settings := map[string]any{"lock_by_default": false, "sensitivity": "blur", "lock_ttl_value": 2, "lock_ttl_unit": "hours"}
 	ok(t, a.UpdateUser(1, settings))
 	for _, pair := range []struct {

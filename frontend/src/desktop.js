@@ -1,15 +1,10 @@
 let adapter;
-// Also used by unit tests; browser UI fixtures replace only this boundary.
+// Also used by unit tests, which replace only this boundary.
 export const setDesktopAdapter = (value) => { adapter = value; };
 export const initializeDesktop = async () => {
-    if (import.meta.env?.MODE === 'test') {
-        const { testDesktop } = await import('../tests/desktop-adapter.js');
-        setDesktopAdapter(testDesktop);
-    } else {
-        const { nativeDesktop, waitForNativeDesktop } = await import('./native-desktop.js');
-        await waitForNativeDesktop();
-        setDesktopAdapter(nativeDesktop);
-    }
+    const { nativeDesktop, waitForNativeDesktop } = await import('./native-desktop.js');
+    await waitForNativeDesktop();
+    setDesktopAdapter(nativeDesktop);
 };
 // Opens Wails' update window, which owns the download, verification and restart.
 export const checkForUpdates = () => {

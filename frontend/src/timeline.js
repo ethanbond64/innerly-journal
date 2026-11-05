@@ -22,10 +22,16 @@ export const appendEntries = (rows, entries, today) => {
     return result;
 };
 
-export const appendOlderDays = (rows) => {
-    const last = rows[rows.length - 1];
-    const start = previousDay(last.endDate || last.date);
-    const end = new Date(start);
-    end.setDate(end.getDate() - 89);
-    return [...rows, { date: start, endDate: end, collapse: true, entries: [] }];
+// Past the oldest entry there is nothing left to page in, so the timeline just
+// keeps counting days backwards. They are ordinary rows rather than one collapsed
+// block, a chunk at a time so a scroll costs a bounded number of new rows.
+export const appendEmptyDays = (rows, count, today) => {
+    const result = rows.length ? [...rows] : [newRow(today)];
+    const last = result[result.length - 1];
+    let date = previousDay(last.endDate || last.date);
+    for (let i = 0; i < count; i++) {
+        result.push(newRow(date));
+        date = previousDay(date);
+    }
+    return result;
 };

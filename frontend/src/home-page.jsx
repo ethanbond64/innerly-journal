@@ -38,7 +38,7 @@ export const HomePage = () => {
   // Fixed for the life of the page, so the badge does not move rows at midnight.
   const today = useMemo(() => getTodaysDate(), []);
 
-  const { loading, list, allLoaded, error, loadMore } = useFetch(search, limit);
+  const { loading, list, error, loadMore } = useFetch(search, limit);
   const dayTags = useDayTags();
   const loader = useRef(null);
 
@@ -49,10 +49,13 @@ export const HomePage = () => {
       datetimes === undefined || setMemories(memoryYears(today, datetimes)));
   }, [today]);
 
+  // The timeline has no end of its own: once the entries run out loadMore keeps
+  // handing back the empty days before them, so the sentinel coming into view is
+  // always the signal to extend.
   const handleObserver = useCallback((entries) => {
     const target = entries[0];
-    if (!loading && !allLoaded && !error && target.isIntersecting) loadMore();
-  }, [loading, allLoaded, error, loadMore]);
+    if (!loading && !error && target.isIntersecting) loadMore();
+  }, [loading, error, loadMore]);
 
   useEffect(() => {
     const option = {
@@ -82,7 +85,6 @@ export const HomePage = () => {
             )}
             {loading && <p>Loading...</p>}
             {error && <p role="alert">{error} <button onClick={loadMore}>Retry</button></p>}
-            {allLoaded && <button className="btn btn-default" onClick={loadMore}>Show older days</button>}
             <div ref={loader}></div>
           </div>
         </div>

@@ -5,6 +5,10 @@
 
 A local multimedia journal built with Go, Wails, and React. Includes encrypted notes, autosave, images, HTTPS link previews, search, and day tags.
 
+![The Innerly timeline, showing entries grouped under December 28th, 24th and 18th 2025. Each day is a row of cards — images, and text cards whose contents are blurred — with collapsed date ranges such as "Dec 27 ... Dec 25" between the rows.](innerly-example.png)
+
+![The Innerly writing view: an empty editor with the placeholder "Write about any thoughts, experiences, or ideas", an autosave indicator, and a Save button.](innerly-write.png)
+
 ## Build and run on macOS
 
 Install **Go** (any recent version — the toolchain `go.mod` pins is downloaded automatically), **Node.js 22 with npm**, and the **Xcode Command Line Tools** (`xcode-select --install`), then run `./scripts/desktop.sh setup` once to install the pinned `wails3` CLI, fetch npm dependencies and generate the Go bindings the frontend imports. `./scripts/desktop.sh dev` builds a native development bundle and launches it against Vite with live reload; create a local account on first launch. Everything the development build touches — its journal, the Go and npm caches, and a private `HOME` — stays under `.work/`, so a run never reaches your real home directory and deleting that one directory resets the environment back to a fresh `setup`.

@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.1.1] - 2026-11-04
+
+### Changed
+- Update modal styling across the application.
+- Upgrade dependencies.
+- Restore infinite scroll after earliest entry.
+
 ## [v0.1.0] - 2026-10-20
 
 ### Added

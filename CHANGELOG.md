@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.1.2] - 2026-11-06
+
+### Changed
+- Upgraded/removed dependencies and pinned node version.
+- Fresh new spinner gif on downloads.
+
+### Fixed
+- Bug preventing day tag deletion.
+
 ## [v0.1.1] - 2026-11-04
 
 ### Changed

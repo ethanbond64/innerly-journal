@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { deleteDateTag, fetchDateTags, insertDateTag } from "./requests.js";
+import { Modal } from "./modal.jsx";
 import { capitalize, ClickOutsideTracker, dateToString, getDateNoTime } from "./utils.jsx";
 
 //
@@ -9,6 +10,7 @@ import { capitalize, ClickOutsideTracker, dateToString, getDateNoTime } from "./
 export const DayTags = ({ date, dayTags, open = false }) => {
 
     const [adding, setAdding] = useState(false);
+    const [removing, setRemoving] = useState(null);
 
     if (!dayTags) {
         return null;
@@ -27,26 +29,53 @@ export const DayTags = ({ date, dayTags, open = false }) => {
         insertDateTag(name, functionalDatetime(), (tag) => dayTags.add(key, tag));
     };
 
-    const onRemove = (tag) => {
-        if (window.confirm(`Remove "${capitalize(tag.name)}" from this day?`)) {
-            deleteDateTag(tag.id, () => dayTags.remove(key, tag.id));
-        }
-    };
-
     return (
         <span className={`day-tags${open ? ' day-tags-open' : ''}`}>
             {tags.map((tag) => (
                 <span key={tag.id} className="day-tag">
                     {capitalize(tag.name)}
-                    <button className="day-tag-remove" onClick={() => onRemove(tag)}>&times;</button>
+                    <button type="button" className="day-tag-remove"
+                        onClick={() => setRemoving(tag)}>&times;</button>
                 </span>
             ))}
             {adding ?
                 <DayTagPicker onPick={onAdd} clear={() => setAdding(false)} /> :
-                <button className="day-tag-add" onClick={() => setAdding(true)}>+ tag</button>
+                <button type="button" className="day-tag-add" onClick={() => setAdding(true)}>+ tag</button>
+            }
+            {removing &&
+                <RemoveDayTagDialog tag={removing}
+                    onRemoved={() => { dayTags.remove(key, removing.id); setRemoving(null); }}
+                    onCancel={() => setRemoving(null)} />
             }
         </span>
     );
+};
+
+const RemoveDayTagDialog = ({ tag, onRemoved, onCancel }) => {
+
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(null);
+
+    const cancel = () => { if (!busy) onCancel(); };
+
+    const remove = () => {
+        setBusy(true);
+        deleteDateTag(tag.id, () => onRemoved(), () => {
+            setBusy(false);
+            setError('Unable to remove this tag. Please try again.');
+        });
+    };
+
+    return <Modal label="Remove tag" title="Remove this tag?"
+        subtitle={`"${capitalize(tag.name)}" will no longer be on this day.`} onCancel={cancel}>
+        {error && <p className="text-danger" role="alert">{error}</p>}
+        <div className="modal-actions">
+            <button autoFocus type="button" className="btn btn-default" disabled={busy}
+                onClick={cancel}>Cancel</button>
+            <button type="button" className="btn btn-danger" disabled={busy}
+                onClick={remove}>Remove</button>
+        </div>
+    </Modal>;
 };
 
 const DayTagPicker = ({ onPick, clear }) => {

@@ -6,7 +6,7 @@ toolchain go1.27.3
 
 require (
 	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
-	github.com/wailsapp/wails/v3 v3.2.0-nightly.20261101
+	github.com/wailsapp/wails/v3 v3.1.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.62.0
 	golang.org/x/text v0.43.0

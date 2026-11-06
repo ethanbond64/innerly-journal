@@ -388,6 +388,10 @@ html[data-theme=dark] {
     min-height: 150px !important;
   }
 
+  .swell>.spinner-wrap {
+    min-height: 142px;
+  }
+
   .swell>.pretty-btn {
     padding-left: 6px
   }
@@ -1592,4 +1596,43 @@ html[data-theme='dark'] .modal-panel .modal-body p.text-danger {
 
 .day-tag-option:hover {
   background-color: var(--well-grey);
+}
+
+/* A tapered arc swept around a circle: the conic gradient paints the sweep, the radial
+   mask cuts the disc back to a ring. Drawn by the compositor, so it is sharp at any
+   size and costs nothing to animate. */
+.spinner-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.spinner {
+  display: block;
+  box-sizing: border-box;
+  width: var(--spinner-size, 36px);
+  height: var(--spinner-size, 36px);
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(100, 190, 228, 0) 0deg, rgba(100, 190, 228, 0.9) 300deg, #64bee4 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3.5px));
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Holds the blank card open to its usual height so the arc sits in the middle of it. */
+.swell>.spinner-wrap {
+  min-height: 230px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
 }

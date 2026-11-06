@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useNavigate } from "../router.jsx";
 import { insertLinkEntry, insertFileEntry } from "../requests.js";
 import { writeRoute } from "../constants.js";
+import { Spinner } from "../spinner.jsx";
 import { dateToString, equalsDate, getTodaysDate } from "../utils.jsx";
 
 export const BlankCard = ({ datetime, replace }) => {
@@ -56,7 +57,7 @@ export const BlankCard = ({ datetime, replace }) => {
             {error && <p role="alert">{error}</p>}
             <div className={`well swell ${today ? 'todayblank' : ''}`} id="unit">
                 { loading ? 
-                <img src="/images/innerly-loader.gif" alt="loading gif" /> : 
+                <Spinner /> : 
                 <>
                     <p className="swellLabel" >+</p>
                     <button className={`btn btn-lg btn-info pretty-btn writeButton`} onClick={onClickWrite}><span className={`hidden-sm hidden-xs`}>Write an Entry</span><span className={`hidden-xl hidden-lg hidden-md`}>Write</span></button>

@@ -12,7 +12,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "vite": "8.3.5"
+    "vite": "8.3.6"
   },
   "scripts": {
     "start": "vite --host",

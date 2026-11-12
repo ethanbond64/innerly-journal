@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.1.3] - 2026-11-11
+
+### Changed
+- Improved desktop icon.
+
 ## [v0.1.2] - 2026-11-06
 
 ### Changed
